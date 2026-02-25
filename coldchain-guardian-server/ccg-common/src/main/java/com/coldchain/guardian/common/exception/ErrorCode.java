@@ -12,12 +12,13 @@ public enum ErrorCode {
     TOO_MANY_REQUESTS(429, "请求过于频繁"),
 
     // 业务错误码
-    USER_NOT_EXISTS(10001, "用户不存在"),
-    USERNAME_OR_PASSWORD_ERROR(10002, "用户名或密码错误"),
-    DEVICE_NOT_EXISTS(10003, "设备不存在"),
-    AREA_NOT_EXISTS(10004, "库区不存在"),
-    WORK_ORDER_NOT_EXISTS(10005, "工单不存在"),
-    ALERT_NOT_EXISTS(10006, "告警不存在");
+    USER_NOT_FOUND(10001, "用户不存在"),
+    INVALID_CREDENTIALS(10002, "无效的凭证"),
+    USERNAME_EXISTS(10003, "用户名已存在"),
+    DEVICE_NOT_EXISTS(10004, "设备不存在"),
+    AREA_NOT_EXISTS(10005, "库区不存在"),
+    WORK_ORDER_NOT_EXISTS(10006, "工单不存在"),
+    ALERT_NOT_EXISTS(10007, "告警不存在");
 
     private final int code;
     private final String message;
