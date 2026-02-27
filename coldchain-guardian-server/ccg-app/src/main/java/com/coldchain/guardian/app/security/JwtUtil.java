@@ -3,21 +3,31 @@ package com.coldchain.guardian.app.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import io.jsonwebtoken.JwtException;
 
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret:defaultSecretKeyForColdChainGuardian}")
+    @Value("${jwt.secret:defaultSecretKeyForColdChainGuardianChangeThisToARealSecretThatIsAtLeast256BitsLong}")
     private String secret;
 
     @Value("${jwt.expiration:86400}")
     private Long expiration; // 默认24小时过期
+
+    private SecretKey getSigningKey() {
+        // 使用HS256算法，需要至少256位（32字节）的密钥
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
 
     /**
      * 生成JWT Token
@@ -25,14 +35,15 @@ public class JwtUtil {
     public String generateToken(String username, Long userId, String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
-        claims.put("username", username);
         claims.put("role", role);
         claims.put("created", new Date());
 
         return Jwts.builder()
                 .setClaims(claims)
+                .setSubject(username)                  // 关键：subject 放用户名
+                .setIssuedAt(new Date())
                 .setExpiration(generateExpirationDate())
-                .signWith(SignatureAlgorithm.HS512, secret)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)  // 改为HS256
                 .compact();
     }
 
@@ -40,14 +51,8 @@ public class JwtUtil {
      * 从Token中获取用户名
      */
     public String getUsernameFromToken(String token) {
-        String username;
-        try {
-            Claims claims = getClaimsFromToken(token);
-            username = claims.getSubject();
-        } catch (Exception e) {
-            username = null;
-        }
-        return username;
+        Claims claims = getClaimsFromToken(token);
+        return claims == null ? null : claims.getSubject();
     }
 
     /**
@@ -57,7 +62,7 @@ public class JwtUtil {
         Long userId;
         try {
             Claims claims = getClaimsFromToken(token);
-            userId = claims.get("userId", Long.class);
+            userId = claims != null ? claims.get("userId", Long.class) : null;
         } catch (Exception e) {
             userId = null;
         }
@@ -71,7 +76,7 @@ public class JwtUtil {
         String role;
         try {
             Claims claims = getClaimsFromToken(token);
-            role = (String) claims.get("role");
+            role = claims != null ? (String) claims.get("role") : null;
         } catch (Exception e) {
             role = null;
         }
@@ -85,7 +90,7 @@ public class JwtUtil {
         Date expiration;
         try {
             Claims claims = getClaimsFromToken(token);
-            expiration = claims.getExpiration();
+            expiration = claims != null ? claims.getExpiration() : null;
         } catch (Exception e) {
             expiration = null;
         }
@@ -104,23 +109,25 @@ public class JwtUtil {
      * 验证Token有效性
      */
     public Boolean validateToken(String token) {
-        return !isTokenExpired(token);
+        Claims claims = getClaimsFromToken(token);
+        if (claims == null) return false;
+        Date exp = claims.getExpiration();
+        return exp != null && exp.after(new Date());
     }
 
     /**
      * 从Token中获取Claims
      */
     private Claims getClaimsFromToken(String token) {
-        Claims claims;
         try {
-            claims = Jwts.parser()
-                    .setSigningKey(secret)
+            return Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
                     .parseClaimsJws(token)
                     .getBody();
-        } catch (Exception e) {
-            claims = null;
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
         }
-        return claims;
     }
 
     /**

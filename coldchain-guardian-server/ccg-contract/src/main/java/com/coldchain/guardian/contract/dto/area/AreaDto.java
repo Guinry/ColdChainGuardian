@@ -3,12 +3,27 @@ package com.coldchain.guardian.contract.dto.area;
 public class AreaDto {
 
     private Long id;
-    private String name;
-    private String description;
-    private Double minTemperature;
-    private Double maxTemperature;
-    private Double minHumidity;
-    private Double maxHumidity;
+    private Long parentId;  // 上级库区ID
+    private String areaCode;  // 库区编码
+    private String areaName;  // 库区名称
+    private String areaLevel;  // 层级：SITE/WAREHOUSE/FLOOR/AREA/BIN
+    private String address;  // 地址
+    private String locationDesc;  // 位置描述
+    private Double temperatureThresholdMin;  // 温度最小阈值
+    private Double temperatureThresholdMax;  // 温度最大阈值
+    private Double humidityThresholdMin;  // 湿度最小阈值
+    private Double humidityThresholdMax;  // 湿度最大阈值
+    private Integer alarmEnabled;  // 是否启用告警
+    private Integer status; // 状态：1-启用，0-禁用
+    private Integer sortNo; // 排序号
+    private String remark;  // 备注
+    private Long creatorId;  // 创建人ID
+    private Long updaterId;  // 更新人ID
+    private java.time.LocalDateTime createTime;  // 创建时间
+    private java.time.LocalDateTime updateTime;  // 更新时间
+
+    // constructors
+    public AreaDto() {}
 
     // getters and setters
     public Long getId() {
@@ -19,51 +34,147 @@ public class AreaDto {
         this.id = id;
     }
 
-    public String getName() {
-        return name;
+    public Long getParentId() {
+        return parentId;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
     }
 
-    public String getDescription() {
-        return description;
+    public String getAreaCode() {
+        return areaCode;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setAreaCode(String areaCode) {
+        this.areaCode = areaCode;
     }
 
-    public Double getMinTemperature() {
-        return minTemperature;
+    public String getAreaName() {
+        return areaName;
     }
 
-    public void setMinTemperature(Double minTemperature) {
-        this.minTemperature = minTemperature;
+    public void setAreaName(String areaName) {
+        this.areaName = areaName;
     }
 
-    public Double getMaxTemperature() {
-        return maxTemperature;
+    public String getAreaLevel() {
+        return areaLevel;
     }
 
-    public void setMaxTemperature(Double maxTemperature) {
-        this.maxTemperature = maxTemperature;
+    public void setAreaLevel(String areaLevel) {
+        this.areaLevel = areaLevel;
     }
 
-    public Double getMinHumidity() {
-        return minHumidity;
+    public String getAddress() {
+        return address;
     }
 
-    public void setMinHumidity(Double minHumidity) {
-        this.minHumidity = minHumidity;
+    public void setAddress(String address) {
+        this.address = address;
     }
 
-    public Double getMaxHumidity() {
-        return maxHumidity;
+    public String getLocationDesc() {
+        return locationDesc;
     }
 
-    public void setMaxHumidity(Double maxHumidity) {
-        this.maxHumidity = maxHumidity;
+    public void setLocationDesc(String locationDesc) {
+        this.locationDesc = locationDesc;
+    }
+
+    public Double getTemperatureThresholdMin() {
+        return temperatureThresholdMin;
+    }
+
+    public void setTemperatureThresholdMin(Double temperatureThresholdMin) {
+        this.temperatureThresholdMin = temperatureThresholdMin;
+    }
+
+    public Double getTemperatureThresholdMax() {
+        return temperatureThresholdMax;
+    }
+
+    public void setTemperatureThresholdMax(Double temperatureThresholdMax) {
+        this.temperatureThresholdMax = temperatureThresholdMax;
+    }
+
+    public Double getHumidityThresholdMin() {
+        return humidityThresholdMin;
+    }
+
+    public void setHumidityThresholdMin(Double humidityThresholdMin) {
+        this.humidityThresholdMin = humidityThresholdMin;
+    }
+
+    public Double getHumidityThresholdMax() {
+        return humidityThresholdMax;
+    }
+
+    public void setHumidityThresholdMax(Double humidityThresholdMax) {
+        this.humidityThresholdMax = humidityThresholdMax;
+    }
+
+    public Integer getAlarmEnabled() {
+        return alarmEnabled;
+    }
+
+    public void setAlarmEnabled(Integer alarmEnabled) {
+        this.alarmEnabled = alarmEnabled;
+    }
+
+    public Integer getStatus() {
+        return status;
+    }
+
+    public void setStatus(Integer status) {
+        this.status = status;
+    }
+
+    public Integer getSortNo() {
+        return sortNo;
+    }
+
+    public void setSortNo(Integer sortNo) {
+        this.sortNo = sortNo;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
+    }
+
+    public Long getCreatorId() {
+        return creatorId;
+    }
+
+    public void setCreatorId(Long creatorId) {
+        this.creatorId = creatorId;
+    }
+
+    public Long getUpdaterId() {
+        return updaterId;
+    }
+
+    public void setUpdaterId(Long updaterId) {
+        this.updaterId = updaterId;
+    }
+
+    public java.time.LocalDateTime getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(java.time.LocalDateTime createTime) {
+        this.createTime = createTime;
+    }
+
+    public java.time.LocalDateTime getUpdateTime() {
+        return updateTime;
+    }
+
+    public void setUpdateTime(java.time.LocalDateTime updateTime) {
+        this.updateTime = updateTime;
     }
 }

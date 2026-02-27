@@ -18,7 +18,12 @@ public enum ErrorCode {
     DEVICE_NOT_EXISTS(10004, "设备不存在"),
     AREA_NOT_EXISTS(10005, "库区不存在"),
     WORK_ORDER_NOT_EXISTS(10006, "工单不存在"),
-    ALERT_NOT_EXISTS(10007, "告警不存在");
+    ALERT_NOT_EXISTS(10007, "告警不存在"),
+    ACCOUNT_DISABLED(10008, "账户已被禁用"),
+    TOKEN_GENERATION_FAILED(10009, "令牌生成失败，请联系管理员"),
+    AREA_NAME_EXISTS(10010, "库区名称已存在"),
+    AREA_CODE_EXISTS(10011, "库区编码已存在"),
+    AREA_HAS_CHILDREN(10012, "库区存在子库区，无法删除");
 
     private final int code;
     private final String message;

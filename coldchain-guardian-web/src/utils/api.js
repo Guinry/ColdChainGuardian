@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 // Create an Axios instance
-const apiClient = axios.create({
+export const apiClient = axios.create({
   baseURL: 'http://localhost:8080/api', // Backend API base URL
   timeout: 10000,
   headers: {
@@ -48,5 +48,42 @@ apiClient.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+// 库区管理API接口
+export const warehouseAreaApi = {
+  // 获取整棵树
+  getTree: () => apiClient.get('/areas'),
+
+  // 获取指定节点详情
+  getById: (id) => apiClient.get(`/areas/${id}`),
+
+  // 获取子节点列表
+  getChildren: (parentId) => apiClient.get(`/areas/parent/${parentId}`),
+
+  // 新增库区
+  create: (data) => apiClient.post('/areas', data),
+
+  // 更新库区
+  update: (id, data) => apiClient.put(`/areas/${id}`, data),
+
+  // 删除库区
+  delete: (id) => apiClient.delete(`/areas/${id}`),
+
+  // 移动库区
+  move: (id, targetParentId) => apiClient.post(`/areas/${id}/move`, { targetParentId }),
+
+  // 批量操作
+  batch: (data) => apiClient.post('/areas/batch', data),
+
+  // 导出
+  export: (params) => apiClient.get('/areas/export', { params, responseType: 'blob' }),
+
+  // 导入
+  import: (formData) => apiClient.post('/areas/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+};
 
 export default apiClient

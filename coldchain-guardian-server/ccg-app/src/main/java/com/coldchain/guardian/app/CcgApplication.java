@@ -1,15 +1,11 @@
 package com.coldchain.guardian.app;
 
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.ComponentScan;
 
-@SpringBootApplication
-@ComponentScan(basePackages = {
-        "com.coldchain.guardian.app",
-        "com.coldchain.guardian.infra",
-        "com.coldchain.guardian.common"
-})
+@SpringBootApplication(scanBasePackages = "com.coldchain.guardian")
+@MapperScan("com.coldchain.guardian.infra.persistence.mapper")
 public class CcgApplication {
 
     public static void main(String[] args) {

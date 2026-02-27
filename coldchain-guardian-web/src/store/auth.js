@@ -6,7 +6,11 @@ export const useAuthStore = defineStore('auth', {
     user: (() => {
       try {
         const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
-        return userData ? JSON.parse(userData) : null;
+        // 确保 userData 不是 null、undefined 或 "undefined" 字符串
+        if (!userData || userData === 'undefined') {
+          return null;
+        }
+        return JSON.parse(userData);
       } catch (e) {
         console.error('Failed to parse user data:', e);
         return null;
@@ -15,7 +19,11 @@ export const useAuthStore = defineStore('auth', {
     permissions: (() => {
       try {
         const permissionsData = localStorage.getItem('permissions') || sessionStorage.getItem('permissions');
-        return permissionsData ? JSON.parse(permissionsData) : [];
+        // 确保 permissionsData 不是 null、undefined 或 "undefined" 字符串
+        if (!permissionsData || permissionsData === 'undefined') {
+          return [];
+        }
+        return JSON.parse(permissionsData);
       } catch (e) {
         console.error('Failed to parse permissions data:', e);
         return [];

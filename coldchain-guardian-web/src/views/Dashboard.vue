@@ -65,7 +65,7 @@
               <el-icon><Monitor /></el-icon>
               <span>监测管理</span>
             </template>
-            <el-menu-item index="/areas">库区管理</el-menu-item>
+            <el-menu-item index="/warehouse-area">库区管理</el-menu-item>
             <el-menu-item index="/devices">设备管理</el-menu-item>
             <el-menu-item index="/monitoring/realtime">实时监测</el-menu-item>
           </el-sub-menu>

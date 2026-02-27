@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-@TableName("t_user")
+@TableName("users")
 public class UserEntity extends BaseEntity {
 
     @NotBlank(message = "用户名不能为空")

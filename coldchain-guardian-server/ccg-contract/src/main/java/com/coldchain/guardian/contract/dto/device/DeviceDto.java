@@ -1,15 +1,29 @@
 package com.coldchain.guardian.contract.dto.device;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 public class DeviceDto {
 
     private Long id;
-    private String deviceId;
-    private String name;
-    private String description;
+    private String deviceCode;
+    private String deviceName;
+    private String deviceType;
+    private String model;
+    private String manufacturer;
+    private String sn;
+    private String firmwareVersion;
     private Long areaId;
-    private String areaName;
-    private Boolean isActive;
-    private Boolean isOnline;
+    private String locationDesc;
+    private String thresholdMode;
+    private BigDecimal temperatureThresholdMin;
+    private BigDecimal temperatureThresholdMax;
+    private BigDecimal humidityThresholdMin;
+    private BigDecimal humidityThresholdMax;
+    private Boolean alarmEnabled;
+    private Boolean enabled;
+    private Boolean onlineStatus;
+    private LocalDateTime lastSeenTime;
 
     // getters and setters
     public Long getId() {
@@ -20,28 +34,60 @@ public class DeviceDto {
         this.id = id;
     }
 
-    public String getDeviceId() {
-        return deviceId;
+    public String getDeviceCode() {
+        return deviceCode;
     }
 
-    public void setDeviceId(String deviceId) {
-        this.deviceId = deviceId;
+    public void setDeviceCode(String deviceCode) {
+        this.deviceCode = deviceCode;
     }
 
-    public String getName() {
-        return name;
+    public String getDeviceName() {
+        return deviceName;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setDeviceName(String deviceName) {
+        this.deviceName = deviceName;
     }
 
-    public String getDescription() {
-        return description;
+    public String getDeviceType() {
+        return deviceType;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setDeviceType(String deviceType) {
+        this.deviceType = deviceType;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
+    }
+
+    public String getManufacturer() {
+        return manufacturer;
+    }
+
+    public void setManufacturer(String manufacturer) {
+        this.manufacturer = manufacturer;
+    }
+
+    public String getSn() {
+        return sn;
+    }
+
+    public void setSn(String sn) {
+        this.sn = sn;
+    }
+
+    public String getFirmwareVersion() {
+        return firmwareVersion;
+    }
+
+    public void setFirmwareVersion(String firmwareVersion) {
+        this.firmwareVersion = firmwareVersion;
     }
 
     public Long getAreaId() {
@@ -52,27 +98,83 @@ public class DeviceDto {
         this.areaId = areaId;
     }
 
-    public String getAreaName() {
-        return areaName;
+    public String getLocationDesc() {
+        return locationDesc;
     }
 
-    public void setAreaName(String areaName) {
-        this.areaName = areaName;
+    public void setLocationDesc(String locationDesc) {
+        this.locationDesc = locationDesc;
     }
 
-    public Boolean getActive() {
-        return isActive;
+    public String getThresholdMode() {
+        return thresholdMode;
     }
 
-    public void setActive(Boolean active) {
-        isActive = active;
+    public void setThresholdMode(String thresholdMode) {
+        this.thresholdMode = thresholdMode;
     }
 
-    public Boolean getOnline() {
-        return isOnline;
+    public BigDecimal getTemperatureThresholdMin() {
+        return temperatureThresholdMin;
     }
 
-    public void setOnline(Boolean online) {
-        isOnline = online;
+    public void setTemperatureThresholdMin(BigDecimal temperatureThresholdMin) {
+        this.temperatureThresholdMin = temperatureThresholdMin;
+    }
+
+    public BigDecimal getTemperatureThresholdMax() {
+        return temperatureThresholdMax;
+    }
+
+    public void setTemperatureThresholdMax(BigDecimal temperatureThresholdMax) {
+        this.temperatureThresholdMax = temperatureThresholdMax;
+    }
+
+    public BigDecimal getHumidityThresholdMin() {
+        return humidityThresholdMin;
+    }
+
+    public void setHumidityThresholdMin(BigDecimal humidityThresholdMin) {
+        this.humidityThresholdMin = humidityThresholdMin;
+    }
+
+    public BigDecimal getHumidityThresholdMax() {
+        return humidityThresholdMax;
+    }
+
+    public void setHumidityThresholdMax(BigDecimal humidityThresholdMax) {
+        this.humidityThresholdMax = humidityThresholdMax;
+    }
+
+    public Boolean getAlarmEnabled() {
+        return alarmEnabled;
+    }
+
+    public void setAlarmEnabled(Boolean alarmEnabled) {
+        this.alarmEnabled = alarmEnabled;
+    }
+
+    public Boolean getEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(Boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public Boolean getOnlineStatus() {
+        return onlineStatus;
+    }
+
+    public void setOnlineStatus(Boolean onlineStatus) {
+        this.onlineStatus = onlineStatus;
+    }
+
+    public LocalDateTime getLastSeenTime() {
+        return lastSeenTime;
+    }
+
+    public void setLastSeenTime(LocalDateTime lastSeenTime) {
+        this.lastSeenTime = lastSeenTime;
     }
 }

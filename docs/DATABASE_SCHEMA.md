@@ -8,7 +8,7 @@
 
 ### 2.1 用户表 (users)
 ```sql
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL COMMENT '用户名',
     password VARCHAR(255) NOT NULL COMMENT '密码',
@@ -22,38 +22,86 @@ CREATE TABLE users (
 );
 ```
 
-### 2.2 库区表 (warehouses)
+### 2.2 库区表 (warehouse_areas)
 ```sql
-CREATE TABLE warehouses (
+CREATE TABLE IF NOT EXISTS warehouse_areas (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL COMMENT '库区名称',
-    location VARCHAR(255) COMMENT '库区位置',
-    description TEXT COMMENT '库区描述',
-    capacity DECIMAL(10,2) COMMENT '库容(立方米)',
-    status TINYINT DEFAULT 1 COMMENT '库区状态(0:停用,1:启用)',
+    parent_id BIGINT NULL COMMENT '上级库区ID，NULL表示顶级',
+    area_code VARCHAR(50) NOT NULL UNIQUE COMMENT '库区编码',
+    area_name VARCHAR(100) NOT NULL COMMENT '库区名称',
+    area_level VARCHAR(20) NOT NULL DEFAULT 'AREA' COMMENT '层级：SITE/WAREHOUSE/FLOOR/AREA/BIN',
+    address VARCHAR(200) NULL COMMENT '地址（顶级/仓库级可用）',
+    location_desc VARCHAR(200) NULL COMMENT '位置描述（如A栋2层东区）',
+
+    -- 库区默认阈值（设备可覆盖）
+    temperature_threshold_min DECIMAL(5,2) DEFAULT -20.00,
+    temperature_threshold_max DECIMAL(5,2) DEFAULT 8.00,
+    humidity_threshold_min DECIMAL(5,2) DEFAULT 30.00,
+    humidity_threshold_max DECIMAL(5,2) DEFAULT 70.00,
+    alarm_enabled TINYINT DEFAULT 1,
+
+    status TINYINT DEFAULT 1 COMMENT '1-启用，0-禁用',
+    sort_no INT DEFAULT 0 COMMENT '排序',
+    remark VARCHAR(500) NULL,
+
     created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    creator_id BIGINT,
+    updater_id BIGINT,
+
+    INDEX idx_parent (parent_id),
+    INDEX idx_level (area_level),
+    INDEX idx_status (status),
+    CONSTRAINT fk_area_parent FOREIGN KEY (parent_id) REFERENCES warehouse_areas(id)
 );
 ```
 
 ### 2.3 传感器设备表 (devices)
 ```sql
-CREATE TABLE devices (
+CREATE TABLE IF NOT EXISTS devices (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    device_code VARCHAR(50) UNIQUE NOT NULL COMMENT '设备编号',
-    name VARCHAR(100) NOT NULL COMMENT '设备名称',
-    warehouse_id BIGINT NOT NULL COMMENT '所属库区ID',
-    device_type ENUM('TEMPERATURE', 'HUMIDITY', 'TEMP_HUMI') DEFAULT 'TEMP_HUMI' COMMENT '设备类型',
-    location_desc VARCHAR(255) COMMENT '设备位置描述',
-    status TINYINT DEFAULT 1 COMMENT '设备状态(0:故障,1:正常)',
-    manufacturer VARCHAR(100) COMMENT '制造商',
-    installation_date DATE COMMENT '安装日期',
-    last_calibration_date DATE COMMENT '最后校准日期',
-    calibration_cycle INT DEFAULT 30 COMMENT '校准周期(天)',
+
+    -- 设备基础信息
+    device_code VARCHAR(50) NOT NULL UNIQUE COMMENT '设备编码（唯一）',
+    device_name VARCHAR(100) NOT NULL COMMENT '设备名称',
+    device_type VARCHAR(50) NOT NULL COMMENT '设备类型（TEMP_HUM / FREEZER / VEHICLE / DOOR ...）',
+    model VARCHAR(50) NULL COMMENT '型号',
+    manufacturer VARCHAR(100) NULL COMMENT '厂商',
+    sn VARCHAR(100) NULL COMMENT '序列号',
+    firmware_version VARCHAR(50) NULL COMMENT '固件版本',
+
+    -- 绑定库区（建议绑定到 AREA/BIN）
+    area_id BIGINT NOT NULL COMMENT '所属库区ID(warehouse_areas.id)',
+    location_desc VARCHAR(200) NULL COMMENT '设备位置描述（如A栋2层东区/货架3）',
+
+    -- 阈值策略：继承库区 or 设备覆盖
+    threshold_mode VARCHAR(20) NOT NULL DEFAULT 'INHERIT' COMMENT '阈值模式：INHERIT/OVERRIDE',
+    temperature_threshold_min DECIMAL(5,2) NULL COMMENT '设备温度下限(覆盖时生效)',
+    temperature_threshold_max DECIMAL(5,2) NULL COMMENT '设备温度上限(覆盖时生效)',
+    humidity_threshold_min DECIMAL(5,2) NULL COMMENT '设备湿度下限(覆盖时生效)',
+    humidity_threshold_max DECIMAL(5,2) NULL COMMENT '设备湿度上限(覆盖时生效)',
+    alarm_enabled TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用告警(1是0否)',
+
+    -- 状态
+    enabled TINYINT NOT NULL DEFAULT 1 COMMENT '启用状态(1启用0禁用)',
+    online_status TINYINT NOT NULL DEFAULT 0 COMMENT '在线状态(1在线0离线)',
+    last_seen_time TIMESTAMP NULL COMMENT '最后上报/心跳时间',
+
+    -- 扩展字段：通用信息放 JSON（可选，但很实用）
+    extra JSON NULL COMMENT '扩展信息(JSON)：如安装参数/通讯方式/IMEI等',
+
     created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
-);
+    creator_id BIGINT NULL,
+    updater_id BIGINT NULL,
+
+    INDEX idx_area (area_id),
+    INDEX idx_type (device_type),
+    INDEX idx_enabled (enabled),
+    INDEX idx_online (online_status),
+    INDEX idx_last_seen (last_seen_time),
+    CONSTRAINT fk_device_area FOREIGN KEY (area_id) REFERENCES warehouse_areas(id)
+) COMMENT='设备表';
 ```
 
 ### 2.4 温湿度数据表 (sensor_data)

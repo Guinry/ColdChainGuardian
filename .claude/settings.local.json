@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(mvn clean:*)",
+      "Bash(dir:*)",
+      "Bash(mvn spring-boot:run:*)",
+      "Bash(del:*)",
+      "Bash(cd:*)",
+      "Bash(./mvnw spring-boot:run:*)",
+      "Bash(./mvnw.cmd spring-boot:run:*)"
     ]
   }
 }

@@ -35,27 +35,38 @@ public class AuthService {
      */
     public LoginResponseDto login(LoginRequestDto loginRequestDto) {
         try {
-            // 验证用户凭据
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            loginRequestDto.getUsername(),
-                            loginRequestDto.getPassword()
-                    )
-            );
-
-            // 设置安全上下文
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-
-            // 获取用户信息
-            String username = authentication.getName();
-            UserEntity user = userRepository.findByUsername(username);
+            // 先从数据库获取用户信息
+            UserEntity user = userRepository.findByUsername(loginRequestDto.getUsername());
 
             if (user == null) {
-                throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+                throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
             }
 
-            // 生成JWT Token
-            String token = jwtUtil.generateToken(user.getUsername(), user.getId(), user.getRole());
+            // 直接验证密码
+            if (!passwordEncoder.matches(loginRequestDto.getPassword(), user.getPassword())) {
+                throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            }
+
+            // 检查用户状态
+            if (user.getStatus() != 1) {
+                throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
+            }
+
+            // 手动创建认证对象（因为上面跳过了AuthenticationManager）
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    user.getUsername(),
+                    null,
+                    java.util.Collections.emptyList()
+            );
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            // 生成JWT Token - 添加错误处理
+            String token;
+            try {
+                token = jwtUtil.generateToken(user.getUsername(), user.getId(), user.getRole());
+            } catch (Exception jwtException) {
+                throw new BusinessException(ErrorCode.TOKEN_GENERATION_FAILED);
+            }
 
             // 构建响应
             LoginResponseDto response = new LoginResponseDto();
@@ -64,8 +75,16 @@ public class AuthService {
             response.setUsername(user.getUsername());
 
             return response;
+        } catch (BusinessException e) {
+            // 重新抛出业务异常
+            throw e;
         } catch (Exception e) {
-            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            // JWT生成失败或其他系统错误
+            if (e instanceof BusinessException) {
+                throw e;
+            } else {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR);
+            }
         }
     }
 
