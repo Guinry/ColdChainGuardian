@@ -37,6 +37,18 @@ public interface DeviceService {
     List<DeviceDto> getDevicesByEnabled(Boolean enabled);
 
     /**
+     * 根据条件获取分页设备列表
+     */
+    List<DeviceDto> getDevicesWithFilters(Integer page, Integer size, String keyword, String deviceType,
+                                        Boolean onlineStatus, Boolean enabled, Boolean alarmEnabled, Long areaId);
+
+    /**
+     * 获取符合条件的设备总数
+     */
+    int getDeviceCountWithFilters(String keyword, String deviceType,
+                                Boolean onlineStatus, Boolean enabled, Boolean alarmEnabled, Long areaId);
+
+    /**
      * 创建新设备
      */
     DeviceDto createDevice(CreateDeviceRequestDto requestDto);

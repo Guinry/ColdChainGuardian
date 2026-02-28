@@ -13,14 +13,8 @@ const routes = [
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: () => import('../components/Layout.vue'),
-    meta: { requiresAuth: true },
-    children: [
-      {
-        path: '',
-        component: () => import('../views/Dashboard.vue')
-      }
-    ]
+    component: () => import('../views/Dashboard.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/warehouse-area',
@@ -47,6 +41,12 @@ const routes = [
     component: () => import('../views/device/DeviceAlertView.vue'),
     meta: { requiresAuth: true, permissions: ['device:view', 'alert:view'] },
     props: true
+  },
+  {
+    path: '/monitor',
+    name: 'Monitor',
+    component: () => import('../views/monitor/MonitorView.vue'),
+    meta: { requiresAuth: true, permissions: ['monitor:view'] }
   }
 ]
 

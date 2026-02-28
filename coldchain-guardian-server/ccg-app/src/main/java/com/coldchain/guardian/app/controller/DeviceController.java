@@ -1,9 +1,12 @@
 package com.coldchain.guardian.app.controller;
 
 import com.coldchain.guardian.app.service.DeviceService;
+import com.coldchain.guardian.app.service.TelemetryService;
 import com.coldchain.guardian.common.api.ApiResponse;
+import com.coldchain.guardian.common.api.PageResponse;
 import com.coldchain.guardian.contract.dto.device.DeviceDto;
 import com.coldchain.guardian.contract.dto.device.CreateDeviceRequestDto;
+import com.coldchain.guardian.contract.dto.telemetry.TelemetryDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,11 +20,14 @@ public class DeviceController {
     @Autowired
     private DeviceService deviceService;
 
+    @Autowired
+    private TelemetryService telemetryService;
+
     /**
      * 获取设备列表（分页和筛选）
      */
     @GetMapping
-    public ApiResponse<List<DeviceDto>> getDevices(
+    public ApiResponse<PageResponse<DeviceDto>> getDevices(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(required = false) String keyword,
@@ -30,13 +36,18 @@ public class DeviceController {
             @RequestParam(required = false) Boolean enabled,
             @RequestParam(required = false) Boolean alarmEnabled,
             @RequestParam(required = false) Long areaId) {
-        // 这里需要实现完整的分页和筛选逻辑
-        // 临时实现：先返回所有设备并做简单筛选
-        List<DeviceDto> allDevices = deviceService.getAllDevices();
 
-        // 实际应用中应将筛选逻辑传递给服务层进行数据库层面的过滤和分页
-        // 这里简化处理，直接返回所有设备
-        return ApiResponse.success(allDevices);
+        // 获取符合条件的设备列表
+        List<DeviceDto> filteredDevices = deviceService.getDevicesWithFilters(page, size, keyword, deviceType,
+                onlineStatus, enabled, alarmEnabled, areaId);
+
+        // 获取符合条件的设备总数
+        int total = deviceService.getDeviceCountWithFilters(keyword, deviceType,
+                onlineStatus, enabled, alarmEnabled, areaId);
+
+        PageResponse<DeviceDto> pageResponse = new PageResponse<>(filteredDevices, total, page, size);
+
+        return ApiResponse.success(pageResponse);
     }
 
     /**
@@ -220,6 +231,36 @@ public class DeviceController {
 
         DeviceDto updatedDevice = deviceService.updateDevice(id, requestDto);
         return ApiResponse.success(updatedDevice);
+    }
+
+    /**
+     * 获取设备最新数据 - 适配前端API需求
+     */
+    @GetMapping("/{id}/latest")
+    public ApiResponse<TelemetryDto> getLatestTelemetry(@PathVariable Long id) {
+        TelemetryDto latestTelemetry = telemetryService.getLatestTelemetryByDeviceId(id);
+        if (latestTelemetry == null) {
+            return ApiResponse.error(404, "未找到设备的遥测数据");
+        }
+        return ApiResponse.success(latestTelemetry);
+    }
+
+    /**
+     * 获取设备历史数据 - 适配前端API需求
+     */
+    @GetMapping("/{id}/data")
+    public ApiResponse<PageResponse<TelemetryDto>> getHistoricalTelemetry(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+
+        List<TelemetryDto> telemetryList = telemetryService.getTelemetryByDeviceId(id, page, size, startTime, endTime);
+        long total = telemetryService.countTelemetryByDeviceId(id, startTime, endTime);
+
+        PageResponse<TelemetryDto> pageResponse = new PageResponse<>(telemetryList, total, page, size);
+        return ApiResponse.success(pageResponse);
     }
 
     // 用于接收状态更新请求的内部类

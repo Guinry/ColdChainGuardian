@@ -1,83 +1,21 @@
 <template>
-  <el-container class="layout-container">
-    <!-- 侧边栏 -->
-    <el-aside width="200px" class="sidebar">
-      <div class="logo">
-        <h3>冷链卫士</h3>
+  <div class="layout-container">
+    <NavBar :user-info="userInfo" @view-profile="viewProfile" @settings="settings" @logout="logout" />
+    <div class="layout-content">
+      <SideBar :active-menu="activeMenu" :is-super-admin="isSuperAdmin" />
+      <div class="main-content">
+        <slot></slot>
       </div>
-      <el-menu
-        :default-active="$route.path"
-        :unique-opened="true"
-        :collapse="isCollapse"
-        router
-        class="menu"
-      >
-        <el-menu-item index="/dashboard">
-          <el-icon><House /></el-icon>
-          <span>仪表盘</span>
-        </el-menu-item>
-
-        <el-sub-menu index="/manage">
-          <template #title>
-            <el-icon><Menu /></el-icon>
-            <span>系统管理</span>
-          </template>
-
-          <el-menu-item v-if="hasPermission('area:view')" index="/warehouse-area">
-            <el-icon><OfficeBuilding /></el-icon>
-            <span>库区管理</span>
-          </el-menu-item>
-
-          <el-menu-item v-if="hasPermission('device:view')" index="/device">
-            <el-icon><Monitor /></el-icon>
-            <span>设备管理</span>
-          </el-menu-item>
-        </el-sub-menu>
-      </el-menu>
-    </el-aside>
-
-    <!-- 主内容区域 -->
-    <el-container>
-      <el-header class="header">
-        <el-button class="collapse-btn" @click="toggleCollapse" text>
-          <el-icon><Fold v-if="!isCollapse" /><Expand v-else /></el-icon>
-        </el-button>
-
-        <div class="header-right">
-          <el-dropdown>
-            <span class="user-info">
-              <el-avatar size="small" />
-              <span>{{ userInfo.username }}</span>
-            </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item>个人资料</el-dropdown-item>
-                <el-dropdown-item @click="logout">退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-      </el-header>
-
-      <el-main class="main-content">
-        <router-view />
-      </el-main>
-    </el-container>
-  </el-container>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/store/auth';
-import {
-  House,
-  Menu,
-  Monitor,
-  OfficeBuilding,
-  Fold,
-  Expand
-} from '@element-plus/icons-vue';
+import NavBar from './NavBar.vue';
+import SideBar from './SideBar.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -87,75 +25,60 @@ const hasPermission = (permission) => {
   return authStore.hasPermission(permission);
 };
 
-// 侧边栏折叠状态
-const isCollapse = ref(false);
+// 当前活跃菜单项，从路由中动态获取
+const activeMenu = ref(router.currentRoute.value.path.split('/')[1] || 'dashboard');
 
 // 模拟用户信息
 const userInfo = reactive({
-  username: 'admin'
+  realName: '管理员'
 });
 
-// 切换侧边栏折叠状态
-const toggleCollapse = () => {
-  isCollapse.value = !isCollapse.value;
-};
+// 检查是否为超级管理员
+const isSuperAdmin = ref(false); // 可以从store或API获取实际值
 
 // 退出登录
 const logout = () => {
   localStorage.removeItem('token');
   router.push('/login');
 };
+
+// 个人资料
+const viewProfile = () => {
+  console.log('View profile clicked');
+};
+
+// 系统设置
+const settings = () => {
+  console.log('Settings clicked');
+};
 </script>
 
 <style scoped>
 .layout-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
   height: 100vh;
-}
-
-.sidebar {
-  background-color: #545c64;
-  color: white;
-}
-
-.logo {
-  height: 60px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  border-bottom: 1px solid #444;
+  flex-direction: column;
+  background-color: #f5f7fa;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.logo h3 {
-  margin: 0;
-  color: white;
-}
-
-.menu:not(.el-menu--collapse) {
-  width: 200px;
-}
-
-.header {
-  background-color: white;
+.layout-content {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
-}
-
-.collapse-btn {
-  font-size: 18px;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .main-content {
-  background-color: #f0f2f5;
+  flex: 1;
+  overflow-y: auto;
   padding: 20px;
+  min-height: 0;
+  height: calc(100vh - 60px);
 }
 </style>

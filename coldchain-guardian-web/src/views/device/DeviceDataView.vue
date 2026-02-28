@@ -1,122 +1,124 @@
 <template>
-  <div class="device-data-container">
-    <div class="page-header">
-      <div class="header-left">
-        <el-page-header @back="goBack" :content="`设备数据 - ${deviceName}`" />
+  <Layout>
+    <div class="device-data-content">
+      <div class="page-header">
+        <div class="header-left">
+          <el-page-header @back="goBack" :content="`设备数据 - ${deviceName}`" />
+        </div>
+        <div class="header-right">
+          <el-button @click="refreshData" :loading="loading">
+            <el-icon><Refresh /></el-icon>
+            刷新
+          </el-button>
+        </div>
       </div>
-      <div class="header-right">
-        <el-button @click="refreshData" :loading="loading">
-          <el-icon><Refresh /></el-icon>
-          刷新
-        </el-button>
+
+      <div class="data-content">
+        <!-- 设备信息卡片 -->
+        <el-card class="device-info-card">
+          <template #header>
+            <div class="card-header">
+              <span>设备信息</span>
+            </div>
+          </template>
+          <div class="device-info-content">
+            <div class="info-row">
+              <div class="info-item">
+                <label>设备编码:</label>
+                <span>{{ deviceCode }}</span>
+              </div>
+              <div class="info-item">
+                <label>设备类型:</label>
+                <el-tag :type="getDeviceTypeTag(deviceType)">
+                  {{ getDeviceTypeLabel(deviceType) }}
+                </el-tag>
+              </div>
+              <div class="info-item">
+                <label>所属库区:</label>
+                <span>{{ areaName }}</span>
+              </div>
+            </div>
+            <div class="info-row">
+              <div class="info-item">
+                <label>在线状态:</label>
+                <el-tag :type="onlineStatus ? 'success' : 'info'">
+                  {{ onlineStatus ? '在线' : '离线' }}
+                </el-tag>
+              </div>
+              <div class="info-item">
+                <label>最后上报时间:</label>
+                <span>{{ formatDate(lastSeenTime) }}</span>
+              </div>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 图表区域 -->
+        <el-card class="chart-card">
+          <template #header>
+            <div class="card-header">
+              <span>温湿度曲线图</span>
+              <div class="chart-controls">
+                <el-date-picker
+                  v-model="timeRange"
+                  type="datetimerange"
+                  range-separator="至"
+                  start-placeholder="开始时间"
+                  end-placeholder="结束时间"
+                  :default-time="[new Date(2026, 1, 1, 0, 0, 0), new Date(2026, 1, 1, 23, 59, 59)]"
+                />
+                <el-button type="primary" @click="loadChartData">查询</el-button>
+              </div>
+            </div>
+          </template>
+          <div class="chart-container">
+            <div ref="chartRef" class="chart"></div>
+          </div>
+        </el-card>
+
+        <!-- 数据表格 -->
+        <el-card class="data-table-card">
+          <template #header>
+            <div class="card-header">
+              <span>历史数据</span>
+              <div class="table-controls">
+                <el-button @click="exportData">导出数据</el-button>
+              </div>
+            </div>
+          </template>
+          <el-table
+            v-loading="tableLoading"
+            :data="dataTable"
+            style="width: 100%"
+            height="400"
+          >
+            <el-table-column prop="dataTime" label="时间" width="180">
+              <template #default="{ row }">
+                {{ formatDate(row.dataTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="temperature" label="温度(℃)" width="120" />
+            <el-table-column prop="humidity" label="湿度(%)" width="120" />
+            <el-table-column prop="batteryLevel" label="电量(%)" width="120" />
+            <el-table-column prop="signalStrength" label="信号强度" width="120" />
+            <el-table-column prop="rawData" label="原始数据" width="200" show-overflow-tooltip />
+          </el-table>
+
+          <div class="pagination">
+            <el-pagination
+              v-model:current-page="pagination.currentPage"
+              v-model:page-size="pagination.pageSize"
+              :total="pagination.total"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
+          </div>
+        </el-card>
       </div>
     </div>
-
-    <div class="data-content">
-      <!-- 设备信息卡片 -->
-      <el-card class="device-info-card">
-        <template #header>
-          <div class="card-header">
-            <span>设备信息</span>
-          </div>
-        </template>
-        <div class="device-info-content">
-          <div class="info-row">
-            <div class="info-item">
-              <label>设备编码:</label>
-              <span>{{ deviceCode }}</span>
-            </div>
-            <div class="info-item">
-              <label>设备类型:</label>
-              <el-tag :type="getDeviceTypeTag(deviceType)">
-                {{ getDeviceTypeLabel(deviceType) }}
-              </el-tag>
-            </div>
-            <div class="info-item">
-              <label>所属库区:</label>
-              <span>{{ areaName }}</span>
-            </div>
-          </div>
-          <div class="info-row">
-            <div class="info-item">
-              <label>在线状态:</label>
-              <el-tag :type="onlineStatus ? 'success' : 'info'">
-                {{ onlineStatus ? '在线' : '离线' }}
-              </el-tag>
-            </div>
-            <div class="info-item">
-              <label>最后上报时间:</label>
-              <span>{{ formatDate(lastSeenTime) }}</span>
-            </div>
-          </div>
-        </div>
-      </el-card>
-
-      <!-- 图表区域 -->
-      <el-card class="chart-card">
-        <template #header>
-          <div class="card-header">
-            <span>温湿度曲线图</span>
-            <div class="chart-controls">
-              <el-date-picker
-                v-model="timeRange"
-                type="datetimerange"
-                range-separator="至"
-                start-placeholder="开始时间"
-                end-placeholder="结束时间"
-                :default-time="[new Date(2026, 1, 1, 0, 0, 0), new Date(2026, 1, 1, 23, 59, 59)]"
-              />
-              <el-button type="primary" @click="loadChartData">查询</el-button>
-            </div>
-          </div>
-        </template>
-        <div class="chart-container">
-          <div ref="chartRef" class="chart"></div>
-        </div>
-      </el-card>
-
-      <!-- 数据表格 -->
-      <el-card class="data-table-card">
-        <template #header>
-          <div class="card-header">
-            <span>历史数据</span>
-            <div class="table-controls">
-              <el-button @click="exportData">导出数据</el-button>
-            </div>
-          </div>
-        </template>
-        <el-table
-          v-loading="tableLoading"
-          :data="dataTable"
-          style="width: 100%"
-          height="400"
-        >
-          <el-table-column prop="dataTime" label="时间" width="180">
-            <template #default="{ row }">
-              {{ formatDate(row.dataTime) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="temperature" label="温度(℃)" width="120" />
-          <el-table-column prop="humidity" label="湿度(%)" width="120" />
-          <el-table-column prop="batteryLevel" label="电量(%)" width="120" />
-          <el-table-column prop="signalStrength" label="信号强度" width="120" />
-          <el-table-column prop="rawData" label="原始数据" width="200" show-overflow-tooltip />
-        </el-table>
-
-        <div class="pagination">
-          <el-pagination
-            v-model:current-page="pagination.currentPage"
-            v-model:page-size="pagination.pageSize"
-            :total="pagination.total"
-            :page-sizes="[10, 20, 50, 100]"
-            layout="total, sizes, prev, pager, next, jumper"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-          />
-        </div>
-      </el-card>
-    </div>
-  </div>
+  </Layout>
 </template>
 
 <script setup>
@@ -124,6 +126,7 @@ import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
+import Layout from '@/components/Layout.vue'
 import { deviceApi } from '@/api/device'
 import * as echarts from 'echarts'
 
@@ -179,7 +182,7 @@ onMounted(() => {
 const loadDeviceInfo = async (deviceId) => {
   try {
     const response = await deviceApi.getDetail(deviceId)
-    const device = response.data
+    const device = response.data?.data?.data
 
     deviceName.value = device.deviceName
     deviceCode.value = device.deviceCode
@@ -203,7 +206,7 @@ const loadChartData = async (deviceId) => {
     }
 
     const response = await deviceApi.getHistoricalData(deviceId, params)
-    const data = response.data
+    const data = response.data?.data?.data || []
 
     // 处理图表数据
     chartData.value.times = data.map(item => new Date(item.dataTime).toLocaleString())
@@ -233,8 +236,8 @@ const loadDataTable = async (deviceId) => {
     }
 
     const response = await deviceApi.getHistoricalData(deviceId, params)
-    dataTable.value = response.data.list || []
-    pagination.total = response.data.total || 0
+    dataTable.value = response.data?.data?.data?.list || []
+    pagination.total = response.data?.data?.data?.total || 0
   } catch (error) {
     ElMessage.error('获取表格数据失败')
     console.error(error)
@@ -385,7 +388,7 @@ const getDeviceTypeTag = (type) => {
 </script>
 
 <style scoped>
-.device-data-container {
+.device-data-content {
   padding: 20px;
   height: 100%;
   display: flex;

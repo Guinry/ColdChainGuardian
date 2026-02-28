@@ -1,511 +1,383 @@
 <template>
-  <div class="device-management-container">
-    <!-- Top Navigation Bar -->
-    <div class="top-bar">
-      <div class="logo-section">
-        <div class="logo">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2L13.09 8.26L22 9L13.09 9.74L12 16L10.91 9.74L2 9L10.91 8.26L12 2Z" fill="#409EFF"/>
-            <circle cx="12" cy="12" r="10" stroke="#409EFF" stroke-width="2"/>
-          </svg>
+  <Layout>
+    <div class="device-management-content">
+      <div class="page-header">
+        <h2>设备管理</h2>
+        <div class="header-actions">
+          <el-button type="primary" @click="openCreateDialog()">
+            <el-icon><Plus /></el-icon>
+            新增设备
+          </el-button>
+          <el-button @click="handleImport">
+            <el-icon><Upload /></el-icon>
+            批量导入
+          </el-button>
+          <el-button @click="handleExport">
+            <el-icon><Download /></el-icon>
+            导出
+          </el-button>
         </div>
-        <span class="app-title">ColdChain Guardian</span>
       </div>
 
-      <div class="search-section">
-        <el-input
-          v-model="globalSearch"
-          placeholder="全局搜索..."
-          :prefix-icon="Search"
-          class="global-search"
+      <div class="search-filters">
+        <el-form :model="searchForm" inline class="search-form">
+          <el-form-item label="设备编码">
+            <el-input
+              v-model="searchForm.keyword"
+              placeholder="输入设备编码或名称"
+              clearable
+              @keyup.enter="handleSearch"
+            />
+          </el-form-item>
+          <el-form-item label="设备类型">
+            <el-select
+              v-model="searchForm.deviceType"
+              placeholder="请选择设备类型"
+              clearable
+              @change="handleSearch"
+            >
+              <el-option label="温湿度传感器" value="TEMP_HUM" />
+              <el-option label="冷冻设备" value="FREEZER" />
+              <el-option label="车辆" value="VEHICLE" />
+              <el-option label="门磁" value="DOOR" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="在线状态">
+            <el-select
+              v-model="searchForm.onlineStatus"
+              placeholder="请选择在线状态"
+              clearable
+              @change="handleSearch"
+            >
+              <el-option label="在线" :value="true" />
+              <el-option label="离线" :value="false" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="启用状态">
+            <el-select
+              v-model="searchForm.enabled"
+              placeholder="请选择启用状态"
+              clearable
+              @change="handleSearch"
+            >
+              <el-option label="启用" :value="true" />
+              <el-option label="禁用" :value="false" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="告警状态">
+            <el-select
+              v-model="searchForm.alarmEnabled"
+              placeholder="请选择告警状态"
+              clearable
+              @change="handleSearch"
+            >
+              <el-option label="启用告警" :value="true" />
+              <el-option label="关闭告警" :value="false" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="所属库区">
+            <el-cascader
+              v-model="searchForm.areaId"
+              :options="areaOptions"
+              :props="cascaderProps"
+              placeholder="请选择库区"
+              clearable
+              filterable
+              @change="handleSearch"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">
+              <el-icon><Search /></el-icon>
+              搜索
+            </el-button>
+            <el-button @click="resetFilters">
+              <el-icon><Refresh /></el-icon>
+              重置
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <div class="table-actions">
+        <el-button
+          :disabled="!selectedRows.length"
+          @click="batchUpdateStatus(true)"
+        >
+          批量启用
+        </el-button>
+        <el-button
+          :disabled="!selectedRows.length"
+          @click="batchUpdateStatus(false)"
+        >
+          批量禁用
+        </el-button>
+        <el-button
+          :disabled="!selectedRows.length"
+          @click="batchUpdateAlarmStatus(true)"
+        >
+          批量启用告警
+        </el-button>
+        <el-button
+          :disabled="!selectedRows.length"
+          @click="batchUpdateAlarmStatus(false)"
+        >
+          批量关闭告警
+        </el-button>
+        <el-button
+          :disabled="!selectedRows.length"
+          type="danger"
+          @click="batchDelete"
+        >
+          批量删除
+        </el-button>
+        <span class="selected-count" v-if="selectedRows.length">
+          已选择 {{ selectedRows.length }} 项
+        </span>
+      </div>
+
+      <el-table
+        v-loading="tableLoading"
+        :data="tableData"
+        @selection-change="handleSelectionChange"
+        height="calc(100vh - 400px)"
+        class="device-table"
+      >
+        <el-table-column type="selection" width="55" />
+        <el-table-column prop="deviceCode" label="设备编码" width="150">
+          <template #default="{ row }">
+            <router-link :to="`/devices/${row.id}/data`" class="device-link">
+              {{ row.deviceCode }}
+            </router-link>
+          </template>
+        </el-table-column>
+        <el-table-column prop="deviceName" label="设备名称" width="150" />
+        <el-table-column prop="deviceType" label="设备类型" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getDeviceTypeTag(row.deviceType)">
+              {{ getDeviceTypeLabel(row.deviceType) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="areaName" label="所属库区" width="150" />
+        <el-table-column prop="onlineStatus" label="在线状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.onlineStatus ? 'success' : 'info'">
+              {{ row.onlineStatus ? '在线' : '离线' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="enabled" label="启用状态" width="100">
+          <template #default="{ row }">
+            <el-switch
+              v-model="row.enabled"
+              @change="toggleStatus(row)"
+              :active-value="true"
+              :inactive-value="false"
+              :disabled="!hasPermission('device:update')"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column prop="alarmEnabled" label="告警状态" width="100">
+          <template #default="{ row }">
+            <el-switch
+              v-model="row.alarmEnabled"
+              @change="toggleAlarmStatus(row)"
+              :active-value="true"
+              :inactive-value="false"
+              :disabled="!hasPermission('device:update')"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column prop="lastSeenTime" label="最后在线" width="180">
+          <template #default="{ row }">
+            {{ row.lastSeenTime ? formatDate(row.lastSeenTime) : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="300">
+          <template #default="{ row }">
+            <el-button size="small" @click="viewData(row)">查看数据</el-button>
+            <el-button size="small" @click="viewAlerts(row)">查看告警</el-button>
+            <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
+            <el-button
+              size="small"
+              :type="row.enabled ? 'danger' : 'success'"
+              @click="toggleStatus(row)"
+            >
+              {{ row.enabled ? '禁用' : '启用' }}
+            </el-button>
+            <el-button
+              size="small"
+              :type="row.alarmEnabled ? 'warning' : 'info'"
+              @click="toggleAlarmStatus(row)"
+            >
+              {{ row.alarmEnabled ? '关闭告警' : '启用告警' }}
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="pagination.currentPage"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
         />
       </div>
-
-      <div class="action-section">
-        <el-badge :value="unreadNotifications" class="notification-badge">
-          <el-button circle class="notification-btn">
-            <el-icon><Bell /></el-icon>
-          </el-button>
-        </el-badge>
-
-        <el-dropdown>
-          <div class="user-avatar">
-            <el-avatar :size="32" :src="userAvatar">{{ userInitial }}</el-avatar>
-            <span class="user-name">{{ userInfo.realName }}</span>
-            <el-icon><ArrowDown /></el-icon>
-          </div>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item @click="viewProfile">个人资料</el-dropdown-item>
-              <el-dropdown-item @click="settings">系统设置</el-dropdown-item>
-              <el-dropdown-item divided @click="logout">退出登录</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-      </div>
     </div>
 
-    <div class="device-management-layout">
-      <!-- Side Menu -->
-      <div class="side-menu">
-        <el-menu
-          :default-active="activeMenu"
-          class="menu"
-          :collapse="false"
-          :unique-opened="true"
-          :router="true"
-        >
-          <el-menu-item index="/dashboard">
-            <el-icon><House /></el-icon>
-            <span>Dashboard</span>
-          </el-menu-item>
-
-          <el-sub-menu index="monitoring">
-            <template #title>
-              <el-icon><Monitor /></el-icon>
-              <span>监测管理</span>
-            </template>
-            <el-menu-item index="/warehouse-area">库区管理</el-menu-item>
-            <el-menu-item index="/devices">设备管理</el-menu-item>
-            <el-menu-item index="/monitoring/realtime">实时监测</el-menu-item>
-          </el-sub-menu>
-
-          <el-sub-menu index="alerts-orders">
-            <template #title>
-              <el-icon><Warning /></el-icon>
-              <span>告警与工单</span>
-            </template>
-            <el-menu-item index="/alerts">告警中心</el-menu-item>
-            <el-menu-item index="/orders">工单管理</el-menu-item>
-          </el-sub-menu>
-
-          <el-sub-menu index="analysis">
-            <template #title>
-              <el-icon><DataAnalysis /></el-icon>
-              <span>数据分析</span>
-            </template>
-            <el-menu-item index="/analysis/trends">趋势分析</el-menu-item>
-            <el-menu-item index="/analysis/ai">AI 智能助手</el-menu-item>
-          </el-sub-menu>
-
-          <!-- System Management menu only visible for SUPER_ADMIN -->
-          <el-sub-menu v-if="isSuperAdmin" index="system">
-            <template #title>
-              <el-icon><Setting /></el-icon>
-              <span>系统管理（超管）</span>
-            </template>
-            <el-menu-item index="/admin/users">管理员管理</el-menu-item>
-            <el-menu-item index="/admin/permissions">权限分配</el-menu-item>
-          </el-sub-menu>
-        </el-menu>
-      </div>
-
-      <!-- Main Content -->
-      <div class="main-content">
-        <div class="page-header">
-          <h2>设备管理</h2>
-          <div class="header-actions">
-            <el-button type="primary" @click="showAddDeviceDialog">
-              <el-icon><Plus /></el-icon>
-              新增设备
-            </el-button>
-            <el-button @click="batchImport">
-              <el-icon><Upload /></el-icon>
-              批量导入
-            </el-button>
-            <el-button @click="exportDevices">
-              <el-icon><Download /></el-icon>
-              导出
-            </el-button>
-          </div>
-        </div>
-
-        <div class="content-wrapper">
-          <!-- 左侧树形结构 -->
-          <div class="tree-panel">
-            <div class="panel-header">
-              <h3>库区结构</h3>
-              <el-input
-                v-model="areaSearchTree"
-                placeholder="搜索库区..."
-                :prefix-icon="Search"
-                clearable
-                @input="filterAreaTree"
-              />
-            </div>
-
-            <el-tree
-              ref="areaTreeRef"
-              :data="areaTreeData"
-              :props="treeProps"
-              :filter-method="filterAreaMethod"
-              :expand-on-click-node="false"
-              highlight-current
-              node-key="id"
-              @node-click="onAreaNodeClick"
-              class="custom-tree"
-            >
-              <template #default="{ node, data }">
-                <div class="tree-node-content">
-                  <span class="node-label">{{ data.areaName }}</span>
-                  <span class="node-code">[{{ data.areaCode }}]</span>
-                  <el-tag
-                    size="small"
-                    :type="getLevelTagType(data.areaLevel)"
-                    class="level-tag"
-                  >
-                    {{ getLevelLabel(data.areaLevel) }}
-                  </el-tag>
-                </div>
-              </template>
-            </el-tree>
-          </div>
-
-          <!-- 右侧设备列表 -->
-          <div class="device-list-panel">
-            <div class="list-header">
-              <h3>设备列表</h3>
-              <div class="list-toolbar">
-                <el-button-group>
-                  <el-button @click="refreshData" :icon="Refresh">刷新</el-button>
-                  <el-button @click="resetFilters">重置</el-button>
-                </el-button-group>
-              </div>
-            </div>
-
-            <!-- 筛选区域 -->
-            <el-form :model="filterForm" inline class="filter-form">
-              <el-form-item label="设备编码" prop="keyword">
-                <el-input
-                  v-model="filterForm.keyword"
-                  placeholder="请输入设备编码或名称"
-                  clearable
-                  style="width: 200px;"
-                />
-              </el-form-item>
-              <el-form-item label="设备类型" prop="deviceType">
-                <el-select
-                  v-model="filterForm.deviceType"
-                  placeholder="请选择"
-                  clearable
-                  style="width: 150px;"
-                >
-                  <el-option label="温湿度传感器" value="TEMP_HUM" />
-                  <el-option label="冷柜" value="FREEZER" />
-                  <el-option label="车载设备" value="VEHICLE" />
-                  <el-option label="门磁" value="DOOR" />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="在线状态" prop="onlineStatus">
-                <el-select
-                  v-model="filterForm.onlineStatus"
-                  placeholder="请选择"
-                  clearable
-                  style="width: 120px;"
-                >
-                  <el-option label="在线" value="true" />
-                  <el-option label="离线" value="false" />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="启用状态" prop="enabled">
-                <el-select
-                  v-model="filterForm.enabled"
-                  placeholder="请选择"
-                  clearable
-                  style="width: 120px;"
-                >
-                  <el-option label="启用" value="true" />
-                  <el-option label="禁用" value="false" />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="告警状态" prop="alarmEnabled">
-                <el-select
-                  v-model="filterForm.alarmEnabled"
-                  placeholder="请选择"
-                  clearable
-                  style="width: 120px;"
-                >
-                  <el-option label="启用" value="true" />
-                  <el-option label="禁用" value="false" />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="绑定库区" prop="areaId">
-                <el-cascader
-                  v-model="filterForm.areaId"
-                  :options="areaTreeData"
-                  :props="cascaderProps"
-                  placeholder="选择库区"
-                  clearable
-                  style="width: 200px;"
-                />
-              </el-form-item>
-              <el-form-item label="最后上报时间" prop="lastSeenRange">
-                <el-date-picker
-                  v-model="filterForm.lastSeenRange"
-                  type="datetimerange"
-                  range-separator="至"
-                  start-placeholder="开始时间"
-                  end-placeholder="结束时间"
-                  style="width: 280px;"
-                />
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" @click="searchDevices" :icon="Search">查询</el-button>
-              </el-form-item>
-            </el-form>
-
-            <!-- 设备表格 -->
-            <el-table
-              :data="deviceList"
-              style="width: 100%"
-              row-key="id"
-              border
-              stripe
-              table-layout="fixed"
-              :header-cell-style="{ background: '#f8f9ff', color: '#606266' }"
-              @selection-change="handleSelectionChange"
-            >
-              <el-table-column type="selection" width="55" align="center" />
-              <el-table-column prop="deviceCode" label="设备编码" min-width="120" fixed="left" show-overflow-tooltip>
-                <template #default="{ row }">
-                  <div class="table-device-code">
-                    <el-icon><VideoCamera /></el-icon>
-                    <span>{{ row.deviceCode }}</span>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column prop="deviceName" label="设备名称" min-width="140" show-overflow-tooltip />
-              <el-table-column prop="deviceType" label="设备类型" min-width="100" align="center">
-                <template #default="{ row }">
-                  <el-tag :type="getDeviceTypeTag(row.deviceType)" size="small">
-                    {{ getDeviceTypeLabel(row.deviceType) }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="areaPath" label="所属库区" min-width="150" show-overflow-tooltip>
-                <template #default="{ row }">
-                  <el-link type="primary" @click="goToArea(row.areaId)" v-if="row.areaId" :underline="false">
-                    <el-icon><Location /></el-icon>
-                    {{ row.areaPath }}
-                  </el-link>
-                  <span v-else class="unassigned">未分配</span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="onlineStatus" label="在线状态" min-width="90" align="center">
-                <template #default="{ row }">
-                  <el-tag
-                    :type="row.onlineStatus === 'ONLINE' ? 'success' : 'danger'"
-                    size="small"
-                    :effect="row.onlineStatus === 'ONLINE' ? 'dark' : 'light'"
-                  >
-                    <el-icon v-if="row.onlineStatus === 'ONLINE'"><CircleCheckFilled /></el-icon>
-                    <el-icon v-else><CircleCloseFilled /></el-icon>
-                    {{ row.onlineStatus === 'ONLINE' ? '在线' : '离线' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="currentTemp" label="当前温度" min-width="100" align="center">
-                <template #default="{ row }">
-                  <div class="temp-display">
-                    <el-icon><Temperature /></el-icon>
-                    <span v-if="row.currentTemp" :class="{
-                      'temp-normal': isWithinThreshold(row, 'temp'),
-                      'temp-alert': !isWithinThreshold(row, 'temp')
-                    }">
-                      {{ row.currentTemp.toFixed(2) }}°C
-                    </span>
-                    <span v-else class="temp-na">-</span>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column prop="currentHumidity" label="当前湿度" min-width="100" align="center">
-                <template #default="{ row }">
-                  <div class="humidity-display">
-                    <span class="humidity-icon">💧</span>
-                    <span v-if="row.currentHumidity" :class="{
-                      'humidity-normal': isWithinThreshold(row, 'humidity'),
-                      'humidity-alert': !isWithinThreshold(row, 'humidity')
-                    }">
-                      {{ row.currentHumidity.toFixed(2) }}%
-                    </span>
-                    <span v-else class="humidity-na">-</span>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column prop="lastSeenTime" label="最后上报" min-width="140" align="center">
-                <template #default="{ row }">
-                  <div class="last-seen-display">
-                    <el-icon><Timer /></el-icon>
-                    <span>{{ formatDate(row.lastSeenTime) }}</span>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column prop="alarmEnabled" label="告警状态" min-width="90" align="center">
-                <template #default="{ row }">
-                  <el-switch
-                    v-model="row.alarmEnabled"
-                    :active-value="true"
-                    :inactive-value="false"
-                    active-color="#13ce66"
-                    inactive-color="#dcdfe6"
-                    size="small"
-                    @change="toggleAlarmStatus(row)"
-                  />
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" min-width="300" fixed="right" align="center">
-                <template #default="{ row }">
-                  <el-button-group class="action-buttons">
-                    <el-button
-                      size="small"
-                      @click="showDeviceInfo(row)"
-                      type="info"
-                      :icon="InfoFilled"
-                      plain
-                    >
-                      查看
-                    </el-button>
-                    <el-button
-                      size="small"
-                      @click="showEditDeviceDialog(row)"
-                      type="primary"
-                      :icon="EditPen"
-                      plain
-                    >
-                      编辑
-                    </el-button>
-                    <el-popconfirm
-                      title="确定要复制此设备吗？"
-                      @confirm="duplicateDevice(row)"
-                    >
-                      <template #reference>
-                        <el-button
-                          size="small"
-                          type="warning"
-                          :icon="CopyDocument"
-                          plain
-                        >
-                          复制
-                        </el-button>
-                      </template>
-                    </el-popconfirm>
-                    <el-popconfirm
-                      :title="`确定要${row.enabled ? '禁用' : '启用'}设备 ${row.deviceName} 吗？`"
-                      @confirm="toggleDeviceStatus(row)"
-                    >
-                      <template #reference>
-                        <el-button
-                          size="small"
-                          :type="row.enabled ? 'danger' : 'success'"
-                          :icon="row.enabled ? 'CircleClose' : 'CircleCheck'"
-                          plain
-                        >
-                          {{ row.enabled ? '禁用' : '启用' }}
-                        </el-button>
-                      </template>
-                    </el-popconfirm>
-                    <el-popconfirm
-                      title="确定要删除此设备吗？此操作不可恢复！"
-                      @confirm="deleteDevice(row)"
-                    >
-                      <template #reference>
-                        <el-button
-                          size="small"
-                          type="danger"
-                          :icon="Delete"
-                        >
-                          删除
-                        </el-button>
-                      </template>
-                    </el-popconfirm>
-                  </el-button-group>
-                </template>
-              </el-table-column>
-            </el-table>
-
-            <!-- 分页 -->
-            <div class="pagination-container">
-              <el-pagination
-                v-model:current-page="pagination.currentPage"
-                v-model:page-size="pagination.pageSize"
-                :page-sizes="[10, 20, 50, 100]"
-                :total="pagination.total"
-                layout="total, sizes, prev, pager, next, jumper"
-                @size-change="handleSizeChange"
-                @current-change="handleCurrentChange"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 新增/编辑设备对话框 -->
+    <!-- 新增/编辑对话框 -->
     <el-dialog
-      v-model="deviceDialogVisible"
-      :title="editingDevice ? '编辑设备' : '新增设备'"
+      v-model="dialogVisible"
+      :title="dialogTitle"
       width="600px"
-      :before-close="closeDeviceDialog"
+      :before-close="handleDialogClose"
     >
       <el-form
-        ref="deviceFormRef"
-        :model="deviceForm"
-        :rules="deviceFormRules"
+        ref="formRef"
+        :model="formData"
+        :rules="formRules"
         label-width="120px"
       >
-        <el-form-item label="所属库区" prop="areaId">
-          <el-tree-select
-            v-model="deviceForm.areaId"
-            :data="areaTreeData"
-            :props="treeSelectProps"
-            placeholder="请选择所属库区"
-            filterable
-            check-strictly
-            style="width: 100%"
-          />
-        </el-form-item>
         <el-form-item label="设备编码" prop="deviceCode">
           <el-input
-            v-model="deviceForm.deviceCode"
+            v-model="formData.deviceCode"
             placeholder="请输入设备编码"
-            :disabled="!!editingDevice"
+            maxlength="50"
+            :disabled="!!formData.id"
           />
         </el-form-item>
         <el-form-item label="设备名称" prop="deviceName">
           <el-input
-            v-model="deviceForm.deviceName"
+            v-model="formData.deviceName"
             placeholder="请输入设备名称"
+            maxlength="100"
           />
         </el-form-item>
         <el-form-item label="设备类型" prop="deviceType">
           <el-select
-            v-model="deviceForm.deviceType"
+            v-model="formData.deviceType"
             placeholder="请选择设备类型"
             style="width: 100%"
           >
             <el-option label="温湿度传感器" value="TEMP_HUM" />
-            <el-option label="冷柜" value="FREEZER" />
-            <el-option label="车载设备" value="VEHICLE" />
+            <el-option label="冷冻设备" value="FREEZER" />
+            <el-option label="车辆" value="VEHICLE" />
             <el-option label="门磁" value="DOOR" />
           </el-select>
         </el-form-item>
-        <el-form-item label="型号">
+        <el-form-item label="所属库区" prop="areaId">
+          <el-cascader
+            v-model="formData.areaId"
+            :options="areaOptions"
+            :props="cascaderProps"
+            placeholder="请选择库区"
+            clearable
+            filterable
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="型号" prop="model">
           <el-input
-            v-model="deviceForm.model"
+            v-model="formData.model"
             placeholder="请输入设备型号"
+            maxlength="50"
           />
         </el-form-item>
-        <el-form-item label="位置描述">
+        <el-form-item label="制造商" prop="manufacturer">
           <el-input
-            v-model="deviceForm.locationDesc"
-            type="textarea"
-            :rows="2"
-            placeholder="请输入位置描述"
+            v-model="formData.manufacturer"
+            placeholder="请输入制造商"
+            maxlength="100"
           />
         </el-form-item>
+        <el-form-item label="序列号" prop="sn">
+          <el-input
+            v-model="formData.sn"
+            placeholder="请输入序列号"
+            maxlength="100"
+          />
+        </el-form-item>
+        <el-form-item label="固件版本" prop="firmwareVersion">
+          <el-input
+            v-model="formData.firmwareVersion"
+            placeholder="请输入固件版本"
+            maxlength="50"
+          />
+        </el-form-item>
+        <el-form-item label="位置描述" prop="locationDesc">
+          <el-input
+            v-model="formData.locationDesc"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入设备位置描述"
+            maxlength="200"
+          />
+        </el-form-item>
+        <el-divider>阈值设置</el-divider>
+        <el-form-item label="阈值模式">
+          <el-radio-group v-model="formData.thresholdMode">
+            <el-radio label="SYSTEM">使用系统默认</el-radio>
+            <el-radio label="CUSTOM">自定义阈值</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <template v-if="formData.thresholdMode === 'CUSTOM'">
+          <el-form-item label="温度下限" prop="temperatureThresholdMin">
+            <el-input-number
+              v-model="formData.temperatureThresholdMin"
+              :min="-50"
+              :max="formData.temperatureThresholdMax - 0.1"
+              :step="0.1"
+              :precision="2"
+              :controls="false"
+              style="width: 100%"
+            />
+            <span class="unit">°C</span>
+          </el-form-item>
+          <el-form-item label="温度上限" prop="temperatureThresholdMax">
+            <el-input-number
+              v-model="formData.temperatureThresholdMax"
+              :min="formData.temperatureThresholdMin + 0.1"
+              :max="50"
+              :step="0.1"
+              :precision="2"
+              :controls="false"
+              style="width: 100%"
+            />
+            <span class="unit">°C</span>
+          </el-form-item>
+          <el-form-item label="湿度下限" prop="humidityThresholdMin">
+            <el-input-number
+              v-model="formData.humidityThresholdMin"
+              :min="0"
+              :max="formData.humidityThresholdMax - 0.1"
+              :step="0.1"
+              :precision="2"
+              :controls="false"
+              style="width: 100%"
+            />
+            <span class="unit">%</span>
+          </el-form-item>
+          <el-form-item label="湿度上限" prop="humidityThresholdMax">
+            <el-input-number
+              v-model="formData.humidityThresholdMax"
+              :min="formData.humidityThresholdMin + 0.1"
+              :max="100"
+              :step="0.1"
+              :precision="2"
+              :controls="false"
+              style="width: 100%"
+            />
+            <span class="unit">%</span>
+          </el-form-item>
+        </template>
         <el-form-item label="启用状态" prop="enabled">
           <el-switch
-            v-model="deviceForm.enabled"
+            v-model="formData.enabled"
             :active-value="true"
             :inactive-value="false"
             active-text="启用"
@@ -514,136 +386,32 @@
         </el-form-item>
         <el-form-item label="告警状态" prop="alarmEnabled">
           <el-switch
-            v-model="deviceForm.alarmEnabled"
+            v-model="formData.alarmEnabled"
             :active-value="true"
             :inactive-value="false"
             active-text="启用告警"
             inactive-text="关闭告警"
           />
         </el-form-item>
-        <el-form-item label="阈值模式" prop="thresholdMode">
-          <el-radio-group v-model="deviceForm.thresholdMode" @change="onThresholdModeChange">
-            <el-radio label="INHERIT">继承库区阈值</el-radio>
-            <el-radio label="OVERRIDE">自定义阈值</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <div v-if="deviceForm.thresholdMode === 'OVERRIDE'">
-          <el-form-item label="温度下限">
-            <el-input-number
-              v-model="deviceForm.temperatureThresholdMin"
-              :min="-50"
-              :max="deviceForm.temperatureThresholdMax - 0.1"
-              :step="0.1"
-              :precision="2"
-              style="width: 100%"
-            />
-          </el-form-item>
-          <el-form-item label="温度上限">
-            <el-input-number
-              v-model="deviceForm.temperatureThresholdMax"
-              :min="deviceForm.temperatureThresholdMin + 0.1"
-              :max="50"
-              :step="0.1"
-              :precision="2"
-              style="width: 100%"
-            />
-          </el-form-item>
-          <el-form-item label="湿度下限">
-            <el-input-number
-              v-model="deviceForm.humidityThresholdMin"
-              :min="0"
-              :max="deviceForm.humidityThresholdMax - 0.1"
-              :step="0.1"
-              :precision="2"
-              style="width: 100%"
-            />
-          </el-form-item>
-          <el-form-item label="湿度上限">
-            <el-input-number
-              v-model="deviceForm.humidityThresholdMax"
-              :min="deviceForm.humidityThresholdMin + 0.1"
-              :max="100"
-              :step="0.1"
-              :precision="2"
-              style="width: 100%"
-            />
-          </el-form-item>
-        </div>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="closeDeviceDialog">取消</el-button>
-          <el-button type="primary" @click="saveDevice" :loading="saving">确定</el-button>
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSubmit" :loading="submitLoading">确定</el-button>
         </span>
       </template>
     </el-dialog>
-
-    <!-- 设备详情抽屉 -->
-    <el-drawer
-      v-model="deviceDetailVisible"
-      title="设备详情"
-      size="600px"
-    >
-      <div v-if="currentDevice" class="device-detail-content">
-        <el-descriptions :column="1" border>
-          <el-descriptions-item label="设备编码">{{ currentDevice.deviceCode }}</el-descriptions-item>
-          <el-descriptions-item label="设备名称">{{ currentDevice.deviceName }}</el-descriptions-item>
-          <el-descriptions-item label="设备类型">
-            <el-tag :type="getDeviceTypeTag(currentDevice.deviceType)">
-              {{ getDeviceTypeLabel(currentDevice.deviceType) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="所属库区">{{ currentDevice.areaPath || '未分配' }}</el-descriptions-item>
-          <el-descriptions-item label="型号">{{ currentDevice.model || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="位置描述">{{ currentDevice.locationDesc || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="在线状态">
-            <el-tag :type="currentDevice.onlineStatus === 'ONLINE' ? 'success' : 'danger'">
-              {{ currentDevice.onlineStatus === 'ONLINE' ? '在线' : '离线' }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="当前温度">
-            {{ currentDevice.currentTemp ? currentDevice.currentTemp.toFixed(2) + '°C' : '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="当前湿度">
-            {{ currentDevice.currentHumidity ? currentDevice.currentHumidity.toFixed(2) + '%' : '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="最后上报时间">
-            {{ formatDate(currentDevice.lastSeenTime) }}
-          </el-descriptions-item>
-          <el-descriptions-item label="启用状态">
-            <el-tag :type="currentDevice.enabled ? 'success' : 'danger'">
-              {{ currentDevice.enabled ? '启用' : '禁用' }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="告警状态">
-            <el-tag :type="currentDevice.alarmEnabled ? 'success' : 'info'">
-              {{ currentDevice.alarmEnabled ? '启用' : '关闭' }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="固件版本">{{ currentDevice.firmwareVersion || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="信号强度">{{ currentDevice.signalStrength || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ formatDate(currentDevice.createdTime) }}</el-descriptions-item>
-          <el-descriptions-item label="更新时间">{{ formatDate(currentDevice.updatedTime) }}</el-descriptions-item>
-        </el-descriptions>
-
-        <div class="drawer-footer">
-          <el-button @click="closeDeviceDetail">关闭</el-button>
-          <el-button type="primary" @click="viewDeviceData(currentDevice)">查看数据</el-button>
-        </div>
-      </div>
-    </el-drawer>
-  </div>
+  </Layout>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
-import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
+import Layout from '@/components/Layout.vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
-  Bell,
-  ArrowDown,
   Plus,
   Upload,
   Download,
@@ -653,27 +421,14 @@ import {
   Warning,
   DataAnalysis,
   Setting,
-  Link,
-  WarningFilled,
-  CircleCloseFilled,
-  Finished,
+  Bell,
+  ArrowDown,
   User,
   Document,
   Grid,
   Operation,
   Tickets,
-  Memo,
-  House as HouseIcon,
-  User as UserIcon,
-  Location,
-  WindPower as Temperature,
-  Timer,
-  CircleCheckFilled,
-  InfoFilled,
-  EditPen,
-  CopyDocument,
-  Delete,
-  VideoCamera
+  Memo
 } from '@element-plus/icons-vue'
 import { deviceApi } from '@/api/device'
 import { areaApi } from '@/api/area'
@@ -681,82 +436,60 @@ import { areaApi } from '@/api/area'
 const router = useRouter()
 const authStore = useAuthStore()
 
-// User info from auth store
-const userInfo = computed(() => authStore.user || {})
-const isSuperAdmin = computed(() => authStore.getUserRole === 'SUPER_ADMIN')
+// 权限检查
+const hasPermission = (permission) => {
+  return authStore.hasPermission(permission)
+}
 
 // 响应式数据
-const deviceList = ref([])
-const selectedDevices = ref([])
+const tableData = ref([])
+const tableLoading = ref(false)
+const selectedRows = ref([])
+const dialogVisible = ref(false)
+const dialogTitle = ref('')
+const submitLoading = ref(false)
+const formRef = ref()
 
-// 筛选条件
-const filterForm = reactive({
-  keyword: '',
-  deviceType: '',
-  onlineStatus: '',
-  enabled: '',
-  alarmEnabled: '',
-  areaId: null,
-  lastSeenRange: []
-})
-
-// 分页信息
+// 分页
 const pagination = reactive({
   currentPage: 1,
   pageSize: 10,
   total: 0
 })
 
-// 设备详情抽屉
-const deviceDetailVisible = ref(false)
-const currentDevice = ref(null)
+// 搜索表单
+const searchForm = reactive({
+  keyword: '',
+  deviceType: '',
+  onlineStatus: null,
+  enabled: null,
+  alarmEnabled: null,
+  areaId: null
+})
 
-// 设备对话框
-const deviceDialogVisible = ref(false)
-const editingDevice = ref(null)
-const deviceForm = reactive({
+// 表单数据
+const formData = reactive({
   id: null,
-  areaId: null,
   deviceCode: '',
   deviceName: '',
   deviceType: 'TEMP_HUM',
+  areaId: null,
   model: '',
+  manufacturer: '',
+  sn: '',
+  firmwareVersion: '',
   locationDesc: '',
-  enabled: true,
-  thresholdMode: 'INHERIT',
+  thresholdMode: 'SYSTEM',
   temperatureThresholdMin: null,
   temperatureThresholdMax: null,
   humidityThresholdMin: null,
   humidityThresholdMax: null,
+  enabled: true,
   alarmEnabled: true
 })
 
-// 表单验证规则
-const deviceFormRules = {
-  areaId: [{ required: true, message: '请选择所属库区', trigger: 'change' }],
-  deviceCode: [
-    { required: true, message: '请输入设备编码', trigger: 'blur' },
-    { min: 2, max: 100, message: '设备编码长度应在2-100个字符之间', trigger: 'blur' }
-  ],
-  deviceName: [
-    { required: true, message: '请输入设备名称', trigger: 'blur' },
-    { min: 2, max: 100, message: '设备名称长度应在2-100个字符之间', trigger: 'blur' }
-  ],
-  deviceType: [
-    { required: true, message: '请选择设备类型', trigger: 'change' }
-  ]
-}
-
-// 左侧库区树
-const areaTreeRef = ref()
-const areaTreeData = ref([])
-const areaSearchTree = ref('')
-
-// 库区树形结构配置
-const treeProps = {
-  children: 'children',
-  label: 'areaName'
-}
+// 库区选项
+const areaOptions = ref([])
 
 // 级联选择器配置
 const cascaderProps = {
@@ -768,313 +501,227 @@ const cascaderProps = {
   expandTrigger: 'hover'
 }
 
-// 树选择器配置
-const treeSelectProps = {
-  value: 'id',
-  label: 'areaName',
-  children: 'children',
-  checkStrictly: true
+// 表单验证规则
+const formRules = {
+  deviceCode: [
+    { required: true, message: '请输入设备编码', trigger: 'blur' },
+    { min: 2, max: 50, message: '设备编码长度应在2-50个字符之间', trigger: 'blur' },
+    { pattern: /^[A-Za-z0-9_-]+$/, message: '设备编码只能包含字母、数字、下划线和横线', trigger: 'blur' }
+  ],
+  deviceName: [
+    { required: true, message: '请输入设备名称', trigger: 'blur' },
+    { min: 2, max: 100, message: '设备名称长度应在2-100个字符之间', trigger: 'blur' }
+  ],
+  deviceType: [
+    { required: true, message: '请选择设备类型', trigger: 'change' }
+  ],
+  temperatureThresholdMin: [
+    { required: true, message: '请输入温度下限', trigger: 'blur' }
+  ],
+  temperatureThresholdMax: [
+    { required: true, message: '请输入温度上限', trigger: 'blur' }
+  ],
+  humidityThresholdMin: [
+    { required: true, message: '请输入湿度下限', trigger: 'blur' }
+  ],
+  humidityThresholdMax: [
+    { required: true, message: '请输入湿度上限', trigger: 'blur' }
+  ]
 }
 
-// Mock data for dashboard components
-const globalSearch = ref('')
-const unreadNotifications = ref(3)
-const activeMenu = ref('/devices')
-const saving = ref(false)
-
-// Computed properties for user info
-const userInitial = computed(() => {
-  return userInfo.value.realName ? userInfo.value.realName.charAt(0) : 'U'
-})
-
-const userAvatar = computed(() => {
-  // Return a default avatar if no real avatar exists
-  return 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
-})
-
-// 获取层级标签文本
-const getLevelLabel = (level) => {
-  const labels = {
-    SITE: '站点',
-    WAREHOUSE: '仓库',
-    FLOOR: '楼层',
-    AREA: '库区',
-    BIN: '库位'
-  }
-  return labels[level] || level
-}
-
-// 获取层级标签类型
-const getLevelTagType = (level) => {
-  const types = {
-    SITE: 'primary',
-    WAREHOUSE: 'success',
-    FLOOR: 'warning',
-    AREA: 'info',
-    BIN: 'danger'
-  }
-  return types[level] || 'info'
-}
-
-// 获取设备类型标签
-const getDeviceTypeTag = (type) => {
-  const types = {
-    TEMP_HUM: 'success',
-    FREEZER: 'warning',
-    VEHICLE: 'info',
-    DOOR: 'danger'
-  }
-  return types[type] || 'default'
-}
-
-// 获取设备类型标签文本
-const getDeviceTypeLabel = (type) => {
-  const labels = {
-    TEMP_HUM: '温湿度传感器',
-    FREEZER: '冷柜',
-    VEHICLE: '车载设备',
-    DOOR: '门磁'
-  }
-  return labels[type] || type
-}
-
-// 检查数值是否在阈值范围内
-const isWithinThreshold = (device, type) => {
-  if (!device) return true
-
-  if (type === 'temp') {
-    const temp = device.currentTemp
-    const min = device.temperatureThresholdMin
-    const max = device.temperatureThresholdMax
-
-    if (temp === null || temp === undefined) return true
-    if (min !== null && temp < min) return false
-    if (max !== null && temp > max) return false
-    return true
-  }
-  else if (type === 'humidity') {
-    const humidity = device.currentHumidity
-    const min = device.humidityThresholdMin
-    const max = device.humidityThresholdMax
-
-    if (humidity === null || humidity === undefined) return true
-    if (min !== null && humidity < min) return false
-    if (max !== null && humidity > max) return false
-    return true
-  }
-
-  return true
-}
-
-// 切换告警状态
-const toggleAlarmStatus = async (device) => {
-  try {
-    const newStatus = !device.alarmEnabled
-    await deviceApi.update(device.id, { ...device, alarmEnabled: newStatus })
-    ElMessage.success(`告警${newStatus ? '已启用' : '已关闭'}`)
-    // 更新本地数据
-    device.alarmEnabled = newStatus
-  } catch (error) {
-    // 恢复原状态
-    device.alarmEnabled = !device.alarmEnabled
-    ElMessage.error('更新告警状态失败')
-  }
-}
-
-// 树形数据过滤
-const filterAreaMethod = (value, data) => {
-  if (!value) return true
-  return data.areaName.toLowerCase().includes(value.toLowerCase()) ||
-         data.areaCode.toLowerCase().includes(value.toLowerCase())
-}
-
-// 过滤库区树
-const filterAreaTree = (value) => {
-  areaTreeRef.value?.filter(value)
-}
-
-// 加载库区树形数据
-const loadAreaTree = async () => {
-  try {
-    const response = await areaApi.getAreaTree()
-    areaTreeData.value = response.data?.data || []
-  } catch (error) {
-    ElMessage.error('获取库区数据失败')
-    console.error(error)
-    areaTreeData.value = []
-  }
-}
-
-// 加载设备列表
-const getDeviceList = async () => {
+// 加载表格数据
+const loadTableData = async () => {
+  tableLoading.value = true
   try {
     const params = {
       page: pagination.currentPage,
       size: pagination.pageSize,
-      ...filterForm
+      keyword: searchForm.keyword || undefined,
+      deviceType: searchForm.deviceType || undefined,
+      onlineStatus: searchForm.onlineStatus,
+      enabled: searchForm.enabled,
+      alarmEnabled: searchForm.alarmEnabled,
+      areaId: searchForm.areaId
     }
-
-    // 格式化日期范围
-    if (filterForm.lastSeenRange && Array.isArray(filterForm.lastSeenRange) && filterForm.lastSeenRange.length === 2) {
-      params.lastSeenStart = filterForm.lastSeenRange[0]
-      params.lastSeenEnd = filterForm.lastSeenRange[1]
-    }
-
-    // 移除无效的空值参数
-    Object.keys(params).forEach(key => {
-      if (params[key] === '' || params[key] === null || params[key] === undefined) {
-        delete params[key]
-      }
-    })
 
     const response = await deviceApi.getList(params)
-    deviceList.value = response.data?.data?.records || []
+    // 根据实际返回结构，设备列表在 response.data.data
+    tableData.value = response.data?.data?.data || []
     pagination.total = response.data?.data?.total || 0
   } catch (error) {
+    console.error('Failed to load device data:', error)
     ElMessage.error('获取设备列表失败')
-    console.error(error)
-    deviceList.value = []
-    pagination.total = 0
+  } finally {
+    tableLoading.value = false
   }
 }
 
-// 搜索设备
-const searchDevices = () => {
+// 加载库区选项
+const loadAreaOptions = async () => {
+  try {
+    const response = await areaApi.getAreaTree()
+    areaOptions.value = response.data?.data || []
+  } catch (error) {
+    console.error('Failed to load area options:', error)
+    ElMessage.error('获取库区列表失败')
+  }
+}
+
+// 处理搜索
+const handleSearch = () => {
   pagination.currentPage = 1
-  getDeviceList()
+  loadTableData()
 }
 
-// 重置筛选
+// 重置过滤器
 const resetFilters = () => {
-  Object.keys(filterForm).forEach(key => {
-    if (Array.isArray(filterForm[key])) {
-      filterForm[key] = []
-    } else {
-      filterForm[key] = null
-    }
+  Object.keys(searchForm).forEach(key => {
+    searchForm[key] = null
   })
-  filterForm.lastSeenRange = []
-  searchDevices()
+  handleSearch()
 }
 
-// 库区树节点点击事件
-const onAreaNodeClick = async (data) => {
-  filterForm.areaId = data.id
-  searchDevices()
-}
-
-// 刷新数据
-const refreshData = () => {
-  loadAreaTree()
-  getDeviceList()
-}
-
-// 处理表格选择变化
-const handleSelectionChange = (val) => {
-  selectedDevices.value = val
-}
-
-// 分页大小变化
+// 处理每页大小变化
 const handleSizeChange = (size) => {
   pagination.pageSize = size
   pagination.currentPage = 1
-  getDeviceList()
+  loadTableData()
 }
 
-// 当前页变化
+// 处理当前页变化
 const handleCurrentChange = (page) => {
   pagination.currentPage = page
-  getDeviceList()
+  loadTableData()
 }
 
-// 时间格式化
-const formatDate = (dateString) => {
-  if (!dateString) return '-'
-  const date = new Date(dateString)
-  return date.toLocaleString('zh-CN')
+// 处理表格选择变化
+const handleSelectionChange = (selection) => {
+  selectedRows.value = selection
 }
 
-// 显示新增设备对话框
-const showAddDeviceDialog = () => {
-  editingDevice.value = null
-  Object.assign(deviceForm, {
+// 打开新增对话框
+const openCreateDialog = () => {
+  dialogTitle.value = '新增设备'
+  Object.assign(formData, {
     id: null,
-    areaId: null,
     deviceCode: '',
     deviceName: '',
     deviceType: 'TEMP_HUM',
+    areaId: null,
     model: '',
+    manufacturer: '',
+    sn: '',
+    firmwareVersion: '',
     locationDesc: '',
-    enabled: true,
-    thresholdMode: 'INHERIT',
+    thresholdMode: 'SYSTEM',
     temperatureThresholdMin: null,
     temperatureThresholdMax: null,
     humidityThresholdMin: null,
     humidityThresholdMax: null,
+    enabled: true,
     alarmEnabled: true
   })
-  deviceDialogVisible.value = true
+  dialogVisible.value = true
 }
 
-// 显示编辑设备对话框
-const showEditDeviceDialog = (device) => {
-  editingDevice.value = device
-  Object.assign(deviceForm, { ...device })
-  deviceDialogVisible.value = true
+// 打开编辑对话框
+const openEditDialog = (row) => {
+  dialogTitle.value = '编辑设备'
+  Object.assign(formData, { ...row })
+  dialogVisible.value = true
 }
 
-// 关闭设备对话框
-const closeDeviceDialog = () => {
-  deviceDialogVisible.value = false
-}
+// 处理提交
+const handleSubmit = async () => {
+  await formRef.value.validate()
 
-// 保存设备
-const saveDevice = async () => {
-  saving.value = true
+  submitLoading.value = true
   try {
-    if (editingDevice.value) {
+    if (formData.id) {
       // 更新设备
-      await deviceApi.update(deviceForm.id, deviceForm)
-      ElMessage.success('设备更新成功')
+      await deviceApi.update(formData.id, formData)
+      ElMessage.success('更新设备成功')
     } else {
-      // 新增设备
-      await deviceApi.create(deviceForm)
-      ElMessage.success('设备创建成功')
+      // 创建设备
+      await deviceApi.create(formData)
+      ElMessage.success('创建设备成功')
     }
 
-    deviceDialogVisible.value = false
-    getDeviceList()
+    dialogVisible.value = false
+    loadTableData()
   } catch (error) {
-    ElMessage.error('操作失败: ' + (error.message || '未知错误'))
-    console.error(error)
+    console.error('Failed to submit device data:', error)
+    ElMessage.error(error.response?.data?.message || '操作失败')
   } finally {
-    saving.value = false
+    submitLoading.value = false
   }
 }
 
-// 显示设备详情
-const showDeviceInfo = (device) => {
-  currentDevice.value = device
-  deviceDetailVisible.value = true
-}
-
-// 关闭设备详情
-const closeDeviceDetail = () => {
-  deviceDetailVisible.value = false
-  currentDevice.value = null
-}
-
-// 查看设备数据
-const viewDeviceData = (device) => {
-  // 这里可以跳转到设备数据页面
-  ElMessage.info('跳转到设备数据页面')
+// 处理对话框关闭
+const handleDialogClose = (done) => {
+  if (submitLoading.value) return
+  done()
 }
 
 // 切换设备状态
-const toggleDeviceStatus = async (device) => {
+const toggleStatus = async (row) => {
+  try {
+    await deviceApi.updateStatus(row.id, { enabled: !row.enabled })
+    row.enabled = !row.enabled
+    ElMessage.success(`${row.enabled ? '启用' : '禁用'}设备成功`)
+  } catch (error) {
+    console.error('Failed to toggle device status:', error)
+    // 恢复状态
+    row.enabled = !row.enabled
+    ElMessage.error(error.response?.data?.message || '操作失败')
+  }
+}
+
+// 切换告警状态
+const toggleAlarmStatus = async (row) => {
+  try {
+    await deviceApi.updateAlarmStatus(row.id, { alarmEnabled: !row.alarmEnabled })
+    row.alarmEnabled = !row.alarmEnabled
+    ElMessage.success(`${row.alarmEnabled ? '启用' : '关闭'}告警成功`)
+  } catch (error) {
+    console.error('Failed to toggle alarm status:', error)
+    // 恢复状态
+    row.alarmEnabled = !row.alarmEnabled
+    ElMessage.error(error.response?.data?.message || '操作失败')
+  }
+}
+
+// 批量更新状态
+const batchUpdateStatus = async (enabled) => {
+  try {
+    const ids = selectedRows.value.map(row => row.id)
+    await deviceApi.batchUpdateStatus({ ids, enabled })
+    ElMessage.success(`${enabled ? '启用' : '禁用'}设备成功`)
+    loadTableData()
+  } catch (error) {
+    console.error('Failed to batch update device status:', error)
+    ElMessage.error(error.response?.data?.message || '批量操作失败')
+  }
+}
+
+// 批量更新告警状态
+const batchUpdateAlarmStatus = async (alarmEnabled) => {
+  try {
+    const ids = selectedRows.value.map(row => row.id)
+    await deviceApi.batchUpdateAlarmStatus({ ids, alarmEnabled })
+    ElMessage.success(`${alarmEnabled ? '启用' : '关闭'}告警成功`)
+    loadTableData()
+  } catch (error) {
+    console.error('Failed to batch update alarm status:', error)
+    ElMessage.error(error.response?.data?.message || '批量操作失败')
+  }
+}
+
+// 批量删除
+const batchDelete = async () => {
   try {
     await ElMessageBox.confirm(
-      `确认${device.enabled ? '禁用' : '启用'}设备 "${device.deviceName}" 吗？`,
+      `确认删除选中的 ${selectedRows.value.length} 个设备吗？`,
       '提示',
       {
         confirmButtonText: '确定',
@@ -1083,194 +730,78 @@ const toggleDeviceStatus = async (device) => {
       }
     )
 
-    const newStatus = !device.enabled
-    await deviceApi.update(device.id, { ...device, enabled: newStatus })
-    ElMessage.success(`${device.enabled ? '禁用' : '启用'}成功`)
-
-    // 更新本地数据
-    device.enabled = newStatus
+    const ids = selectedRows.value.map(row => row.id)
+    await deviceApi.batchDelete(ids)
+    ElMessage.success('删除设备成功')
+    loadTableData()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('操作失败')
+      console.error('Failed to batch delete devices:', error)
+      ElMessage.error(error.response?.data?.message || '批量删除失败')
     }
   }
 }
 
-// 删除设备
-const deleteDevice = async (device) => {
-  try {
-    await ElMessageBox.confirm(
-      `确认删除设备 "${device.deviceName}" 吗？`,
-      '提示',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
+// 查看数据
+const viewData = (row) => {
+  router.push(`/devices/${row.id}/data`)
+}
 
-    await deviceApi.delete(device.id)
-    ElMessage.success('删除成功')
-    getDeviceList()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
+// 查看告警
+const viewAlerts = (row) => {
+  router.push(`/devices/${row.id}/alerts`)
+}
+
+// 获取设备类型标签
+const getDeviceTypeTag = (type) => {
+  const tags = {
+    'TEMP_HUM': 'primary',
+    'FREEZER': 'success',
+    'VEHICLE': 'warning',
+    'DOOR': 'info'
   }
+  return tags[type] || 'default'
 }
 
-// 复制设备
-const duplicateDevice = (device) => {
-  // 创建新设备，复制除ID和编码外的其他信息
-  const newDevice = { ...device }
-  newDevice.id = null
-  newDevice.deviceCode = newDevice.deviceCode + '_copy'
-  newDevice.deviceName = newDevice.deviceName + ' (副本)'
-
-  editingDevice.value = null
-  Object.assign(deviceForm, newDevice)
-  deviceDialogVisible.value = true
+// 获取设备类型标签
+const getDeviceTypeLabel = (type) => {
+  const labels = {
+    'TEMP_HUM': '温湿度传感器',
+    'FREEZER': '冷冻设备',
+    'VEHICLE': '车辆',
+    'DOOR': '门磁'
+  }
+  return labels[type] || type
 }
 
-// 跳转到库区
-const goToArea = (areaId) => {
-  // 这里可以跳转到库区详情页
-  ElMessage.info('跳转到库区详情页')
+// 格式化日期
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN')
 }
 
-// 批量导入
-const batchImport = () => {
+// 处理导入
+const handleImport = () => {
   ElMessage.info('批量导入功能正在开发中...')
 }
 
-// 导出设备
-const exportDevices = () => {
+// 处理导出
+const handleExport = () => {
   ElMessage.info('导出功能正在开发中...')
 }
 
-// Dashboard methods for top bar and menu
-const viewProfile = () => {
-  router.push('/profile')
-}
-
-const settings = () => {
-  router.push('/settings')
-}
-
-const logout = () => {
-  authStore.clearAuthData()
-  router.push('/login')
-}
-
-onMounted(() => {
-  loadAreaTree()
-  getDeviceList()
+onMounted(async () => {
+  await loadAreaOptions()
+  await loadTableData()
 })
 </script>
 
 <style scoped>
-.device-management-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: #f5f7fa;
-  box-sizing: border-box;
-  overflow: hidden; /* Hide all scrollbars except browser native */
-}
-
-.top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  height: 60px;
-  background-color: white;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
-  z-index: 10;
-  flex-shrink: 0;
-}
-
-.logo-section {
-  display: flex;
-  align-items: center;
-}
-
-.logo {
-  margin-right: 12px;
-}
-
-.app-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-}
-
-.search-section {
-  flex: 1;
-  max-width: 400px;
-  margin: 0 40px;
-}
-
-.global-search {
-  width: 100%;
-}
-
-.action-section {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.notification-badge {
-  margin-right: 20px;
-}
-
-.notification-btn {
-  border: none;
-}
-
-.user-avatar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.user-name {
-  font-size: 14px;
-  color: #606266;
-}
-
-.device-management-layout {
-  display: flex;
-  flex: 1;
-  overflow: hidden; /* Hide scrollbars in the layout */
-  min-height: 0;
-}
-
-.side-menu {
-  width: 200px;
-  background-color: white;
-  box-shadow: 2px 0 6px rgba(0, 21, 41, 0.35);
-  overflow-y: auto; /* Allow sidebar to scroll independently if needed */
-  flex-shrink: 0;
-  height: calc(100vh - 60px); /* Account for the top bar height */
-}
-
-.menu {
-  border-right: none;
-}
-
-.main-content {
-  flex: 1;
-  overflow-y: auto; /* Main content scrolls with browser native scrollbar */
+.device-management-content {
   padding: 20px;
+  height: 100%;
   min-height: 0;
-  height: calc(100vh - 60px); /* Account for the top bar height */
 }
 
 .page-header {
@@ -1289,270 +820,71 @@ onMounted(() => {
   color: #303133;
 }
 
-.content-wrapper {
-  display: flex;
-  gap: 20px;
-  overflow: hidden;
-  height: calc(100% - 80px); /* Adjust for header height */
-}
-
-.tree-panel {
-  width: 350px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
+.search-filters {
   background: #fff;
-  height: 100%;
-}
-
-.panel-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid #ebeef5;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.panel-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.device-list-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  overflow: hidden;
   padding: 20px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.list-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.filter-form {
-  margin-bottom: 16px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.filter-form :deep(.el-form-item) {
+.search-form :deep(.el-form-item) {
   margin-bottom: 12px;
-  margin-right: 16px;
+  margin-right: 20px;
 }
 
-.pagination-container {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-}
-
-.custom-tree {
-  flex: 1;
-  overflow: auto;
-}
-
-.tree-node-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  font-size: 14px;
-  padding-right: 8px;
-}
-
-.node-label {
-  margin-right: 8px;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.node-code {
-  color: #909399;
-  font-size: 12px;
-  margin-right: 8px;
-  flex-shrink: 0;
-}
-
-.level-tag {
-  margin-right: 8px;
-  font-size: 10px;
-  height: 18px;
-  padding: 0 6px;
-  flex-shrink: 0;
-}
-
-.drawer-footer {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid #ebeef5;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-/* Table styles */
-.table-device-code {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
-}
-
-.table-device-code .el-icon {
-  color: #409eff;
-  font-size: 14px;
-}
-
-.temp-display, .humidity-display, .last-seen-display {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.temp-display .el-icon, .humidity-display .el-icon, .last-seen-display .el-icon {
-  font-size: 14px;
-}
-
-.temp-normal, .humidity-normal {
-  color: #67c23a;
-  font-weight: 500;
-}
-
-.temp-alert, .humidity-alert {
-  color: #f56c6c;
+.search-form :deep(.el-form-item__label) {
   font-weight: 600;
-  animation: pulse 1.5s infinite;
+  color: #606266;
 }
 
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.7; }
-  100% { opacity: 1; }
-}
-
-.temp-na, .humidity-na {
-  color: #909399;
-  font-style: italic;
-}
-
-.unassigned {
-  color: #e6a23c;
-  font-style: italic;
-}
-
-.action-buttons {
+.table-actions {
+  margin-bottom: 15px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: center;
+  align-items: center;
+  gap: 10px;
 }
 
-.action-buttons .el-button {
-  min-width: unset;
-  font-size: 12px;
-  padding: 6px 8px;
-  margin: 2px;
+.selected-count {
+  color: #409eff;
+  font-weight: 600;
 }
 
-/* Responsive design */
-@media (max-width: 1400px) {
-  .content-wrapper {
-    flex-direction: column;
-  }
-
-  .tree-panel {
-    width: 100%;
-    height: 400px;
-  }
-
-  .device-list-panel {
-    width: 100%;
-  }
+.device-table {
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-@media (max-width: 1200px) {
-  .table-device-code {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .action-buttons .el-button {
-    width: 100%;
-    margin: 2px 0;
-  }
+.device-link {
+  color: #409eff;
+  text-decoration: none;
+  font-weight: 500;
 }
 
-@media (max-width: 768px) {
-  .top-bar {
-    flex-direction: column;
-    height: auto;
-    padding: 12px;
-  }
+.device-link:hover {
+  text-decoration: underline;
+}
 
-  .logo-section {
-    margin-bottom: 12px;
-  }
+.unit {
+  margin-left: 10px;
+  color: #909399;
+}
 
-  .search-section {
-    max-width: 100%;
-    margin: 0 0 12px 0;
-  }
+.pagination {
+  margin-top: 20px;
+  text-align: right;
+}
 
-  .action-section {
-    justify-content: center;
-  }
+.dialog-footer {
+  text-align: right;
+}
 
-  .side-menu {
-    width: 60px;
-    height: calc(100vh - 60px);
-  }
+:deep(.el-input-number) {
+  width: 100%;
+}
 
-  .main-content {
-    height: calc(100vh - 60px);
-  }
-
-  .content-wrapper {
-    flex-direction: column;
-  }
-
-  .tree-panel {
-    width: 100%;
-    height: 300px;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .action-buttons .el-button {
-    width: 100%;
-    margin: 2px 0;
-  }
+:deep(.el-input-number .el-input__wrapper) {
+  padding: 0 11px;
 }
 </style>

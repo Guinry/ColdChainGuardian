@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coldchain.guardian.infra.persistence.mapper.MonitorMapper">
+
+    <select id="getMonitorSummary" resultType="com.coldchain.guardian.contract.dto.monitor.MonitorSummaryDTO">
+        SELECT
+            COUNT(d.id) as enabledDevices,
+            SUM(CASE WHEN UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time) &lt;= 120 THEN 1 ELSE 0 END) as onlineDevices,
+            SUM(CASE WHEN UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time) &gt; 120 THEN 1 ELSE 0 END) as offlineDevices,
+            COUNT(DISTINCT CASE WHEN ua.device_id IS NOT NULL THEN ua.device_id ELSE NULL END) as alarmingDevices,
+            COALESCE(unhandled_counts.count, 0) as unhandledAlerts,
+            COALESCE(today_counts.count, 0) as todayAlerts,
+            COUNT(DISTINCT CASE WHEN d.last_seen_time &gt;= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN d.id ELSE NULL END) as last5MinReportDevices
+        FROM devices d
+        LEFT JOIN (
+            SELECT device_id FROM alerts WHERE status IN ('UNHANDLED', 'HANDLING')
+        ) ua ON ua.device_id = d.id
+        LEFT JOIN (
+            SELECT COUNT(*) as count FROM alerts WHERE DATE(created_time) = CURDATE()
+        ) today_counts ON 1=1
+        LEFT JOIN (
+            SELECT COUNT(*) as count FROM alerts WHERE status IN ('UNHANDLED', 'HANDLING')
+        ) unhandled_counts ON 1=1
+        WHERE d.enabled = 1
+    </select>
+
+    <select id="countMonitorDevices" resultType="int">
+        SELECT COUNT(*)
+        FROM devices d
+        LEFT JOIN warehouse_areas wa ON wa.id = d.area_id
+        LEFT JOIN (
+            SELECT device_id, MAX(alert_level) as highest_alert_level, COUNT(*) as alert_count
+            FROM alerts
+            WHERE status IN ('UNHANDLED', 'HANDLING')
+            GROUP BY device_id
+        ) ua ON ua.device_id = d.id
+        WHERE d.enabled = 1
+        <if test="areaId != null">
+            AND d.area_id = #{areaId}
+        </if>
+        <if test="online != null">
+            AND (
+                (#{online} = 1 OR #{online} = true OR #{online} = 'true') AND (UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time)) &lt;= 120
+                OR
+                (#{online} = 0 OR #{online} = false OR #{online} = 'false') AND (UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time)) &gt; 120
+            )
+        </if>
+        <if test="alarming != null">
+            AND ua.alert_count IS NOT NULL
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (d.device_code LIKE CONCAT('%', #{keyword}, '%') OR d.device_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+
+    <select id="selectMonitorDevices" resultType="com.coldchain.guardian.contract.dto.monitor.MonitorDeviceDTO">
+        WITH latest_data AS (
+            SELECT
+                sd.device_id,
+                sd.temperature,
+                sd.humidity,
+                sd.data_time,
+                ROW_NUMBER() OVER (PARTITION BY sd.device_id ORDER BY sd.data_time DESC) rn
+            FROM sensor_data sd
+            WHERE sd.data_time >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+        ),
+        unresolved_alerts AS (
+            SELECT
+                device_id,
+                MAX(alert_level) as highest_alert_level,
+                COUNT(*) as alert_count
+            FROM alerts
+            WHERE status IN ('UNHANDLED', 'HANDLING')
+            GROUP BY device_id
+        )
+        SELECT
+            d.id,
+            d.device_code as deviceCode,
+            d.device_name as deviceName,
+            d.device_type as deviceType,
+            d.area_id as areaId,
+            wa.area_name as areaName,
+            wa.area_path as areaPath,
+            CASE
+                WHEN UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time) &lt;= 120
+                THEN 1
+                ELSE 0
+            END as online,
+            d.last_seen_time as lastSeenTime,
+            ld.temperature as latestTemp,
+            ld.humidity as latestHumi,
+            ld.data_time as latestDataTime,
+            IFNULL(ua.alert_count &gt; 0, 0) as hasUnresolvedAlert,
+            ua.highest_alert_level as highestAlertLevel
+        FROM devices d
+        LEFT JOIN latest_data ld ON ld.device_id = d.id AND ld.rn = 1
+        LEFT JOIN unresolved_alerts ua ON ua.device_id = d.id
+        LEFT JOIN warehouse_areas wa ON wa.id = d.area_id
+        WHERE d.enabled = 1
+        <if test="areaId != null">
+            AND d.area_id = #{areaId}
+        </if>
+        <if test="online != null">
+            AND (
+                (#{online} = 1 OR #{online} = true OR #{online} = 'true') AND (UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time)) &lt;= 120
+                OR
+                (#{online} = 0 OR #{online} = false OR #{online} = 'false') AND (UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time)) &gt; 120
+            )
+        </if>
+        <if test="alarming != null">
+            AND ua.alert_count IS NOT NULL
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (d.device_code LIKE CONCAT('%', #{keyword}, '%') OR d.device_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY d.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectDeviceTrend" resultType="com.coldchain.guardian.contract.dto.monitor.TrendPointDTO">
+        SELECT
+            DATE_FORMAT(data_time, '%Y-%m-%d %H:%i:00') as time,
+            AVG(temperature) as temperature,
+            AVG(humidity) as humidity
+        FROM sensor_data
+        WHERE device_id = #{deviceId}
+          AND data_time BETWEEN #{from} AND #{to}
+        GROUP BY DATE_FORMAT(data_time, '%Y-%m-%d %H:%i:00')
+        ORDER BY data_time ASC
+    </select>
+
+</mapper>

@@ -1,362 +1,261 @@
 <template>
-  <div class="dashboard-container">
-    <!-- Top Navigation Bar -->
-    <div class="top-bar">
-      <div class="logo-section">
-        <div class="logo">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2L13.09 8.26L22 9L13.09 9.74L12 16L10.91 9.74L2 9L10.91 8.26L12 2Z" fill="#409EFF"/>
-            <circle cx="12" cy="12" r="10" stroke="#409EFF" stroke-width="2"/>
-          </svg>
-        </div>
-        <span class="app-title">ColdChain Guardian</span>
-      </div>
-
-      <div class="search-section">
-        <el-input
-          v-model="globalSearch"
-          placeholder="全局搜索..."
-          prefix-icon="Search"
-          class="global-search"
-        />
-      </div>
-
-      <div class="action-section">
-        <el-badge :value="unreadNotifications" class="notification-badge">
-          <el-button circle class="notification-btn">
-            <el-icon><Bell /></el-icon>
-          </el-button>
-        </el-badge>
-
-        <el-dropdown>
-          <div class="user-avatar">
-            <el-avatar :size="32" :src="userAvatar">{{ userInitial }}</el-avatar>
-            <span class="user-name">{{ userInfo.realName }}</span>
-            <el-icon><ArrowDown /></el-icon>
+  <Layout>
+    <div class="dashboard-content">
+      <!-- KPI Cards Section -->
+      <div class="kpi-section">
+        <div class="kpi-card" @click="goToOnlineDevices">
+          <div class="kpi-icon">
+            <el-icon><Link /></el-icon>
           </div>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item @click="viewProfile">个人资料</el-dropdown-item>
-              <el-dropdown-item @click="settings">系统设置</el-dropdown-item>
-              <el-dropdown-item divided @click="logout">退出登录</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
+          <div class="kpi-content">
+            <div class="kpi-value">{{ kpi.onlineDevices }}/{{ kpi.totalDevices }}</div>
+            <div class="kpi-label">在线设备数</div>
+          </div>
+        </div>
+
+        <div class="kpi-card" @click="goToTodayAlerts">
+          <div class="kpi-icon">
+            <el-icon><WarningFilled /></el-icon>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-value">{{ kpi.todayAlerts }}</div>
+            <div class="kpi-label">今日告警数</div>
+          </div>
+        </div>
+
+        <div class="kpi-card" @click="goToUnhandledAlerts">
+          <div class="kpi-icon">
+            <el-icon><CircleCloseFilled /></el-icon>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-value">{{ kpi.unhandledAlerts }}</div>
+            <div class="kpi-label">未处理告警</div>
+          </div>
+        </div>
+
+        <div class="kpi-card" @click="goToTodayClosedOrders">
+          <div class="kpi-icon">
+            <el-icon><Finished /></el-icon>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-value">{{ kpi.todayClosedWorkOrders }}</div>
+            <div class="kpi-label">今日闭环工单</div>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <div class="dashboard-layout">
-      <!-- Side Menu -->
-      <div class="side-menu">
-        <el-menu
-          :default-active="activeMenu"
-          class="menu"
-          :collapse="false"
-          :unique-opened="true"
-          :router="true"
-        >
-          <el-menu-item index="/dashboard">
-            <el-icon><House /></el-icon>
-            <span>Dashboard</span>
-          </el-menu-item>
+      <!-- Realtime Overview Section -->
+      <div class="overview-section">
+        <div class="section-header">
+          <h2>实时监测概览</h2>
+          <div class="filters">
+            <el-select v-model="selectedArea" placeholder="全部库区" class="area-filter">
+              <el-option label="全部库区" value="" />
+              <el-option v-for="area in areas" :key="area.id" :label="area.name" :value="area.id" />
+            </el-select>
+            <el-select v-model="timeWindow" placeholder="实时" class="time-filter">
+              <el-option label="实时" value="realtime" />
+              <el-option label="近1小时" value="1h" />
+              <el-option label="近12小时" value="12h" />
+              <el-option label="近24小时" value="24h" />
+            </el-select>
+          </div>
+        </div>
 
-          <el-sub-menu index="monitoring">
-            <template #title>
-              <el-icon><Monitor /></el-icon>
-              <span>监测管理</span>
-            </template>
-            <el-menu-item index="/warehouse-area">库区管理</el-menu-item>
-            <el-menu-item index="/devices">设备管理</el-menu-item>
-            <el-menu-item index="/monitoring/realtime">实时监测</el-menu-item>
-          </el-sub-menu>
+        <div class="overview-grid">
+          <div
+            v-for="area in filteredAreas"
+            :key="area.id"
+            class="area-card"
+            :class="{ 'area-error': area.status === 'error' }"
+            @click="goToAreaDetail(area.id)"
+          >
+            <div class="area-header">
+              <h3>{{ area.name }}</h3>
+              <div class="area-status" :class="area.status">{{ area.statusText }}</div>
+            </div>
+            <div class="area-stats">
+              <div class="stat">
+                <span class="label">温度</span>
+                <span class="value">{{ area.temperature }}°C</span>
+              </div>
+              <div class="stat">
+                <span class="label">湿度</span>
+                <span class="value">{{ area.humidity }}%</span>
+              </div>
+            </div>
+            <div class="area-devices">
+              <span class="device-count">设备: {{ area.onlineDevices }}/{{ area.totalDevices }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          <el-sub-menu index="alerts-orders">
-            <template #title>
+      <!-- Trend Chart Section -->
+      <div class="chart-section">
+        <div class="section-header">
+          <h2>趋势图</h2>
+          <div class="chart-filters">
+            <el-select v-model="selectedChartArea" placeholder="选择库区" class="chart-filter">
+              <el-option v-for="area in areas" :key="area.id" :label="area.name" :value="area.id" />
+            </el-select>
+            <el-select v-model="selectedDevice" placeholder="选择设备" class="chart-filter">
+              <el-option v-for="device in devices" :key="device.id" :label="device.name" :value="device.id" />
+            </el-select>
+            <el-select v-model="chartMetric" placeholder="指标" class="chart-filter">
+              <el-option label="温度" value="temperature" />
+              <el-option label="湿度" value="humidity" />
+            </el-select>
+          </div>
+        </div>
+        <div class="chart-container">
+          <el-empty v-if="!chartData.length" description="暂无数据" />
+          <div v-else class="chart-placeholder">
+            <!-- Placeholder for chart - would integrate with ECharts or similar -->
+            <div class="chart-title">温湿度趋势图</div>
+            <div class="chart-subtitle">{{ selectedAreaName }} - {{ chartMetricText }}</div>
+            <div class="chart-description">时间 x {{ chartMetricText }}，阈值线已标记</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Alerts Section -->
+      <div class="alerts-section">
+        <div class="section-header">
+          <h2>最近告警</h2>
+          <el-button type="primary" @click="goToAllAlerts" class="view-all-btn">全部告警 →</el-button>
+        </div>
+        <div class="table-container">
+          <el-table :data="recentAlerts" stripe style="width: 100%" height="300">
+            <el-table-column prop="timestamp" label="时间" min-width="140" align="center" header-align="center" />
+            <el-table-column prop="area" label="库区" min-width="100" align="center" header-align="center" />
+            <el-table-column prop="device" label="设备" min-width="130" align="center" header-align="center" />
+            <el-table-column prop="type" label="类型" min-width="100" align="center" header-align="center">
+              <template #default="{ row }">
+                <el-tag :type="getAlertTypeTag(row.type)">
+                  {{ row.type }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="level" label="级别" min-width="90" align="center" header-align="center">
+              <template #default="{ row }">
+                <el-tag :type="getAlertLevelTag(row.level)">
+                  {{ row.level }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" min-width="90" align="center" header-align="center">
+              <template #default="{ row }">
+                <el-tag :type="getAlertStatusTag(row.status)">
+                  {{ row.status }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" min-width="150" align="center" header-align="center">
+              <template #default="{ row }">
+                <el-button size="small" @click="viewAlert(row)">查看</el-button>
+                <el-button size="small" type="primary" @click="createOrder(row)">派单</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+
+      <!-- Work Orders Section -->
+      <div class="orders-section">
+        <div class="section-header">
+          <h2>待处理工单</h2>
+          <el-button type="primary" @click="goToAllOrders" class="view-all-btn">全部工单 →</el-button>
+        </div>
+        <div class="table-container">
+          <el-table :data="pendingOrders" stripe style="width: 100%" height="300">
+            <el-table-column prop="orderId" label="编号" min-width="150" align="center" header-align="center" />
+            <el-table-column prop="alert" label="告警" min-width="130" align="center" header-align="center" />
+            <el-table-column prop="assignee" label="指派人" min-width="100" align="center" header-align="center" />
+            <el-table-column prop="status" label="状态" min-width="90" align="center" header-align="center">
+              <template #default="{ row }">
+                <el-tag :type="getOrderStatusTag(row.status)">
+                  {{ row.status }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="updatedAt" label="更新时间" min-width="140" align="center" header-align="center" />
+            <el-table-column label="操作" min-width="150" align="center" header-align="center">
+              <template #default="{ row }">
+                <el-button size="small" @click="viewOrder(row)">查看</el-button>
+                <el-button size="small" type="success" @click="completeOrder(row)">验收</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+
+      <!-- Quick Actions Section -->
+      <div class="quick-actions-section">
+        <div class="section-header">
+          <h2>快捷入口</h2>
+        </div>
+        <div class="quick-actions-grid">
+          <div class="quick-action-card" @click="goToDeviceManagement">
+            <div class="action-icon">
+              <el-icon><Grid /></el-icon>
+            </div>
+            <div class="action-text">设备管理</div>
+          </div>
+
+          <div class="quick-action-card" @click="goToThresholdSettings">
+            <div class="action-icon">
+              <el-icon><Operation /></el-icon>
+            </div>
+            <div class="action-text">阈值规则</div>
+          </div>
+
+          <div class="quick-action-card" @click="goToAlertCenter">
+            <div class="action-icon">
               <el-icon><Warning /></el-icon>
-              <span>告警与工单</span>
-            </template>
-            <el-menu-item index="/alerts">告警中心</el-menu-item>
-            <el-menu-item index="/orders">工单管理</el-menu-item>
-          </el-sub-menu>
-
-          <el-sub-menu index="analysis">
-            <template #title>
-              <el-icon><DataAnalysis /></el-icon>
-              <span>数据分析</span>
-            </template>
-            <el-menu-item index="/analysis/trends">趋势分析</el-menu-item>
-            <el-menu-item index="/analysis/ai">AI 智能助手</el-menu-item>
-          </el-sub-menu>
-
-          <!-- System Management menu only visible for SUPER_ADMIN -->
-          <el-sub-menu v-if="isSuperAdmin" index="system">
-            <template #title>
-              <el-icon><Setting /></el-icon>
-              <span>系统管理（超管）</span>
-            </template>
-            <el-menu-item index="/admin/users">管理员管理</el-menu-item>
-            <el-menu-item index="/admin/permissions">权限分配</el-menu-item>
-          </el-sub-menu>
-        </el-menu>
-      </div>
-
-      <!-- Main Content -->
-      <div class="main-content">
-        <!-- KPI Cards Section -->
-        <div class="kpi-section">
-          <div class="kpi-card" @click="goToOnlineDevices">
-            <div class="kpi-icon">
-              <el-icon><Link /></el-icon>
             </div>
-            <div class="kpi-content">
-              <div class="kpi-value">{{ kpi.onlineDevices }}/{{ kpi.totalDevices }}</div>
-              <div class="kpi-label">在线设备数</div>
-            </div>
+            <div class="action-text">告警中心</div>
           </div>
 
-          <div class="kpi-card" @click="goToTodayAlerts">
-            <div class="kpi-icon">
-              <el-icon><WarningFilled /></el-icon>
+          <div class="quick-action-card" @click="generateDailyReport">
+            <div class="action-icon">
+              <el-icon><Document /></el-icon>
             </div>
-            <div class="kpi-content">
-              <div class="kpi-value">{{ kpi.todayAlerts }}</div>
-              <div class="kpi-label">今日告警数</div>
-            </div>
+            <div class="action-text">AI日报生成</div>
           </div>
 
-          <div class="kpi-card" @click="goToUnhandledAlerts">
-            <div class="kpi-icon">
-              <el-icon><CircleCloseFilled /></el-icon>
+          <!-- Super Admin only actions -->
+          <div v-if="isSuperAdmin" class="quick-action-card" @click="goToUserManagement">
+            <div class="action-icon">
+              <el-icon><User /></el-icon>
             </div>
-            <div class="kpi-content">
-              <div class="kpi-value">{{ kpi.unhandledAlerts }}</div>
-              <div class="kpi-label">未处理告警</div>
-            </div>
+            <div class="action-text">管理员管理</div>
           </div>
 
-          <div class="kpi-card" @click="goToTodayClosedOrders">
-            <div class="kpi-icon">
-              <el-icon><Finished /></el-icon>
+          <div v-if="isSuperAdmin" class="quick-action-card" @click="goToPermissionManagement">
+            <div class="action-icon">
+              <el-icon><Tickets /></el-icon>
             </div>
-            <div class="kpi-content">
-              <div class="kpi-value">{{ kpi.todayClosedWorkOrders }}</div>
-              <div class="kpi-label">今日闭环工单</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Realtime Overview Section -->
-        <div class="overview-section">
-          <div class="section-header">
-            <h2>实时监测概览</h2>
-            <div class="filters">
-              <el-select v-model="selectedArea" placeholder="全部库区" class="area-filter">
-                <el-option label="全部库区" value="" />
-                <el-option v-for="area in areas" :key="area.id" :label="area.name" :value="area.id" />
-              </el-select>
-              <el-select v-model="timeWindow" placeholder="实时" class="time-filter">
-                <el-option label="实时" value="realtime" />
-                <el-option label="近1小时" value="1h" />
-                <el-option label="近12小时" value="12h" />
-                <el-option label="近24小时" value="24h" />
-              </el-select>
-            </div>
+            <div class="action-text">权限分配</div>
           </div>
 
-          <div class="overview-grid">
-            <div
-              v-for="area in filteredAreas"
-              :key="area.id"
-              class="area-card"
-              :class="{ 'area-error': area.status === 'error' }"
-              @click="goToAreaDetail(area.id)"
-            >
-              <div class="area-header">
-                <h3>{{ area.name }}</h3>
-                <div class="area-status" :class="area.status">{{ area.statusText }}</div>
-              </div>
-              <div class="area-stats">
-                <div class="stat">
-                  <span class="label">温度</span>
-                  <span class="value">{{ area.temperature }}°C</span>
-                </div>
-                <div class="stat">
-                  <span class="label">湿度</span>
-                  <span class="value">{{ area.humidity }}%</span>
-                </div>
-              </div>
-              <div class="area-devices">
-                <span class="device-count">设备: {{ area.onlineDevices }}/{{ area.totalDevices }}</span>
-              </div>
+          <div v-if="isSuperAdmin" class="quick-action-card" @click="goToAuditLogs">
+            <div class="action-icon">
+              <el-icon><Memo /></el-icon>
             </div>
-          </div>
-        </div>
-
-        <!-- Trend Chart Section -->
-        <div class="chart-section">
-          <div class="section-header">
-            <h2>趋势图</h2>
-            <div class="chart-filters">
-              <el-select v-model="selectedChartArea" placeholder="选择库区" class="chart-filter">
-                <el-option v-for="area in areas" :key="area.id" :label="area.name" :value="area.id" />
-              </el-select>
-              <el-select v-model="selectedDevice" placeholder="选择设备" class="chart-filter">
-                <el-option v-for="device in devices" :key="device.id" :label="device.name" :value="device.id" />
-              </el-select>
-              <el-select v-model="chartMetric" placeholder="指标" class="chart-filter">
-                <el-option label="温度" value="temperature" />
-                <el-option label="湿度" value="humidity" />
-              </el-select>
-            </div>
-          </div>
-          <div class="chart-container">
-            <el-empty v-if="!chartData.length" description="暂无数据" />
-            <div v-else class="chart-placeholder">
-              <!-- Placeholder for chart - would integrate with ECharts or similar -->
-              <div class="chart-title">温湿度趋势图</div>
-              <div class="chart-subtitle">{{ selectedAreaName }} - {{ chartMetricText }}</div>
-              <div class="chart-description">时间 x {{ chartMetricText }}，阈值线已标记</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Recent Alerts Section -->
-        <div class="alerts-section">
-          <div class="section-header">
-            <h2>最近告警</h2>
-            <el-button type="primary" @click="goToAllAlerts" class="view-all-btn">全部告警 →</el-button>
-          </div>
-          <div class="table-container">
-            <el-table :data="recentAlerts" stripe style="width: 100%" height="300">
-              <el-table-column prop="timestamp" label="时间" min-width="140" align="center" header-align="center" />
-              <el-table-column prop="area" label="库区" min-width="100" align="center" header-align="center" />
-              <el-table-column prop="device" label="设备" min-width="130" align="center" header-align="center" />
-              <el-table-column prop="type" label="类型" min-width="100" align="center" header-align="center">
-                <template #default="{ row }">
-                  <el-tag :type="getAlertTypeTag(row.type)">
-                    {{ row.type }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="level" label="级别" min-width="90" align="center" header-align="center">
-                <template #default="{ row }">
-                  <el-tag :type="getAlertLevelTag(row.level)">
-                    {{ row.level }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="status" label="状态" min-width="90" align="center" header-align="center">
-                <template #default="{ row }">
-                  <el-tag :type="getAlertStatusTag(row.status)">
-                    {{ row.status }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" min-width="150" align="center" header-align="center">
-                <template #default="{ row }">
-                  <el-button size="small" @click="viewAlert(row)">查看</el-button>
-                  <el-button size="small" type="primary" @click="createOrder(row)">派单</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-        </div>
-
-        <!-- Work Orders Section -->
-        <div class="orders-section">
-          <div class="section-header">
-            <h2>待处理工单</h2>
-            <el-button type="primary" @click="goToAllOrders" class="view-all-btn">全部工单 →</el-button>
-          </div>
-          <div class="table-container">
-            <el-table :data="pendingOrders" stripe style="width: 100%" height="300">
-              <el-table-column prop="orderId" label="编号" min-width="150" align="center" header-align="center" />
-              <el-table-column prop="alert" label="告警" min-width="130" align="center" header-align="center" />
-              <el-table-column prop="assignee" label="指派人" min-width="100" align="center" header-align="center" />
-              <el-table-column prop="status" label="状态" min-width="90" align="center" header-align="center">
-                <template #default="{ row }">
-                  <el-tag :type="getOrderStatusTag(row.status)">
-                    {{ row.status }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="updatedAt" label="更新时间" min-width="140" align="center" header-align="center" />
-              <el-table-column label="操作" min-width="150" align="center" header-align="center">
-                <template #default="{ row }">
-                  <el-button size="small" @click="viewOrder(row)">查看</el-button>
-                  <el-button size="small" type="success" @click="completeOrder(row)">验收</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-        </div>
-
-        <!-- Quick Actions Section -->
-        <div class="quick-actions-section">
-          <div class="section-header">
-            <h2>快捷入口</h2>
-          </div>
-          <div class="quick-actions-grid">
-            <div class="quick-action-card" @click="goToDeviceManagement">
-              <div class="action-icon">
-                <el-icon><Grid /></el-icon>
-              </div>
-              <div class="action-text">设备管理</div>
-            </div>
-
-            <div class="quick-action-card" @click="goToThresholdSettings">
-              <div class="action-icon">
-                <el-icon><Operation /></el-icon>
-              </div>
-              <div class="action-text">阈值规则</div>
-            </div>
-
-            <div class="quick-action-card" @click="goToAlertCenter">
-              <div class="action-icon">
-                <el-icon><Warning /></el-icon>
-              </div>
-              <div class="action-text">告警中心</div>
-            </div>
-
-            <div class="quick-action-card" @click="generateDailyReport">
-              <div class="action-icon">
-                <el-icon><Document /></el-icon>
-              </div>
-              <div class="action-text">AI日报生成</div>
-            </div>
-
-            <!-- Super Admin only actions -->
-            <div v-if="isSuperAdmin" class="quick-action-card" @click="goToUserManagement">
-              <div class="action-icon">
-                <el-icon><User /></el-icon>
-              </div>
-              <div class="action-text">管理员管理</div>
-            </div>
-
-            <div v-if="isSuperAdmin" class="quick-action-card" @click="goToPermissionManagement">
-              <div class="action-icon">
-                <el-icon><Tickets /></el-icon>
-              </div>
-              <div class="action-text">权限分配</div>
-            </div>
-
-            <div v-if="isSuperAdmin" class="quick-action-card" @click="goToAuditLogs">
-              <div class="action-icon">
-                <el-icon><Memo /></el-icon>
-              </div>
-              <div class="action-text">审计日志</div>
-            </div>
+            <div class="action-text">审计日志</div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </Layout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
+import Layout from '@/components/Layout.vue'
 import {
   House, Monitor, Warning, DataAnalysis, Setting,
   Link, WarningFilled, CircleCloseFilled, Finished,
@@ -590,118 +489,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.dashboard-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: #f5f7fa;
-  box-sizing: border-box;
-  overflow: hidden; /* Hide all scrollbars except browser native */
-}
-
-.top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  height: 60px;
-  background-color: white;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
-  z-index: 10;
-  flex-shrink: 0;
-}
-
-.logo-section {
-  display: flex;
-  align-items: center;
-}
-
-.logo {
-  margin-right: 12px;
-}
-
-.app-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-}
-
-.search-section {
-  flex: 1;
-  max-width: 400px;
-  margin: 0 40px;
-}
-
-.global-search {
-  width: 100%;
-}
-
-.action-section {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.notification-badge {
-  margin-right: 20px;
-}
-
-.notification-btn {
-  border: none;
-}
-
-.user-avatar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.user-name {
-  font-size: 14px;
-  color: #606266;
-}
-
-.dashboard-layout {
-  display: flex;
-  flex: 1;
-  overflow: hidden; /* Hide scrollbars in the layout */
-  min-height: 0;
-}
-
-.side-menu {
-  width: 200px;
-  background-color: white;
-  box-shadow: 2px 0 6px rgba(0, 21, 41, 0.35);
-  overflow-y: auto; /* Allow sidebar to scroll independently if needed */
-  flex-shrink: 0;
-  height: calc(100vh - 60px); /* Account for the top bar height */
-}
-
-.menu {
-  border-right: none;
-}
-
-.main-content {
-  flex: 1;
-  overflow-y: auto; /* Main content scrolls with browser native scrollbar */
+.dashboard-content {
   padding: 20px;
+  height: 100%;
   min-height: 0;
-  height: calc(100vh - 60px); /* Account for the top bar height */
-}
-
-/* Remove scrollbars from individual sections to prevent duplicates */
-.kpi-section,
-.overview-section,
-.chart-section,
-.alerts-section,
-.orders-section,
-.quick-actions-section {
-  overflow: visible; /* Let content overflow naturally */
 }
 
 .kpi-section {
@@ -1006,34 +797,6 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .top-bar {
-    flex-direction: column;
-    height: auto;
-    padding: 12px;
-  }
-
-  .logo-section {
-    margin-bottom: 12px;
-  }
-
-  .search-section {
-    max-width: 100%;
-    margin: 0 0 12px 0;
-  }
-
-  .action-section {
-    justify-content: center;
-  }
-
-  .side-menu {
-    width: 60px;
-    height: calc(100vh - 60px);
-  }
-
-  .main-content {
-    height: calc(100vh - 60px);
-  }
-
   .kpi-section {
     grid-template-columns: 1fr;
   }

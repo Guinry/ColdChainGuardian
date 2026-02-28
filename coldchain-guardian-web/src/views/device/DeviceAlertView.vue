@@ -1,276 +1,278 @@
 <template>
-  <div class="device-alerts-container">
-    <div class="page-header">
-      <div class="header-left">
-        <el-page-header @back="goBack" :content="`设备告警 - ${deviceName}`" />
-      </div>
-      <div class="header-right">
-        <el-button @click="refreshData" :loading="loading">
-          <el-icon><Refresh /></el-icon>
-          刷新
-        </el-button>
-      </div>
-    </div>
-
-    <div class="alerts-content">
-      <!-- 设备信息卡片 -->
-      <el-card class="device-info-card">
-        <template #header>
-          <div class="card-header">
-            <span>设备信息</span>
-          </div>
-        </template>
-        <div class="device-info-content">
-          <div class="info-row">
-            <div class="info-item">
-              <label>设备编码:</label>
-              <span>{{ deviceCode }}</span>
-            </div>
-            <div class="info-item">
-              <label>设备名称:</label>
-              <span>{{ deviceName }}</span>
-            </div>
-            <div class="info-item">
-              <label>设备类型:</label>
-              <el-tag :type="getDeviceTypeTag(deviceType)">
-                {{ getDeviceTypeLabel(deviceType) }}
-              </el-tag>
-            </div>
-          </div>
-          <div class="info-row">
-            <div class="info-item">
-              <label>所属库区:</label>
-              <span>{{ areaName }}</span>
-            </div>
-            <div class="info-item">
-              <label>在线状态:</label>
-              <el-tag :type="onlineStatus ? 'success' : 'info'">
-                {{ onlineStatus ? '在线' : '离线' }}
-              </el-tag>
-            </div>
-            <div class="info-item">
-              <label>告警状态:</label>
-              <el-switch
-                v-model="alarmEnabled"
-                @change="toggleAlarmStatus"
-                :active-value="true"
-                :inactive-value="false"
-                active-text="开启"
-                inactive-text="关闭"
-              />
-            </div>
-          </div>
+  <Layout>
+    <div class="device-alerts-content">
+      <div class="page-header">
+        <div class="header-left">
+          <el-page-header @back="goBack" :content="`设备告警 - ${deviceName}`" />
         </div>
-      </el-card>
+        <div class="header-right">
+          <el-button @click="refreshData" :loading="loading">
+            <el-icon><Refresh /></el-icon>
+            刷新
+          </el-button>
+        </div>
+      </div>
 
-      <!-- 筛选区 -->
-      <el-card class="filter-card">
-        <el-form :model="filterForm" inline class="filter-form">
-          <el-form-item label="告警类型">
-            <el-select v-model="filterForm.alertType" placeholder="请选择" clearable>
-              <el-option label="温度过高" value="TEMP_HIGH" />
-              <el-option label="温度过低" value="TEMP_LOW" />
-              <el-option label="湿度过高" value="HUMI_HIGH" />
-              <el-option label="湿度过低" value="HUMI_LOW" />
-              <el-option label="设备离线" value="DEVICE_OFFLINE" />
-            </el-select>
+      <div class="alerts-content">
+        <!-- 设备信息卡片 -->
+        <el-card class="device-info-card">
+          <template #header>
+            <div class="card-header">
+              <span>设备信息</span>
+            </div>
+          </template>
+          <div class="device-info-content">
+            <div class="info-row">
+              <div class="info-item">
+                <label>设备编码:</label>
+                <span>{{ deviceCode }}</span>
+              </div>
+              <div class="info-item">
+                <label>设备名称:</label>
+                <span>{{ deviceName }}</span>
+              </div>
+              <div class="info-item">
+                <label>设备类型:</label>
+                <el-tag :type="getDeviceTypeTag(deviceType)">
+                  {{ getDeviceTypeLabel(deviceType) }}
+                </el-tag>
+              </div>
+            </div>
+            <div class="info-row">
+              <div class="info-item">
+                <label>所属库区:</label>
+                <span>{{ areaName }}</span>
+              </div>
+              <div class="info-item">
+                <label>在线状态:</label>
+                <el-tag :type="onlineStatus ? 'success' : 'info'">
+                  {{ onlineStatus ? '在线' : '离线' }}
+                </el-tag>
+              </div>
+              <div class="info-item">
+                <label>告警状态:</label>
+                <el-switch
+                  v-model="alarmEnabled"
+                  @change="toggleAlarmStatus"
+                  :active-value="true"
+                  :inactive-value="false"
+                  active-text="开启"
+                  inactive-text="关闭"
+                />
+              </div>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 筛选区 -->
+        <el-card class="filter-card">
+          <el-form :model="filterForm" inline class="filter-form">
+            <el-form-item label="告警类型">
+              <el-select v-model="filterForm.alertType" placeholder="请选择" clearable>
+                <el-option label="温度过高" value="TEMP_HIGH" />
+                <el-option label="温度过低" value="TEMP_LOW" />
+                <el-option label="湿度过高" value="HUMI_HIGH" />
+                <el-option label="湿度过低" value="HUMI_LOW" />
+                <el-option label="设备离线" value="DEVICE_OFFLINE" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="告警级别">
+              <el-select v-model="filterForm.alertLevel" placeholder="请选择" clearable>
+                <el-option label="低" value="LOW" />
+                <el-option label="中" value="MEDIUM" />
+                <el-option label="高" value="HIGH" />
+                <el-option label="紧急" value="CRITICAL" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="处理状态">
+              <el-select v-model="filterForm.status" placeholder="请选择" clearable>
+                <el-option label="未处理" value="UNHANDLED" />
+                <el-option label="处理中" value="HANDLING" />
+                <el-option label="已解决" value="RESOLVED" />
+                <el-option label="已忽略" value="IGNORED" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="时间范围">
+              <el-date-picker
+                v-model="filterForm.timeRange"
+                type="datetimerange"
+                range-separator="至"
+                start-placeholder="开始时间"
+                end-placeholder="结束时间"
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="searchAlerts">查询</el-button>
+              <el-button @click="resetFilters">重置</el-button>
+            </el-form-item>
+          </el-form>
+        </el-card>
+
+        <!-- 告警列表 -->
+        <el-card class="alerts-list-card">
+          <template #header>
+            <div class="card-header">
+              <span>告警列表</span>
+              <div class="list-controls">
+                <el-button @click="batchHandleAlerts" :disabled="!selectedAlerts.length">批量处理</el-button>
+                <el-button @click="exportAlerts">导出</el-button>
+              </div>
+            </div>
+          </template>
+          <el-table
+            v-loading="loading"
+            :data="alertsList"
+            @selection-change="handleSelectionChange"
+            style="width: 100%"
+            height="calc(100vh - 400px)"
+          >
+            <el-table-column type="selection" width="55" />
+            <el-table-column prop="alertType" label="告警类型" width="120">
+              <template #default="{ row }">
+                <el-tag :type="getAlertTypeTag(row.alertType)">
+                  {{ getAlertTypeLabel(row.alertType) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="alertLevel" label="告警级别" width="100">
+              <template #default="{ row }">
+                <el-tag :type="getAlertLevelTag(row.alertLevel)">
+                  {{ getAlertLevelLabel(row.alertLevel) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="message" label="告警信息" min-width="200" />
+            <el-table-column prop="temperature" label="温度(℃)" width="120" />
+            <el-table-column prop="humidity" label="湿度(%)" width="120" />
+            <el-table-column prop="thresholdValue" label="阈值" width="120" />
+            <el-table-column prop="status" label="处理状态" width="120">
+              <template #default="{ row }">
+                <el-tag :type="getAlertStatusTag(row.status)">
+                  {{ getAlertStatusLabel(row.status) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createdTime" label="发生时间" width="180">
+              <template #default="{ row }">
+                {{ formatDate(row.createdTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="handleTime" label="处理时间" width="180">
+              <template #default="{ row }">
+                {{ formatDate(row.handleTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="200">
+              <template #default="{ row }">
+                <el-button-group>
+                  <el-button size="small" @click="viewAlertDetail(row)">详情</el-button>
+                  <el-button size="small" type="primary" @click="handleAlert(row)" :disabled="row.status !== 'UNHANDLED'">
+                    {{ row.status === 'UNHANDLED' ? '处理' : '已处理' }}
+                  </el-button>
+                  <el-button size="small" @click="ignoreAlert(row)" :disabled="row.status !== 'UNHANDLED'">
+                    忽略
+                  </el-button>
+                </el-button-group>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pagination">
+            <el-pagination
+              v-model:current-page="pagination.currentPage"
+              v-model:page-size="pagination.pageSize"
+              :total="pagination.total"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 告警详情对话框 -->
+      <el-dialog
+        v-model="alertDetailVisible"
+        title="告警详情"
+        width="600px"
+      >
+        <div v-if="currentAlert" class="alert-detail-content">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="告警类型">
+              <el-tag :type="getAlertTypeTag(currentAlert.alertType)">
+                {{ getAlertTypeLabel(currentAlert.alertType) }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="告警级别">
+              <el-tag :type="getAlertLevelTag(currentAlert.alertLevel)">
+                {{ getAlertLevelLabel(currentAlert.alertLevel) }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="告警信息">
+              {{ currentAlert.message }}
+            </el-descriptions-item>
+            <el-descriptions-item label="温度">
+              {{ currentAlert.temperature || '-' }}℃
+            </el-descriptions-item>
+            <el-descriptions-item label="湿度">
+              {{ currentAlert.humidity || '-' }}%
+            </el-descriptions-item>
+            <el-descriptions-item label="阈值">
+              {{ currentAlert.thresholdValue || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="发生时间">
+              {{ formatDate(currentAlert.createdTime) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="处理状态">
+              <el-tag :type="getAlertStatusTag(currentAlert.status)">
+                {{ getAlertStatusLabel(currentAlert.status) }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="处理人">
+              {{ currentAlert.handlerName || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="处理时间">
+              {{ formatDate(currentAlert.handleTime) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="处理备注">
+              {{ currentAlert.handleRemark || '-' }}
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
+      </el-dialog>
+
+      <!-- 处理告警对话框 -->
+      <el-dialog
+        v-model="handleAlertVisible"
+        title="处理告警"
+        width="500px"
+      >
+        <el-form :model="handleForm" label-width="100px">
+          <el-form-item label="处理结果">
+            <el-radio-group v-model="handleForm.result">
+              <el-radio label="RESOLVED">已解决</el-radio>
+              <el-radio label="IGNORED">已忽略</el-radio>
+            </el-radio-group>
           </el-form-item>
-          <el-form-item label="告警级别">
-            <el-select v-model="filterForm.alertLevel" placeholder="请选择" clearable>
-              <el-option label="低" value="LOW" />
-              <el-option label="中" value="MEDIUM" />
-              <el-option label="高" value="HIGH" />
-              <el-option label="紧急" value="CRITICAL" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="处理状态">
-            <el-select v-model="filterForm.status" placeholder="请选择" clearable>
-              <el-option label="未处理" value="UNHANDLED" />
-              <el-option label="处理中" value="HANDLING" />
-              <el-option label="已解决" value="RESOLVED" />
-              <el-option label="已忽略" value="IGNORED" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="时间范围">
-            <el-date-picker
-              v-model="filterForm.timeRange"
-              type="datetimerange"
-              range-separator="至"
-              start-placeholder="开始时间"
-              end-placeholder="结束时间"
+          <el-form-item label="处理备注">
+            <el-input
+              v-model="handleForm.remark"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入处理备注"
             />
           </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="searchAlerts">查询</el-button>
-            <el-button @click="resetFilters">重置</el-button>
-          </el-form-item>
         </el-form>
-      </el-card>
-
-      <!-- 告警列表 -->
-      <el-card class="alerts-list-card">
-        <template #header>
-          <div class="card-header">
-            <span>告警列表</span>
-            <div class="list-controls">
-              <el-button @click="batchHandleAlerts" :disabled="!selectedAlerts.length">批量处理</el-button>
-              <el-button @click="exportAlerts">导出</el-button>
-            </div>
-          </div>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="handleAlertVisible = false">取消</el-button>
+            <el-button type="primary" @click="confirmHandleAlert" :loading="handling">确定</el-button>
+          </span>
         </template>
-        <el-table
-          v-loading="loading"
-          :data="alertsList"
-          @selection-change="handleSelectionChange"
-          style="width: 100%"
-          height="calc(100vh - 400px)"
-        >
-          <el-table-column type="selection" width="55" />
-          <el-table-column prop="alertType" label="告警类型" width="120">
-            <template #default="{ row }">
-              <el-tag :type="getAlertTypeTag(row.alertType)">
-                {{ getAlertTypeLabel(row.alertType) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="alertLevel" label="告警级别" width="100">
-            <template #default="{ row }">
-              <el-tag :type="getAlertLevelTag(row.alertLevel)">
-                {{ getAlertLevelLabel(row.alertLevel) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="message" label="告警信息" min-width="200" />
-          <el-table-column prop="temperature" label="温度(℃)" width="120" />
-          <el-table-column prop="humidity" label="湿度(%)" width="120" />
-          <el-table-column prop="thresholdValue" label="阈值" width="120" />
-          <el-table-column prop="status" label="处理状态" width="120">
-            <template #default="{ row }">
-              <el-tag :type="getAlertStatusTag(row.status)">
-                {{ getAlertStatusLabel(row.status) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="createdTime" label="发生时间" width="180">
-            <template #default="{ row }">
-              {{ formatDate(row.createdTime) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="handleTime" label="处理时间" width="180">
-            <template #default="{ row }">
-              {{ formatDate(row.handleTime) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="200">
-            <template #default="{ row }">
-              <el-button-group>
-                <el-button size="small" @click="viewAlertDetail(row)">详情</el-button>
-                <el-button size="small" type="primary" @click="handleAlert(row)" :disabled="row.status !== 'UNHANDLED'">
-                  {{ row.status === 'UNHANDLED' ? '处理' : '已处理' }}
-                </el-button>
-                <el-button size="small" @click="ignoreAlert(row)" :disabled="row.status !== 'UNHANDLED'">
-                  忽略
-                </el-button>
-              </el-button-group>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <div class="pagination">
-          <el-pagination
-            v-model:current-page="pagination.currentPage"
-            v-model:page-size="pagination.pageSize"
-            :total="pagination.total"
-            :page-sizes="[10, 20, 50, 100]"
-            layout="total, sizes, prev, pager, next, jumper"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-          />
-        </div>
-      </el-card>
+      </el-dialog>
     </div>
-
-    <!-- 告警详情对话框 -->
-    <el-dialog
-      v-model="alertDetailVisible"
-      title="告警详情"
-      width="600px"
-    >
-      <div v-if="currentAlert" class="alert-detail-content">
-        <el-descriptions :column="1" border>
-          <el-descriptions-item label="告警类型">
-            <el-tag :type="getAlertTypeTag(currentAlert.alertType)">
-              {{ getAlertTypeLabel(currentAlert.alertType) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="告警级别">
-            <el-tag :type="getAlertLevelTag(currentAlert.alertLevel)">
-              {{ getAlertLevelLabel(currentAlert.alertLevel) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="告警信息">
-            {{ currentAlert.message }}
-          </el-descriptions-item>
-          <el-descriptions-item label="温度">
-            {{ currentAlert.temperature || '-' }}℃
-          </el-descriptions-item>
-          <el-descriptions-item label="湿度">
-            {{ currentAlert.humidity || '-' }}%
-          </el-descriptions-item>
-          <el-descriptions-item label="阈值">
-            {{ currentAlert.thresholdValue || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="发生时间">
-            {{ formatDate(currentAlert.createdTime) }}
-          </el-descriptions-item>
-          <el-descriptions-item label="处理状态">
-            <el-tag :type="getAlertStatusTag(currentAlert.status)">
-              {{ getAlertStatusLabel(currentAlert.status) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="处理人">
-            {{ currentAlert.handlerName || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="处理时间">
-            {{ formatDate(currentAlert.handleTime) }}
-          </el-descriptions-item>
-          <el-descriptions-item label="处理备注">
-            {{ currentAlert.handleRemark || '-' }}
-          </el-descriptions-item>
-        </el-descriptions>
-      </div>
-    </el-dialog>
-
-    <!-- 处理告警对话框 -->
-    <el-dialog
-      v-model="handleAlertVisible"
-      title="处理告警"
-      width="500px"
-    >
-      <el-form :model="handleForm" label-width="100px">
-        <el-form-item label="处理结果">
-          <el-radio-group v-model="handleForm.result">
-            <el-radio label="RESOLVED">已解决</el-radio>
-            <el-radio label="IGNORED">已忽略</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="处理备注">
-          <el-input
-            v-model="handleForm.remark"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入处理备注"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="handleAlertVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmHandleAlert" :loading="handling">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
-  </div>
+  </Layout>
 </template>
 
 <script setup>
@@ -278,6 +280,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
+import Layout from '@/components/Layout.vue'
 import { deviceApi } from '@/api/device'
 import { alertApi } from '@/api/alert'
 
@@ -344,7 +347,7 @@ onMounted(() => {
 const loadDeviceInfo = async (deviceId) => {
   try {
     const response = await deviceApi.getDetail(deviceId)
-    const device = response.data
+    const device = response.data?.data?.data
 
     deviceName.value = device.deviceName
     deviceCode.value = device.deviceCode
@@ -376,8 +379,8 @@ const loadAlertsList = async (deviceId) => {
     }
 
     const response = await alertApi.getByDeviceId(deviceId, params)
-    alertsList.value = response.data.list || []
-    pagination.total = response.data.total || 0
+    alertsList.value = response.data?.data?.data?.list || []
+    pagination.total = response.data?.data?.data?.total || 0
   } catch (error) {
     ElMessage.error('获取告警列表失败')
     console.error(error)
@@ -646,7 +649,7 @@ const getAlertStatusTag = (status) => {
 </script>
 
 <style scoped>
-.device-alerts-container {
+.device-alerts-content {
   padding: 20px;
   height: 100%;
   display: flex;

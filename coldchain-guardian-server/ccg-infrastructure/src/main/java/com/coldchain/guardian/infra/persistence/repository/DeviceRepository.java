@@ -125,4 +125,100 @@ public class DeviceRepository {
         }
         return deviceMapper.selectCount(queryWrapper) > 0;
     }
+
+    /**
+     * 根据多种条件查询设备（支持分页）
+     */
+    public List<DeviceEntity> findByConditions(String keyword, String deviceType, Integer onlineStatus,
+                                             Integer enabled, Integer alarmEnabled, Long areaId, Integer offset, Integer limit) {
+        LambdaQueryWrapper<DeviceEntity> queryWrapper = new LambdaQueryWrapper<>();
+
+        // 关键字搜索（设备编码或设备名称）
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            queryWrapper.and(wrapper -> wrapper
+                .like(DeviceEntity::getDeviceName, keyword)
+                .or()
+                .like(DeviceEntity::getDeviceCode, keyword)
+            );
+        }
+
+        // 设备类型过滤
+        if (deviceType != null && !deviceType.trim().isEmpty()) {
+            queryWrapper.eq(DeviceEntity::getDeviceType, deviceType);
+        }
+
+        // 启用状态过滤
+        if (enabled != null) {
+            queryWrapper.eq(DeviceEntity::getEnabled, enabled);
+        }
+
+        // 告警启用状态过滤
+        if (alarmEnabled != null) {
+            queryWrapper.eq(DeviceEntity::getAlarmEnabled, alarmEnabled);
+        }
+
+        // 在线状态过滤
+        if (onlineStatus != null) {
+            queryWrapper.eq(DeviceEntity::getOnlineStatus, onlineStatus);
+        }
+
+        // 库区ID过滤
+        if (areaId != null) {
+            queryWrapper.eq(DeviceEntity::getAreaId, areaId);
+        }
+
+        // 添加排序
+        queryWrapper.orderByDesc(DeviceEntity::getId);
+
+        // 如果提供了偏移量和限制，则进行分页查询
+        if (offset != null && limit != null) {
+            return deviceMapper.selectList(queryWrapper.last("LIMIT " + limit + " OFFSET " + offset));
+        } else {
+            return deviceMapper.selectList(queryWrapper);
+        }
+    }
+
+    /**
+     * 根据多种条件统计设备数量
+     */
+    public int countByConditions(String keyword, String deviceType, Integer onlineStatus,
+                               Integer enabled, Integer alarmEnabled, Long areaId) {
+        LambdaQueryWrapper<DeviceEntity> queryWrapper = new LambdaQueryWrapper<>();
+
+        // 关键字搜索（设备编码或设备名称）
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            queryWrapper.and(wrapper -> wrapper
+                .like(DeviceEntity::getDeviceName, keyword)
+                .or()
+                .like(DeviceEntity::getDeviceCode, keyword)
+            );
+        }
+
+        // 设备类型过滤
+        if (deviceType != null && !deviceType.trim().isEmpty()) {
+            queryWrapper.eq(DeviceEntity::getDeviceType, deviceType);
+        }
+
+        // 启用状态过滤
+        if (enabled != null) {
+            queryWrapper.eq(DeviceEntity::getEnabled, enabled);
+        }
+
+        // 告警启用状态过滤
+        if (alarmEnabled != null) {
+            queryWrapper.eq(DeviceEntity::getAlarmEnabled, alarmEnabled);
+        }
+
+        // 在线状态过滤
+        if (onlineStatus != null) {
+            queryWrapper.eq(DeviceEntity::getOnlineStatus, onlineStatus);
+        }
+
+        // 库区ID过滤
+        if (areaId != null) {
+            queryWrapper.eq(DeviceEntity::getAreaId, areaId);
+        }
+
+        return Math.toIntExact(deviceMapper.selectCount(queryWrapper));
+    }
 }

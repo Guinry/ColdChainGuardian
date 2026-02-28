@@ -14,6 +14,7 @@ public class DeviceDto {
     private String sn;
     private String firmwareVersion;
     private Long areaId;
+    private String areaName;  // 新增：库区名称
     private String locationDesc;
     private String thresholdMode;
     private BigDecimal temperatureThresholdMin;
@@ -96,6 +97,14 @@ public class DeviceDto {
 
     public void setAreaId(Long areaId) {
         this.areaId = areaId;
+    }
+
+    public String getAreaName() {
+        return areaName;
+    }
+
+    public void setAreaName(String areaName) {
+        this.areaName = areaName;
     }
 
     public String getLocationDesc() {

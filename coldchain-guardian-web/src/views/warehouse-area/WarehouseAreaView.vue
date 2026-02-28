@@ -1,541 +1,440 @@
 <template>
-  <div class="warehouse-area-container">
-    <!-- Top Navigation Bar -->
-    <div class="top-bar">
-      <div class="logo-section">
-        <div class="logo">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2L13.09 8.26L22 9L13.09 9.74L12 16L10.91 9.74L2 9L10.91 8.26L12 2Z" fill="#409EFF"/>
-            <circle cx="12" cy="12" r="10" stroke="#409EFF" stroke-width="2"/>
-          </svg>
-        </div>
-        <span class="app-title">ColdChain Guardian</span>
-      </div>
-
-      <div class="search-section">
-        <el-input
-          v-model="globalSearch"
-          placeholder="全局搜索..."
-          prefix-icon="Search"
-          class="global-search"
-        />
-      </div>
-
-      <div class="action-section">
-        <el-badge :value="unreadNotifications" class="notification-badge">
-          <el-button circle class="notification-btn">
-            <el-icon><Bell /></el-icon>
+  <Layout>
+    <div class="warehouse-area-content">
+      <div class="page-header">
+        <h2>库区管理</h2>
+        <div class="header-actions">
+          <el-button type="primary" @click="openCreateDialog(null)">
+            <el-icon><Plus /></el-icon>
+            新增顶级节点
           </el-button>
-        </el-badge>
-
-        <el-dropdown>
-          <div class="user-avatar">
-            <el-avatar :size="32" :src="userAvatar">{{ userInitial }}</el-avatar>
-            <span class="user-name">{{ userInfo.realName }}</span>
-            <el-icon><ArrowDown /></el-icon>
-          </div>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item @click="viewProfile">个人资料</el-dropdown-item>
-              <el-dropdown-item @click="settings">系统设置</el-dropdown-item>
-              <el-dropdown-item divided @click="logout">退出登录</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-      </div>
-    </div>
-
-    <div class="warehouse-area-layout">
-      <!-- Side Menu -->
-      <div class="side-menu">
-        <el-menu
-          :default-active="activeMenu"
-          class="menu"
-          :collapse="false"
-          :unique-opened="true"
-          :router="true"
-        >
-          <el-menu-item index="/dashboard">
-            <el-icon><House /></el-icon>
-            <span>Dashboard</span>
-          </el-menu-item>
-
-          <el-sub-menu index="monitoring">
-            <template #title>
-              <el-icon><Monitor /></el-icon>
-              <span>监测管理</span>
-            </template>
-            <el-menu-item index="/warehouse-area">库区管理</el-menu-item>
-            <el-menu-item index="/devices">设备管理</el-menu-item>
-            <el-menu-item index="/monitoring/realtime">实时监测</el-menu-item>
-          </el-sub-menu>
-
-          <el-sub-menu index="alerts-orders">
-            <template #title>
-              <el-icon><Warning /></el-icon>
-              <span>告警与工单</span>
-            </template>
-            <el-menu-item index="/alerts">告警中心</el-menu-item>
-            <el-menu-item index="/orders">工单管理</el-menu-item>
-          </el-sub-menu>
-
-          <el-sub-menu index="analysis">
-            <template #title>
-              <el-icon><DataAnalysis /></el-icon>
-              <span>数据分析</span>
-            </template>
-            <el-menu-item index="/analysis/trends">趋势分析</el-menu-item>
-            <el-menu-item index="/analysis/ai">AI 智能助手</el-menu-item>
-          </el-sub-menu>
-
-          <!-- System Management menu only visible for SUPER_ADMIN -->
-          <el-sub-menu v-if="isSuperAdmin" index="system">
-            <template #title>
-              <el-icon><Setting /></el-icon>
-              <span>系统管理（超管）</span>
-            </template>
-            <el-menu-item index="/admin/users">管理员管理</el-menu-item>
-            <el-menu-item index="/admin/permissions">权限分配</el-menu-item>
-          </el-sub-menu>
-        </el-menu>
+          <el-button @click="handleImport">
+            <el-icon><Upload /></el-icon>
+            批量导入
+          </el-button>
+          <el-button @click="handleExport">
+            <el-icon><Download /></el-icon>
+            导出
+          </el-button>
+        </div>
       </div>
 
-      <!-- Main Content -->
-      <div class="main-content">
-        <div class="page-header">
-          <h2>库区管理</h2>
-          <div class="header-actions">
-            <el-button type="primary" @click="openCreateDialog(null)">
-              <el-icon><Plus /></el-icon>
-              新增顶级节点
-            </el-button>
-            <el-button @click="handleImport">
-              <el-icon><Upload /></el-icon>
-              批量导入
-            </el-button>
-            <el-button @click="handleExport">
-              <el-icon><Download /></el-icon>
-              导出
-            </el-button>
+      <div class="content-wrapper">
+        <!-- 左侧树形结构 -->
+        <div class="tree-panel">
+          <div class="panel-header">
+            <h3>库区结构</h3>
+            <el-input
+              v-model="searchText"
+              placeholder="搜索库区..."
+              :prefix-icon="Search"
+              clearable
+              @input="filterTree"
+            />
           </div>
+
+          <el-tree
+            ref="treeRef"
+            :data="treeData"
+            :props="treeProps"
+            :filter-method="filterMethod"
+            :expand-on-click-node="false"
+            highlight-current
+            node-key="id"
+            @node-click="onTreeNodeClick"
+            @node-contextmenu="onRightClick"
+            class="custom-tree"
+          >
+            <template #default="{ node, data }">
+              <div class="tree-node-content">
+                <span class="node-label">{{ data.areaName }}</span>
+                <span class="node-code">[{{ data.areaCode }}]</span>
+                <el-tag
+                  size="small"
+                  :type="getLevelTagType(data.areaLevel)"
+                  class="level-tag"
+                >
+                  {{ getLevelLabel(data.areaLevel) }}
+                </el-tag>
+                <div class="node-status-icons">
+                  <el-tooltip content="已禁用" placement="top" v-show="data.status === 0">
+                    <el-icon class="status-icon disabled"><CircleCloseFilled /></el-icon>
+                  </el-tooltip>
+                  <el-tooltip content="告警已关闭" placement="top" v-show="data.alarmEnabled === 0">
+                    <el-icon class="status-icon alarm-disabled"><Mute /></el-icon>
+                  </el-tooltip>
+                </div>
+                <div class="node-actions" @click.stop>
+                  <el-button
+                    size="small"
+                    text
+                    @click="openCreateDialog(data)"
+                    :icon="FolderAdd"
+                    class="action-btn"
+                  />
+                  <el-button
+                    size="small"
+                    text
+                    @click="openEditDialog(data)"
+                    :icon="Edit"
+                    class="action-btn"
+                  />
+                  <el-button
+                    size="small"
+                    text
+                    @click="handleDelete(data)"
+                    :icon="Delete"
+                    class="action-btn"
+                  />
+                </div>
+              </div>
+            </template>
+          </el-tree>
         </div>
 
-        <div class="content-wrapper">
-          <!-- 左侧树形结构 -->
-          <div class="tree-panel">
-            <div class="panel-header">
-              <h3>库区结构</h3>
-              <el-input
-                v-model="searchText"
-                placeholder="搜索库区..."
-                :prefix-icon="Search"
-                clearable
-                @input="filterTree"
+        <!-- 右侧详情面板 -->
+        <div class="detail-panel">
+          <div v-if="selectedNode" class="detail-content">
+            <div class="basic-info-card">
+              <div class="card-header">
+                <div class="header-left">
+                  <h3>{{ selectedNode.areaName }}</h3>
+                  <el-tag :type="getLevelTagType(selectedNode.areaLevel)">
+                    {{ getLevelLabel(selectedNode.areaLevel) }}
+                  </el-tag>
+                </div>
+                <div class="header-actions">
+                  <el-button @click="openEditDialog(selectedNode)">编辑</el-button>
+                  <el-button
+                    :type="selectedNode.status === 1 ? 'danger' : 'success'"
+                    @click="toggleStatus(selectedNode)">
+                    {{ selectedNode.status === 1 ? '禁用' : '启用' }}
+                  </el-button>
+                  <el-button
+                    :type="selectedNode.alarmEnabled === 1 ? 'warning' : 'info'"
+                    @click="toggleAlarm(selectedNode)">
+                    {{ selectedNode.alarmEnabled === 1 ? '关闭告警' : '启用告警' }}
+                  </el-button>
+                  <el-button type="danger" @click="handleDelete(selectedNode)">删除</el-button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="info-grid">
+                  <div class="info-row">
+                    <div class="info-item">
+                      <label>库区编码:</label>
+                      <span>{{ selectedNode.areaCode }}</span>
+                    </div>
+                    <div class="info-item">
+                      <label>状态:</label>
+                      <el-tag :type="selectedNode.status === 1 ? 'success' : 'danger'">
+                        {{ selectedNode.status === 1 ? '启用' : '禁用' }}
+                      </el-tag>
+                    </div>
+                  </div>
+                  <div class="info-row">
+                    <div class="info-item">
+                      <label>告警:</label>
+                      <el-tag :type="selectedNode.alarmEnabled === 1 ? 'success' : 'info'">
+                        {{ selectedNode.alarmEnabled === 1 ? '启用' : '关闭' }}
+                      </el-tag>
+                    </div>
+                    <div class="info-item">
+                      <label>排序号:</label>
+                      <span>{{ selectedNode.sortNo }}</span>
+                    </div>
+                  </div>
+                  <div class="info-row full-width">
+                    <div class="info-item">
+                      <label>地址:</label>
+                      <span>{{ selectedNode.address || '-' }}</span>
+                    </div>
+                  </div>
+                  <div class="info-row full-width">
+                    <div class="info-item">
+                      <label>位置描述:</label>
+                      <span>{{ selectedNode.locationDesc || '-' }}</span>
+                    </div>
+                  </div>
+                  <div class="threshold-section">
+                    <h4>阈值设置</h4>
+                    <div class="threshold-grid">
+                      <div class="threshold-item">
+                        <label>温度范围:</label>
+                        <span>{{ selectedNode.temperatureThresholdMin }}°C ~ {{ selectedNode.temperatureThresholdMax }}°C</span>
+                      </div>
+                      <div class="threshold-item">
+                        <label>湿度范围:</label>
+                        <span>{{ selectedNode.humidityThresholdMin }}% ~ {{ selectedNode.humidityThresholdMax }}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="info-row full-width">
+                    <div class="info-item">
+                      <label>备注:</label>
+                      <span>{{ selectedNode.remark || '-' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 子库区列表 -->
+            <div class="child-areas-section">
+              <div class="section-header">
+                <h3>子库区列表</h3>
+                <el-button @click="openCreateDialog(selectedNode)">新增子库区</el-button>
+              </div>
+
+              <el-table
+                :data="childAreas"
+                style="width: 100%"
+                row-key="id"
+                border
+              >
+                <el-table-column prop="areaName" label="库区名称" width="200">
+                  <template #default="{ row }">
+                    <el-button type="text" @click="selectNodeInTree(row)">{{ row.areaName }}</el-button>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="areaCode" label="编码" width="150" />
+                <el-table-column prop="areaLevel" label="层级" width="100">
+                  <template #default="{ row }">
+                    <el-tag size="small">{{ getLevelLabel(row.areaLevel) }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="status" label="状态" width="100">
+                  <template #default="{ row }">
+                    <el-tag :type="row.status === 1 ? 'success' : 'danger'">
+                      {{ row.status === 1 ? '启用' : '禁用' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="alarmEnabled" label="告警" width="100">
+                  <template #default="{ row }">
+                    <el-tag :type="row.alarmEnabled === 1 ? 'success' : 'warning'">
+                      {{ row.alarmEnabled === 1 ? '开启' : '关闭' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="sortNo" label="排序" width="80" />
+                <el-table-column label="操作" width="200">
+                  <template #default="{ row }">
+                    <el-button-group>
+                      <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
+                      <el-button
+                        size="small"
+                        :type="row.status === 1 ? 'danger' : 'success'"
+                        @click="toggleStatus(row)">
+                        {{ row.status === 1 ? '禁用' : '启用' }}
+                      </el-button>
+                      <el-popconfirm
+                        title="确定要删除这个库区吗？"
+                        @confirm="handleDelete(row)"
+                      >
+                        <template #reference>
+                          <el-button size="small" type="danger">删除</el-button>
+                        </template>
+                      </el-popconfirm>
+                    </el-button-group>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+          <div v-else class="empty-state">
+            <el-empty description="请选择左侧库区查看详细信息" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 新增/编辑对话框 -->
+      <el-dialog
+        v-model="dialogVisible"
+        :title="dialogTitle"
+        width="600px"
+        :before-close="handleDialogClose"
+      >
+        <el-form
+          ref="formRef"
+          :model="formData"
+          :rules="formRules"
+          label-width="120px"
+        >
+          <el-form-item label="上级库区" prop="parentId">
+            <el-cascader
+              v-model="formData.parentId"
+              :options="parentOptions"
+              :props="cascaderProps"
+              placeholder="选择上级库区（顶级节点为空）"
+              clearable
+              filterable
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="库区层级" prop="areaLevel">
+            <el-radio-group v-model="formData.areaLevel" @change="onLevelChange">
+              <el-radio label="SITE">站点</el-radio>
+              <el-radio label="WAREHOUSE">仓库</el-radio>
+              <el-radio label="FLOOR">楼层</el-radio>
+              <el-radio label="AREA">库区</el-radio>
+              <el-radio label="BIN">库位</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="库区编码" prop="areaCode">
+            <el-input
+              v-model="formData.areaCode"
+              placeholder="请输入库区编码（如：SITE_001, WH_A）"
+              maxlength="50"
+            />
+          </el-form-item>
+          <el-form-item label="库区名称" prop="areaName">
+            <el-input
+              v-model="formData.areaName"
+              placeholder="请输入库区名称"
+              maxlength="100"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="formData.areaLevel === 'SITE' || formData.areaLevel === 'WAREHOUSE'"
+            label="地址"
+            prop="address"
+          >
+            <el-input
+              v-model="formData.address"
+              placeholder="请输入地址"
+              maxlength="200"
+            />
+          </el-form-item>
+          <el-form-item label="位置描述" prop="locationDesc">
+            <el-input
+              v-model="formData.locationDesc"
+              placeholder="请输入位置描述"
+              maxlength="200"
+            />
+          </el-form-item>
+          <el-divider>阈值设置</el-divider>
+          <el-form-item label="温度范围">
+            <div class="range-input">
+              <el-input-number
+                v-model="formData.temperatureThresholdMin"
+                :min="-50"
+                :max="50"
+                :step="0.1"
+                :precision="2"
+              />
+              <span class="range-separator">~</span>
+              <el-input-number
+                v-model="formData.temperatureThresholdMax"
+                :min="-50"
+                :max="50"
+                :step="0.1"
+                :precision="2"
               />
             </div>
-
-            <el-tree
-              ref="treeRef"
-              :data="treeData"
-              :props="treeProps"
-              :filter-method="filterMethod"
-              :expand-on-click-node="false"
-              highlight-current
-              node-key="id"
-              @node-click="onTreeNodeClick"
-              @node-contextmenu="onRightClick"
-              class="custom-tree"
-            >
-              <template #default="{ node, data }">
-                <div class="tree-node-content">
-                  <span class="node-label">{{ data.areaName }}</span>
-                  <span class="node-code">[{{ data.areaCode }}]</span>
-                  <el-tag
-                    size="small"
-                    :type="getLevelTagType(data.areaLevel)"
-                    class="level-tag"
-                  >
-                    {{ getLevelLabel(data.areaLevel) }}
-                  </el-tag>
-                  <div class="node-status-icons">
-                    <el-tooltip content="已禁用" placement="top" v-show="data.status === 0">
-                      <el-icon class="status-icon disabled"><CircleCloseFilled /></el-icon>
-                    </el-tooltip>
-                    <el-tooltip content="告警已关闭" placement="top" v-show="data.alarmEnabled === 0">
-                      <el-icon class="status-icon alarm-disabled"><Mute /></el-icon>
-                    </el-tooltip>
-                  </div>
-                  <div class="node-actions" @click.stop>
-                    <el-button
-                      size="small"
-                      text
-                      @click="openCreateDialog(data)"
-                      :icon="FolderAdd"
-                      class="action-btn"
-                    />
-                    <el-button
-                      size="small"
-                      text
-                      @click="openEditDialog(data)"
-                      :icon="Edit"
-                      class="action-btn"
-                    />
-                    <el-button
-                      size="small"
-                      text
-                      @click="handleDelete(data)"
-                      :icon="Delete"
-                      class="action-btn"
-                    />
-                  </div>
-                </div>
-              </template>
-            </el-tree>
-          </div>
-
-          <!-- 右侧详情面板 -->
-          <div class="detail-panel">
-            <div v-if="selectedNode" class="detail-content">
-              <div class="basic-info-card">
-                <div class="card-header">
-                  <div class="header-left">
-                    <h3>{{ selectedNode.areaName }}</h3>
-                    <el-tag :type="getLevelTagType(selectedNode.areaLevel)">
-                      {{ getLevelLabel(selectedNode.areaLevel) }}
-                    </el-tag>
-                  </div>
-                  <div class="header-actions">
-                    <el-button @click="openEditDialog(selectedNode)">编辑</el-button>
-                    <el-button
-                      :type="selectedNode.status === 1 ? 'danger' : 'success'"
-                      @click="toggleStatus(selectedNode)">
-                      {{ selectedNode.status === 1 ? '禁用' : '启用' }}
-                    </el-button>
-                    <el-button
-                      :type="selectedNode.alarmEnabled === 1 ? 'warning' : 'info'"
-                      @click="toggleAlarm(selectedNode)">
-                      {{ selectedNode.alarmEnabled === 1 ? '关闭告警' : '启用告警' }}
-                    </el-button>
-                    <el-button type="danger" @click="handleDelete(selectedNode)">删除</el-button>
-                  </div>
-                </div>
-                <div class="card-body">
-                  <div class="info-grid">
-                    <div class="info-row">
-                      <div class="info-item">
-                        <label>库区编码:</label>
-                        <span>{{ selectedNode.areaCode }}</span>
-                      </div>
-                      <div class="info-item">
-                        <label>状态:</label>
-                        <el-tag :type="selectedNode.status === 1 ? 'success' : 'danger'">
-                          {{ selectedNode.status === 1 ? '启用' : '禁用' }}
-                        </el-tag>
-                      </div>
-                    </div>
-                    <div class="info-row">
-                      <div class="info-item">
-                        <label>告警:</label>
-                        <el-tag :type="selectedNode.alarmEnabled === 1 ? 'success' : 'info'">
-                          {{ selectedNode.alarmEnabled === 1 ? '启用' : '关闭' }}
-                        </el-tag>
-                      </div>
-                      <div class="info-item">
-                        <label>排序号:</label>
-                        <span>{{ selectedNode.sortNo }}</span>
-                      </div>
-                    </div>
-                    <div class="info-row full-width">
-                      <div class="info-item">
-                        <label>地址:</label>
-                        <span>{{ selectedNode.address || '-' }}</span>
-                      </div>
-                    </div>
-                    <div class="info-row full-width">
-                      <div class="info-item">
-                        <label>位置描述:</label>
-                        <span>{{ selectedNode.locationDesc || '-' }}</span>
-                      </div>
-                    </div>
-                    <div class="threshold-section">
-                      <h4>阈值设置</h4>
-                      <div class="threshold-grid">
-                        <div class="threshold-item">
-                          <label>温度范围:</label>
-                          <span>{{ selectedNode.temperatureThresholdMin }}°C ~ {{ selectedNode.temperatureThresholdMax }}°C</span>
-                        </div>
-                        <div class="threshold-item">
-                          <label>湿度范围:</label>
-                          <span>{{ selectedNode.humidityThresholdMin }}% ~ {{ selectedNode.humidityThresholdMax }}%</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="info-row full-width">
-                      <div class="info-item">
-                        <label>备注:</label>
-                        <span>{{ selectedNode.remark || '-' }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 子库区列表 -->
-              <div class="child-areas-section">
-                <div class="section-header">
-                  <h3>子库区列表</h3>
-                  <el-button @click="openCreateDialog(selectedNode)">新增子库区</el-button>
-                </div>
-
-                <el-table
-                  :data="childAreas"
-                  style="width: 100%"
-                  row-key="id"
-                  border
-                >
-                  <el-table-column prop="areaName" label="库区名称" width="200">
-                    <template #default="{ row }">
-                      <el-button type="text" @click="selectNodeInTree(row)">{{ row.areaName }}</el-button>
-                    </template>
-                  </el-table-column>
-                  <el-table-column prop="areaCode" label="编码" width="150" />
-                  <el-table-column prop="areaLevel" label="层级" width="100">
-                    <template #default="{ row }">
-                      <el-tag size="small">{{ getLevelLabel(row.areaLevel) }}</el-tag>
-                    </template>
-                  </el-table-column>
-                  <el-table-column prop="status" label="状态" width="100">
-                    <template #default="{ row }">
-                      <el-tag :type="row.status === 1 ? 'success' : 'danger'">
-                        {{ row.status === 1 ? '启用' : '禁用' }}
-                      </el-tag>
-                    </template>
-                  </el-table-column>
-                  <el-table-column prop="alarmEnabled" label="告警" width="100">
-                    <template #default="{ row }">
-                      <el-tag :type="row.alarmEnabled === 1 ? 'success' : 'warning'">
-                        {{ row.alarmEnabled === 1 ? '开启' : '关闭' }}
-                      </el-tag>
-                    </template>
-                  </el-table-column>
-                  <el-table-column prop="sortNo" label="排序" width="80" />
-                  <el-table-column label="操作" width="200">
-                    <template #default="{ row }">
-                      <el-button-group>
-                        <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
-                        <el-button
-                          size="small"
-                          :type="row.status === 1 ? 'danger' : 'success'"
-                          @click="toggleStatus(row)">
-                          {{ row.status === 1 ? '禁用' : '启用' }}
-                        </el-button>
-                        <el-popconfirm
-                          title="确定要删除这个库区吗？"
-                          @confirm="handleDelete(row)"
-                        >
-                          <template #reference>
-                            <el-button size="small" type="danger">删除</el-button>
-                          </template>
-                        </el-popconfirm>
-                      </el-button-group>
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </div>
+          </el-form-item>
+          <el-form-item label="湿度范围">
+            <div class="range-input">
+              <el-input-number
+                v-model="formData.humidityThresholdMin"
+                :min="0"
+                :max="100"
+                :step="0.1"
+                :precision="2"
+              />
+              <span class="range-separator">~</span>
+              <el-input-number
+                v-model="formData.humidityThresholdMax"
+                :min="0"
+                :max="100"
+                :step="0.1"
+                :precision="2"
+              />
             </div>
-            <div v-else class="empty-state">
-              <el-empty description="请选择左侧库区查看详细信息" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+          </el-form-item>
+          <el-form-item label="状态" prop="status">
+            <el-switch
+              v-model="formData.status"
+              :active-value="1"
+              :inactive-value="0"
+              active-text="启用"
+              inactive-text="禁用"
+            />
+          </el-form-item>
+          <el-form-item label="告警" prop="alarmEnabled">
+            <el-switch
+              v-model="formData.alarmEnabled"
+              :active-value="1"
+              :inactive-value="0"
+              active-text="启用告警"
+              inactive-text="关闭告警"
+            />
+          </el-form-item>
+          <el-form-item label="排序号" prop="sortNo">
+            <el-input-number v-model="formData.sortNo" :min="0" :max="999999" />
+          </el-form-item>
+          <el-form-item label="备注" prop="remark">
+            <el-input
+              v-model="formData.remark"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入备注信息"
+              maxlength="500"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="dialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="handleSubmit" :loading="submitLoading">确定</el-button>
+          </span>
+        </template>
+      </el-dialog>
 
-    <!-- 新增/编辑对话框 -->
-    <el-dialog
-      v-model="dialogVisible"
-      :title="dialogTitle"
-      width="600px"
-      :before-close="handleDialogClose"
-    >
-      <el-form
-        ref="formRef"
-        :model="formData"
-        :rules="formRules"
-        label-width="120px"
+      <!-- 右键菜单 -->
+      <el-popover
+        ref="contextMenuRef"
+        placement="bottom-start"
+        trigger="manual"
+        :visible="contextMenuVisible"
+        width="200"
       >
-        <el-form-item label="上级库区" prop="parentId">
-          <el-cascader
-            v-model="formData.parentId"
-            :options="parentOptions"
-            :props="cascaderProps"
-            placeholder="选择上级库区（顶级节点为空）"
-            clearable
-            filterable
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="库区层级" prop="areaLevel">
-          <el-radio-group v-model="formData.areaLevel" @change="onLevelChange">
-            <el-radio label="SITE">站点</el-radio>
-            <el-radio label="WAREHOUSE">仓库</el-radio>
-            <el-radio label="FLOOR">楼层</el-radio>
-            <el-radio label="AREA">库区</el-radio>
-            <el-radio label="BIN">库位</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="库区编码" prop="areaCode">
-          <el-input
-            v-model="formData.areaCode"
-            placeholder="请输入库区编码（如：SITE_001, WH_A）"
-            maxlength="50"
-          />
-        </el-form-item>
-        <el-form-item label="库区名称" prop="areaName">
-          <el-input
-            v-model="formData.areaName"
-            placeholder="请输入库区名称"
-            maxlength="100"
-          />
-        </el-form-item>
-        <el-form-item
-          v-if="formData.areaLevel === 'SITE' || formData.areaLevel === 'WAREHOUSE'"
-          label="地址"
-          prop="address"
-        >
-          <el-input
-            v-model="formData.address"
-            placeholder="请输入地址"
-            maxlength="200"
-          />
-        </el-form-item>
-        <el-form-item label="位置描述" prop="locationDesc">
-          <el-input
-            v-model="formData.locationDesc"
-            placeholder="请输入位置描述"
-            maxlength="200"
-          />
-        </el-form-item>
-        <el-divider>阈值设置</el-divider>
-        <el-form-item label="温度范围">
-          <div class="range-input">
-            <el-input-number
-              v-model="formData.temperatureThresholdMin"
-              :min="-50"
-              :max="50"
-              :step="0.1"
-              :precision="2"
-            />
-            <span class="range-separator">~</span>
-            <el-input-number
-              v-model="formData.temperatureThresholdMax"
-              :min="-50"
-              :max="50"
-              :step="0.1"
-              :precision="2"
-            />
-          </div>
-        </el-form-item>
-        <el-form-item label="湿度范围">
-          <div class="range-input">
-            <el-input-number
-              v-model="formData.humidityThresholdMin"
-              :min="0"
-              :max="100"
-              :step="0.1"
-              :precision="2"
-            />
-            <span class="range-separator">~</span>
-            <el-input-number
-              v-model="formData.humidityThresholdMax"
-              :min="0"
-              :max="100"
-              :step="0.1"
-              :precision="2"
-            />
-          </div>
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-switch
-            v-model="formData.status"
-            :active-value="1"
-            :inactive-value="0"
-            active-text="启用"
-            inactive-text="禁用"
-          />
-        </el-form-item>
-        <el-form-item label="告警" prop="alarmEnabled">
-          <el-switch
-            v-model="formData.alarmEnabled"
-            :active-value="1"
-            :inactive-value="0"
-            active-text="启用告警"
-            inactive-text="关闭告警"
-          />
-        </el-form-item>
-        <el-form-item label="排序号" prop="sortNo">
-          <el-input-number v-model="formData.sortNo" :min="0" :max="999999" />
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input
-            v-model="formData.remark"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入备注信息"
-            maxlength="500"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit" :loading="submitLoading">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
-
-    <!-- 右键菜单 -->
-    <el-popover
-      ref="contextMenuRef"
-      placement="bottom-start"
-      trigger="manual"
-      :visible="contextMenuVisible"
-      width="200"
-    >
-      <div class="context-menu">
-        <el-button size="small" text @click="openCreateDialog(contextNodeData)">
-          <el-icon><FolderAdd /></el-icon>
-          <span>新增子节点</span>
-        </el-button>
-        <el-button size="small" text @click="openEditDialog(contextNodeData)">
-          <el-icon><Edit /></el-icon>
-          <span>编辑节点</span>
-        </el-button>
-        <el-button size="small" text @click="toggleStatus(contextNodeData)">
-          <el-icon><SwitchButton /></el-icon>
-          <span>{{ contextNodeData?.status === 1 ? '禁用' : '启用' }}</span>
-        </el-button>
-        <el-button size="small" text @click="toggleAlarm(contextNodeData)">
-          <el-icon><Bell /></el-icon>
-          <span>{{ contextNodeData?.alarmEnabled === 1 ? '关闭告警' : '启用告警' }}</span>
-        </el-button>
-        <el-button size="small" text @click="handleMove(contextNodeData)" type="warning">
-          <el-icon><Position /></el-icon>
-          <span>移动节点</span>
-        </el-button>
-        <el-button size="small" text @click="handleDelete(contextNodeData)" type="danger">
-          <el-icon><Delete /></el-icon>
-          <span>删除节点</span>
-        </el-button>
-      </div>
-    </el-popover>
-  </div>
+        <div class="context-menu">
+          <el-button size="small" text @click="openCreateDialog(contextNodeData)">
+            <el-icon><FolderAdd /></el-icon>
+            <span>新增子节点</span>
+          </el-button>
+          <el-button size="small" text @click="openEditDialog(contextNodeData)">
+            <el-icon><Edit /></el-icon>
+            <span>编辑节点</span>
+          </el-button>
+          <el-button size="small" text @click="toggleStatus(contextNodeData)">
+            <el-icon><SwitchButton /></el-icon>
+            <span>{{ contextNodeData?.status === 1 ? '禁用' : '启用' }}</span>
+          </el-button>
+          <el-button size="small" text @click="toggleAlarm(contextNodeData)">
+            <el-icon><Bell /></el-icon>
+            <span>{{ contextNodeData?.alarmEnabled === 1 ? '关闭告警' : '启用告警' }}</span>
+          </el-button>
+          <el-button size="small" text @click="handleMove(contextNodeData)" type="warning">
+            <el-icon><Position /></el-icon>
+            <span>移动节点</span>
+          </el-button>
+          <el-button size="small" text @click="handleDelete(contextNodeData)" type="danger">
+            <el-icon><Delete /></el-icon>
+            <span>删除节点</span>
+          </el-button>
+        </div>
+      </el-popover>
+    </div>
+  </Layout>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
+import Layout from '@/components/Layout.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
@@ -592,11 +491,6 @@ const treeRef = ref()
 const formRef = ref()
 const contextMenuRef = ref()
 
-// Mock data for dashboard components
-const globalSearch = ref('')
-const unreadNotifications = ref(3)
-const activeMenu = ref('/warehouse-area')
-
 // 表单数据
 const formData = reactive({
   id: null,
@@ -650,16 +544,6 @@ const formRules = {
     { required: true, message: '请选择库区层级', trigger: 'change' }
   ]
 }
-
-// Computed properties for user info
-const userInitial = computed(() => {
-  return userInfo.value.realName ? userInfo.value.realName.charAt(0) : 'U'
-})
-
-const userAvatar = computed(() => {
-  // Return a default avatar if no real avatar exists
-  return 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
-})
 
 // 获取层级标签文本
 const getLevelLabel = (level) => {
@@ -1010,128 +894,16 @@ const onLevelChange = (level) => {
   }
 }
 
-// Dashboard methods for top bar and menu
-const viewProfile = () => {
-  router.push('/profile')
-}
-
-const settings = () => {
-  router.push('/settings')
-}
-
-const logout = () => {
-  authStore.clearAuthData()
-  router.push('/login')
-}
-
 onMounted(async () => {
   await loadTreeData()
 })
 </script>
 
 <style scoped>
-.warehouse-area-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: #f5f7fa;
-  box-sizing: border-box;
-  overflow: hidden; /* Hide all scrollbars except browser native */
-}
-
-.top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  height: 60px;
-  background-color: white;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
-  z-index: 10;
-  flex-shrink: 0;
-}
-
-.logo-section {
-  display: flex;
-  align-items: center;
-}
-
-.logo {
-  margin-right: 12px;
-}
-
-.app-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-}
-
-.search-section {
-  flex: 1;
-  max-width: 400px;
-  margin: 0 40px;
-}
-
-.global-search {
-  width: 100%;
-}
-
-.action-section {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.notification-badge {
-  margin-right: 20px;
-}
-
-.notification-btn {
-  border: none;
-}
-
-.user-avatar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.user-name {
-  font-size: 14px;
-  color: #606266;
-}
-
-.warehouse-area-layout {
-  display: flex;
-  flex: 1;
-  overflow: hidden; /* Hide scrollbars in the layout */
-  min-height: 0;
-}
-
-.side-menu {
-  width: 200px;
-  background-color: white;
-  box-shadow: 2px 0 6px rgba(0, 21, 41, 0.35);
-  overflow-y: auto; /* Allow sidebar to scroll independently if needed */
-  flex-shrink: 0;
-  height: calc(100vh - 60px); /* Account for the top bar height */
-}
-
-.menu {
-  border-right: none;
-}
-
-.main-content {
-  flex: 1;
-  overflow-y: auto; /* Main content scrolls with browser native scrollbar */
+.warehouse-area-content {
   padding: 20px;
+  height: 100%;
   min-height: 0;
-  height: calc(100vh - 60px); /* Account for the top bar height */
 }
 
 .page-header {
@@ -1442,34 +1214,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
-  .top-bar {
-    flex-direction: column;
-    height: auto;
-    padding: 12px;
-  }
-
-  .logo-section {
-    margin-bottom: 12px;
-  }
-
-  .search-section {
-    max-width: 100%;
-    margin: 0 0 12px 0;
-  }
-
-  .action-section {
-    justify-content: center;
-  }
-
-  .side-menu {
-    width: 60px;
-    height: calc(100vh - 60px);
-  }
-
-  .main-content {
-    height: calc(100vh - 60px);
-  }
-
   .content-wrapper {
     flex-direction: column;
   }
