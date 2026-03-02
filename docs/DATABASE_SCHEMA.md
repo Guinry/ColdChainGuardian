@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS warehouse_areas (
     humidity_threshold_max DECIMAL(5,2) DEFAULT 70.00,
     alarm_enabled TINYINT DEFAULT 1,
 
+    -- 树状路径优化查询
+    area_path VARCHAR(255) NULL COMMENT '树状路径(如 /1/3/12/)',
+
     status TINYINT DEFAULT 1 COMMENT '1-启用，0-禁用',
     sort_no INT DEFAULT 0 COMMENT '排序',
     remark VARCHAR(500) NULL,
@@ -52,6 +55,7 @@ CREATE TABLE IF NOT EXISTS warehouse_areas (
     INDEX idx_parent (parent_id),
     INDEX idx_level (area_level),
     INDEX idx_status (status),
+    INDEX idx_area_path (area_path),
     CONSTRAINT fk_area_parent FOREIGN KEY (parent_id) REFERENCES warehouse_areas(id)
 );
 ```
@@ -87,6 +91,12 @@ CREATE TABLE IF NOT EXISTS devices (
     online_status TINYINT NOT NULL DEFAULT 0 COMMENT '在线状态(1在线0离线)',
     last_seen_time TIMESTAMP NULL COMMENT '最后上报/心跳时间',
 
+    -- 监控状态（实时监测优化）
+    latest_temp DECIMAL(5,2) COMMENT '最新温度',
+    latest_humi DECIMAL(5,2) COMMENT '最新湿度',
+    latest_data_time TIMESTAMP NULL COMMENT '最新数据上报时间',
+    has_unresolved_alert TINYINT DEFAULT 0 COMMENT '是否有未处理告警(1是0否)',
+
     -- 扩展字段：通用信息放 JSON（可选，但很实用）
     extra JSON NULL COMMENT '扩展信息(JSON)：如安装参数/通讯方式/IMEI等',
 
@@ -100,6 +110,7 @@ CREATE TABLE IF NOT EXISTS devices (
     INDEX idx_enabled (enabled),
     INDEX idx_online (online_status),
     INDEX idx_last_seen (last_seen_time),
+
     CONSTRAINT fk_device_area FOREIGN KEY (area_id) REFERENCES warehouse_areas(id)
 ) COMMENT='设备表';
 ```
@@ -120,7 +131,8 @@ CREATE TABLE IF NOT EXISTS sensor_data (
     -- 可选增强：服务端接收时间（不影响现有逻辑）
     recv_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '服务端接收时间',
 
-    INDEX idx_device_time (device_id, data_time),
+    -- 针对历史曲线查询的联合索引（设备ID + 时间降序）
+    INDEX idx_device_time_desc (device_id, data_time DESC),
     INDEX idx_time (data_time),
 
     CONSTRAINT fk_sensor_device FOREIGN KEY (device_id) REFERENCES devices(id)
@@ -186,6 +198,8 @@ CREATE TABLE IF NOT EXISTS alerts (
     last_time TIMESTAMP NULL COMMENT '最后一次触发时间',
     trigger_count INT DEFAULT 1 COMMENT '触发次数',
 
+    -- 提升告警列表查询速度
+    INDEX idx_status_level_time (status, alert_level, created_time DESC),
     INDEX idx_status_time (status, created_time),
     INDEX idx_device_time (device_id, created_time),
     INDEX idx_wh_time (warehouse_id, created_time),
@@ -321,6 +335,10 @@ CREATE TABLE IF NOT EXISTS work_order_logs (
 - 在频繁查询的字段上建立索引
 - 传感器数据表按时间分区存储
 - 合理设置数据库连接池大小
+- 新增索引以提升特定查询性能：
+  - `idx_device_time_desc` 用于历史曲线查询
+  - `idx_area_path` 用于库区树状路径查询
+  - `idx_status_level_time` 用于告警列表查询
 
 ### 3.2 数据安全
 - 密码字段使用加密存储
