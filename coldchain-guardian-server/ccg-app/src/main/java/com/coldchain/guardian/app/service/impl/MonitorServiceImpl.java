@@ -36,10 +36,10 @@ public class MonitorServiceImpl implements MonitorService {
     }
 
     @Override
-    public List<TrendPointDTO> getDeviceTrend(Long deviceId, String from, String to, Integer interval) {
+    public List<TrendPointDTO> getDeviceTrend(Long deviceId, LocalDateTime from, LocalDateTime to, Integer interval) {
         // 验证设备是否存在
         // 这里可以加入验证设备存在的逻辑
 
-        return monitorMapper.selectDeviceTrend(deviceId, from, to, interval);
+        return monitorMapper.selectDeviceTrend(deviceId, from.toString(), to.toString(), interval);
     }
 }

@@ -11,7 +11,7 @@ public interface MonitorService {
 
     MonitorSummaryDTO getSummary();
 
-    PageResponse<MonitorDeviceDTO> getMonitorDevices(Integer page, Integer size, Long areaId, Boolean online, Boolean alarming, String keyword);
+    PageResponse<MonitorDeviceDTO> getMonitorDevices(Integer page, Integer size, Long areaId, Boolean online, Boolean alarming, String keyword, String deviceType);
 
-    List<TrendPointDTO> getDeviceTrend(Long deviceId, String from, String to, Integer interval);
+    List<TrendPointDTO> getDeviceTrend(Long deviceId, LocalDateTime from, LocalDateTime to, Integer interval);
 }

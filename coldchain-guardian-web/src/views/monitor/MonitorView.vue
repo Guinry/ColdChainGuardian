@@ -177,7 +177,8 @@ const refreshDeviceList = async () => {
       areaId: filters.areaId,
       online: filters.online,
       alarming: filters.alarming,
-      keyword: filters.keyword
+      keyword: filters.keyword,
+      deviceType: filters.deviceType  // 添加设备类型筛选参数
     }
     const response = await monitorApi.getMonitorDevices(params)
     if (alive.value) {
@@ -199,20 +200,22 @@ const refreshDeviceList = async () => {
 
 // 自动刷新控制
 const startAutoRefresh = () => {
-  if (timer.value) {
-    clearInterval(timer.value)
-  }
-  timer.value = setInterval(() => {
+  const loop = async () => {
     if (alive.value && autoRefreshEnabled.value) {
-      refreshSummary()
-      refreshDeviceList()
+      // 只刷新摘要数据和设备列表，不刷新库区树（库区结构很少变化）
+      await Promise.all([refreshSummary(), refreshDeviceList()])
     }
-  }, refreshInterval.value)
+    // 请求完成后，再开启下一个定时器
+    if (alive.value && autoRefreshEnabled.value) {
+      timer.value = setTimeout(loop, refreshInterval.value)
+    }
+  }
+  loop()
 }
 
 const stopAutoRefresh = () => {
   if (timer.value) {
-    clearInterval(timer.value)
+    clearTimeout(timer.value)
     timer.value = null
   }
 }
@@ -227,6 +230,7 @@ const toggleAutoRefresh = () => {
 
 const handleRefreshIntervalChange = () => {
   if (autoRefreshEnabled.value) {
+    stopAutoRefresh()
     startAutoRefresh()
   }
 }

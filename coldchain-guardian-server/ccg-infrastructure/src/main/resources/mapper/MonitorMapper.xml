@@ -55,6 +55,9 @@
         <if test="alarming != null">
             AND ua.alert_count IS NOT NULL
         </if>
+        <if test="deviceType != null and deviceType != ''">
+            AND d.device_type = #{deviceType}
+        </if>
         <if test="keyword != null and keyword != ''">
             AND (d.device_code LIKE CONCAT('%', #{keyword}, '%') OR d.device_name LIKE CONCAT('%', #{keyword}, '%'))
         </if>
@@ -115,6 +118,9 @@
         </if>
         <if test="alarming != null">
             AND ua.alert_count IS NOT NULL
+        </if>
+        <if test="deviceType != null and deviceType != ''">
+            AND d.device_type = #{deviceType}
         </if>
         <if test="keyword != null and keyword != ''">
             AND (d.device_code LIKE CONCAT('%', #{keyword}, '%') OR d.device_name LIKE CONCAT('%', #{keyword}, '%'))

@@ -278,38 +278,27 @@ const formatDate = (dateStr) => {
 }
 
 // 温度阈值判断相关函数
-const isOverThreshold = (value, min, max, type) => {
+const isOverThreshold = (value, min, max) => {
   if (value === null || value === undefined) return false
-  if (type === 'temp') {
-    return (min !== null && value < min) || (max !== null && value > max)
-  } else {
-    return (min !== null && value < min) || (max !== null && value > max)
-  }
+  return (min !== null && value < min) || (max !== null && value > max)
 }
 
-const isNearThreshold = (value, min, max, type) => {
+const isNearThreshold = (value, min, max) => {
   if (value === null || value === undefined) return false
-
-  // 判断是否接近阈值（差值小于0.5）
-  if (type === 'temp') {
-    if (min !== null && Math.abs(value - min) < 0.5) return true
-    if (max !== null && Math.abs(value - max) < 0.5) return true
-  } else {
-    if (min !== null && Math.abs(value - min) < 0.5) return true
-    if (max !== null && Math.abs(value - max) < 0.5) return true
-  }
-  return false
+  // 接近阈值：差值小于 0.5 (也可以根据温湿度分别设置不同的容差，比如湿度容差2%)
+  return (min !== null && Math.abs(value - min) < 0.5) ||
+         (max !== null && Math.abs(value - max) < 0.5)
 }
 
 const getTempClass = (temp, min, max) => {
-  if (isOverThreshold(temp, min, max, 'temp')) return 'over-threshold'
-  if (isNearThreshold(temp, min, max, 'temp')) return 'near-threshold'
+  if (isOverThreshold(temp, min, max)) return 'over-threshold'
+  if (isNearThreshold(temp, min, max)) return 'near-threshold'
   return temp !== null ? 'normal-temp' : 'no-data'
 }
 
 const getHumiClass = (humi, min, max) => {
-  if (isOverThreshold(humi, min, max, 'humi')) return 'over-threshold'
-  if (isNearThreshold(humi, min, max, 'humi')) return 'near-threshold'
+  if (isOverThreshold(humi, min, max)) return 'over-threshold'
+  if (isNearThreshold(humi, min, max)) return 'near-threshold'
   return humi !== null ? 'normal-humi' : 'no-data'
 }
 

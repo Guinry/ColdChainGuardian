@@ -7,8 +7,10 @@ import com.coldchain.guardian.contract.dto.monitor.MonitorDeviceDTO;
 import com.coldchain.guardian.contract.dto.monitor.MonitorSummaryDTO;
 import com.coldchain.guardian.contract.dto.monitor.TrendPointDTO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -37,9 +39,10 @@ public class MonitorController {
             @RequestParam(required = false) Long areaId,
             @RequestParam(required = false) Boolean online,
             @RequestParam(required = false) Boolean alarming,
-            @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String deviceType) {
 
-        PageResponse<MonitorDeviceDTO> result = monitorService.getMonitorDevices(page, size, areaId, online, alarming, keyword);
+        PageResponse<MonitorDeviceDTO> result = monitorService.getMonitorDevices(page, size, areaId, online, alarming, keyword, deviceType);
         return ApiResponse.success(result);
     }
 
@@ -49,8 +52,8 @@ public class MonitorController {
     @GetMapping("/devices/{deviceId}/trend")
     public ApiResponse<List<TrendPointDTO>> getDeviceTrend(
             @PathVariable Long deviceId,
-            @RequestParam String from,
-            @RequestParam String to,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime from,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime to,
             @RequestParam(defaultValue = "60") Integer interval) {
 
         List<TrendPointDTO> trend = monitorService.getDeviceTrend(deviceId, from, to, interval);

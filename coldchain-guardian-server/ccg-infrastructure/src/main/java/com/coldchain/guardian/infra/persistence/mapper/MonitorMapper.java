@@ -16,12 +16,14 @@ public interface MonitorMapper {
     int countMonitorDevices(@Param("areaId") Long areaId,
                            @Param("online") Boolean online,
                            @Param("alarming") Boolean alarming,
-                           @Param("keyword") String keyword);
+                           @Param("keyword") String keyword,
+                           @Param("deviceType") String deviceType);
 
     List<MonitorDeviceDTO> selectMonitorDevices(@Param("areaId") Long areaId,
                                               @Param("online") Boolean online,
                                               @Param("alarming") Boolean alarming,
                                               @Param("keyword") String keyword,
+                                              @Param("deviceType") String deviceType,
                                               @Param("limit") Integer limit,
                                               @Param("offset") Integer offset);
 
