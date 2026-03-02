@@ -5,6 +5,7 @@ import com.coldchain.guardian.contract.dto.monitor.MonitorDeviceDTO;
 import com.coldchain.guardian.contract.dto.monitor.MonitorSummaryDTO;
 import com.coldchain.guardian.contract.dto.monitor.TrendPointDTO;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface MonitorService {

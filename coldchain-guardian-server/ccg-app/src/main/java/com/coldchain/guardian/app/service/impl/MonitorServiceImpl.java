@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -40,6 +42,8 @@ public class MonitorServiceImpl implements MonitorService {
         // 验证设备是否存在
         // 这里可以加入验证设备存在的逻辑
 
-        return monitorMapper.selectDeviceTrend(deviceId, from.toString(), to.toString(), interval);
+        // 将LocalDateTime转换为字符串格式传递给mapper
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        return monitorMapper.selectDeviceTrend(deviceId, from.format(formatter), to.format(formatter), interval);
     }
 }
