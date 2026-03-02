@@ -143,31 +143,31 @@
         height="calc(100vh - 400px)"
         class="device-table"
       >
-        <el-table-column type="selection" width="55" />
-        <el-table-column prop="deviceCode" label="设备编码" width="150">
+        <el-table-column type="selection" width="55" align="center" header-align="center" />
+        <el-table-column prop="deviceCode" label="设备编码" width="120" align="center" header-align="center">
           <template #default="{ row }">
             <router-link :to="`/devices/${row.id}/data`" class="device-link">
               {{ row.deviceCode }}
             </router-link>
           </template>
         </el-table-column>
-        <el-table-column prop="deviceName" label="设备名称" width="150" />
-        <el-table-column prop="deviceType" label="设备类型" width="120">
+        <el-table-column prop="deviceName" label="设备名称" width="120" align="center" header-align="center" />
+        <el-table-column prop="deviceType" label="设备类型" width="100" align="center" header-align="center">
           <template #default="{ row }">
             <el-tag :type="getDeviceTypeTag(row.deviceType)">
               {{ getDeviceTypeLabel(row.deviceType) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="areaName" label="所属库区" width="150" />
-        <el-table-column prop="onlineStatus" label="在线状态" width="100">
+        <el-table-column prop="areaName" label="所属库区" width="120" align="center" header-align="center" />
+        <el-table-column prop="onlineStatus" label="在线状态" width="90" align="center" header-align="center">
           <template #default="{ row }">
             <el-tag :type="row.onlineStatus ? 'success' : 'info'">
               {{ row.onlineStatus ? '在线' : '离线' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="enabled" label="启用状态" width="100">
+        <el-table-column prop="enabled" label="启用状态" width="90" align="center" header-align="center">
           <template #default="{ row }">
             <el-switch
               v-model="row.enabled"
@@ -178,7 +178,7 @@
             />
           </template>
         </el-table-column>
-        <el-table-column prop="alarmEnabled" label="告警状态" width="100">
+        <el-table-column prop="alarmEnabled" label="告警状态" width="90" align="center" header-align="center">
           <template #default="{ row }">
             <el-switch
               v-model="row.alarmEnabled"
@@ -189,30 +189,45 @@
             />
           </template>
         </el-table-column>
-        <el-table-column prop="lastSeenTime" label="最后在线" width="180">
+        <el-table-column prop="lastSeenTime" label="最后在线" width="150" align="center" header-align="center">
           <template #default="{ row }">
             {{ row.lastSeenTime ? formatDate(row.lastSeenTime) : '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="300">
+        <el-table-column label="操作" width="220" align="center">
           <template #default="{ row }">
-            <el-button size="small" @click="viewData(row)">查看数据</el-button>
-            <el-button size="small" @click="viewAlerts(row)">查看告警</el-button>
-            <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
-            <el-button
-              size="small"
-              :type="row.enabled ? 'danger' : 'success'"
-              @click="toggleStatus(row)"
-            >
-              {{ row.enabled ? '禁用' : '启用' }}
-            </el-button>
-            <el-button
-              size="small"
-              :type="row.alarmEnabled ? 'warning' : 'info'"
-              @click="toggleAlarmStatus(row)"
-            >
-              {{ row.alarmEnabled ? '关闭告警' : '启用告警' }}
-            </el-button>
+            <div class="operation-flex">
+              <div class="button-cell">
+                <el-button size="small" @click="viewData(row)">查看数据</el-button>
+              </div>
+              <div class="button-cell">
+                <el-button size="small" @click="viewAlerts(row)">查看告警</el-button>
+              </div>
+              <div class="button-cell empty"></div>
+            </div>
+            <div class="operation-flex">
+              <div class="button-cell">
+                <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
+              </div>
+              <div class="button-cell">
+                <el-button
+                  size="small"
+                  :type="row.enabled ? 'danger' : 'success'"
+                  @click="toggleStatus(row)"
+                >
+                  {{ row.enabled ? '禁用' : '启用' }}
+                </el-button>
+              </div>
+              <div class="button-cell">
+                <el-button
+                  size="small"
+                  :type="row.alarmEnabled ? 'warning' : 'info'"
+                  @click="toggleAlarmStatus(row)"
+                >
+                  {{ row.alarmEnabled ? '关闭告警' : '启用告警' }}
+                </el-button>
+              </div>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -799,92 +814,119 @@ onMounted(async () => {
 
 <style scoped>
 .device-management-content {
-  padding: 20px;
+  padding: 24px;
   height: 100%;
-  min-height: 0;
+  box-sizing: border-box;
+  background-color: #f5f7fa; /* 增加浅灰背景，让白色卡片更突出 */
+  display: flex;
+  flex-direction: column;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #ebeef5;
+  margin-bottom: 24px;
 }
 
 .page-header h2 {
   margin: 0;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
-  color: #303133;
+  color: #1f2f3d;
 }
 
 .search-filters {
-  background: #fff;
-  padding: 20px;
-  border-radius: 4px;
+  background: #ffffff;
+  padding: 24px 24px 4px 24px;
+  border-radius: 8px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.04);
+  border: 1px solid #ebeef5;
 }
 
 .search-form :deep(.el-form-item) {
-  margin-bottom: 12px;
-  margin-right: 20px;
-}
-
-.search-form :deep(.el-form-item__label) {
-  font-weight: 600;
-  color: #606266;
+  margin-bottom: 20px;
+  margin-right: 24px;
 }
 
 .table-actions {
-  margin-bottom: 15px;
+  margin-bottom: 16px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .selected-count {
   color: #409eff;
-  font-weight: 600;
+  font-weight: 500;
+  font-size: 14px;
+  background: rgba(64, 158, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 4px;
 }
 
 .device-table {
   background: #fff;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.04);
+  border: 1px solid #ebeef5;
+  overflow: hidden; /* 防止表格边角溢出圆角 */
 }
 
 .device-link {
   color: #409eff;
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
+  transition: color 0.2s;
 }
 
 .device-link:hover {
+  color: #66b1ff;
   text-decoration: underline;
 }
 
-.unit {
-  margin-left: 10px;
-  color: #909399;
+.operation-flex {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.operation-flex:last-child {
+  margin-bottom: 0;
+}
+
+.button-cell {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 0 2px;
+}
+
+.button-cell.empty {
+  visibility: hidden;
 }
 
 .pagination {
-  margin-top: 20px;
-  text-align: right;
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+  background: #fff;
+  padding: 16px 24px;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.04);
 }
 
-.dialog-footer {
-  text-align: right;
+:deep(.el-dialog) {
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-:deep(.el-input-number) {
-  width: 100%;
-}
-
-:deep(.el-input-number .el-input__wrapper) {
-  padding: 0 11px;
+:deep(.el-dialog__header) {
+  background-color: #f8f9fa;
+  margin-right: 0;
+  padding: 20px 24px;
+  border-bottom: 1px solid #ebeef5;
 }
 </style>

@@ -37,13 +37,11 @@
 
       <!-- 主体：左侧库区树 + 右侧实时列表 -->
       <div class="main-content">
-        <div class="area-tree-panel">
-          <AreaTreePanel
-            :tree-data="areaTreeData"
-            @node-click="handleAreaNodeClick"
-            @search-change="handleAreaSearch"
-          />
-        </div>
+        <AreaTreePanel
+          :tree-data="areaTreeData"
+          @node-click="handleAreaNodeClick"
+          @search-change="handleAreaSearch"
+        />
 
         <div class="device-list-panel">
           <RealtimeDeviceTable
@@ -355,28 +353,19 @@ onBeforeUnmount(() => {
   gap: 20px;
   flex: 1;
   min-height: 0;
-}
-
-.area-tree-panel {
-  width: 30%;
-  min-width: 280px;
-  background: #fff;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
+  overflow: hidden;
 }
 
 .device-list-panel {
-  width: 70%;
+  flex: 1;
+  min-width: 600px;
   background: #fff;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   padding: 16px;
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 </style>
