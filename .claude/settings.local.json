@@ -20,7 +20,8 @@
       "Bash(tasklist:*)",
       "Bash(taskkill:*)",
       "Bash(npm install:*)",
-      "Bash(find C:\\\\Users\\\\23869\\\\Desktop\\\\ColdChainGuardian\\\\coldchain-guardian-web\\\\src:*)"
+      "Bash(find C:\\\\Users\\\\23869\\\\Desktop\\\\ColdChainGuardian\\\\coldchain-guardian-web\\\\src:*)",
+      "Bash(find .:*)"
     ]
   }
 }

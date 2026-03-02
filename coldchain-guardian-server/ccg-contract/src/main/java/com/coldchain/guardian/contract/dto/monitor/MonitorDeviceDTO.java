@@ -13,7 +13,6 @@ public class MonitorDeviceDTO {
     private String deviceType;
     private Long areaId;
     private String areaName;
-    private String areaPath;
     private Boolean online;
     private LocalDateTime lastSeenTime;
     private BigDecimal latestTemp;

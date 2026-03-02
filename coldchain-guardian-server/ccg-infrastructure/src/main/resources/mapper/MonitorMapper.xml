@@ -4,24 +4,31 @@
 
     <select id="getMonitorSummary" resultType="com.coldchain.guardian.contract.dto.monitor.MonitorSummaryDTO">
         SELECT
-            COUNT(d.id) as enabledDevices,
-            SUM(CASE WHEN UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time) &lt;= 120 THEN 1 ELSE 0 END) as onlineDevices,
-            SUM(CASE WHEN UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time) &gt; 120 THEN 1 ELSE 0 END) as offlineDevices,
-            COUNT(DISTINCT CASE WHEN ua.device_id IS NOT NULL THEN ua.device_id ELSE NULL END) as alarmingDevices,
-            COALESCE(unhandled_counts.count, 0) as unhandledAlerts,
-            COALESCE(today_counts.count, 0) as todayAlerts,
-            COUNT(DISTINCT CASE WHEN d.last_seen_time &gt;= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN d.id ELSE NULL END) as last5MinReportDevices
-        FROM devices d
-        LEFT JOIN (
-            SELECT device_id FROM alerts WHERE status IN ('UNHANDLED', 'HANDLING')
-        ) ua ON ua.device_id = d.id
-        LEFT JOIN (
-            SELECT COUNT(*) as count FROM alerts WHERE DATE(created_time) = CURDATE()
-        ) today_counts ON 1=1
-        LEFT JOIN (
-            SELECT COUNT(*) as count FROM alerts WHERE status IN ('UNHANDLED', 'HANDLING')
-        ) unhandled_counts ON 1=1
-        WHERE d.enabled = 1
+            base_stats.enabledDevices,
+            base_stats.onlineDevices,
+            base_stats.offlineDevices,
+            base_stats.alarmingDevices,
+            COALESCE(alert_counts.unhandledAlerts, 0) as unhandledAlerts,
+            COALESCE(alert_counts.todayAlerts, 0) as todayAlerts,
+            base_stats.last5MinReportDevices
+        FROM (
+            SELECT
+                COUNT(d.id) as enabledDevices,
+                SUM(CASE WHEN UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time) &lt;= 120 THEN 1 ELSE 0 END) as onlineDevices,
+                SUM(CASE WHEN UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time) &gt; 120 THEN 1 ELSE 0 END) as offlineDevices,
+                COUNT(DISTINCT CASE WHEN ua.device_id IS NOT NULL THEN ua.device_id ELSE NULL END) as alarmingDevices,
+                COUNT(DISTINCT CASE WHEN d.last_seen_time &gt;= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN d.id ELSE NULL END) as last5MinReportDevices
+            FROM devices d
+            LEFT JOIN (
+                SELECT device_id FROM alerts WHERE status IN ('UNHANDLED', 'HANDLING')
+            ) ua ON ua.device_id = d.id
+            WHERE d.enabled = 1
+        ) base_stats
+        CROSS JOIN (
+            SELECT
+                (SELECT COUNT(*) FROM alerts WHERE status IN ('UNHANDLED', 'HANDLING')) as unhandledAlerts,
+                (SELECT COUNT(*) FROM alerts WHERE DATE(created_time) = CURDATE()) as todayAlerts
+        ) alert_counts
     </select>
 
     <select id="countMonitorDevices" resultType="int">
@@ -80,7 +87,6 @@
             d.device_type as deviceType,
             d.area_id as areaId,
             wa.area_name as areaName,
-            wa.area_path as areaPath,
             CASE
                 WHEN UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time) &lt;= 120
                 THEN 1
