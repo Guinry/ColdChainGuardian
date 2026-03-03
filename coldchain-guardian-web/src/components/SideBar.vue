@@ -28,7 +28,7 @@
           <span>告警与工单</span>
         </template>
         <el-menu-item index="/alerts">告警中心</el-menu-item>
-        <el-menu-item index="/orders">工单管理</el-menu-item>
+        <el-menu-item index="/work-orders">工单管理</el-menu-item>
       </el-sub-menu>
 
       <el-sub-menu index="analysis">

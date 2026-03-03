@@ -155,7 +155,7 @@ const refreshSummary = async () => {
 // 刷新库区树数据
 const refreshAreaTree = async () => {
   try {
-    const response = await areaApi.getTree()
+    const response = await areaApi.getAreaTree()
     if (alive.value) {
       areaTreeData.value = response.data?.data
     }

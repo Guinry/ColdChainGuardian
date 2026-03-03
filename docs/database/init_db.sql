@@ -79,9 +79,27 @@ CREATE TABLE IF NOT EXISTS work_orders (
     created_by BIGINT NOT NULL,
     created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    completed_time TIMESTAMP NULL
+    completed_time TIMESTAMP NULL,
+    location_detail VARCHAR(255) NULL COMMENT '发生位置详细说明',
+    due_time TIMESTAMP NULL COMMENT '预计完成时间',
+    verified_time TIMESTAMP NULL COMMENT '审核/验收时间',
+    verification_result TEXT COMMENT '审核/验收结果描述',
+    order_type VARCHAR(50) DEFAULT 'MAINTENANCE' COMMENT '工单类型',
+    warehouse_id BIGINT NULL COMMENT '库区ID',
+    device_id BIGINT NULL COMMENT '设备ID',
+    ref_alert_id BIGINT NULL COMMENT '关联的告警ID'
 );
 
 -- 添加外键约束
 ALTER TABLE sensor_data ADD CONSTRAINT fk_sensor_device FOREIGN KEY (device_id) REFERENCES devices(id);
 ALTER TABLE alerts ADD CONSTRAINT fk_alert_device FOREIGN KEY (device_id) REFERENCES devices(id);
+ALTER TABLE work_orders
+ADD COLUMN IF NOT EXISTS verified_time TIMESTAMP NULL COMMENT '审核/验收时间',
+ADD COLUMN IF NOT EXISTS verification_result TEXT COMMENT '审核/验收结果描述',
+ADD COLUMN IF NOT EXISTS location_detail VARCHAR(255) NULL COMMENT '发生位置详细说明',
+ADD COLUMN IF NOT EXISTS due_time TIMESTAMP NULL COMMENT '预计完成时间',
+ADD COLUMN IF NOT EXISTS order_type VARCHAR(50) DEFAULT 'MAINTENANCE' COMMENT '工单类型',
+ADD COLUMN IF NOT EXISTS warehouse_id BIGINT NULL COMMENT '库区ID',
+ADD COLUMN IF NOT EXISTS device_id BIGINT NULL COMMENT '设备ID',
+ADD COLUMN IF NOT EXISTS ref_alert_id BIGINT NULL COMMENT '关联的告警ID';
+

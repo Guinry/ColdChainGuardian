@@ -22,7 +22,9 @@
       "Bash(npm install:*)",
       "Bash(find C:\\\\Users\\\\23869\\\\Desktop\\\\ColdChainGuardian\\\\coldchain-guardian-web\\\\src:*)",
       "Bash(find .:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(mvn compile:*)",
+      "Bash(echo:*)"
     ]
   }
 }

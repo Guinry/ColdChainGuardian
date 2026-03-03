@@ -84,7 +84,7 @@
 
       <el-table-column prop="areaPath" label="所属库区" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">
-          <el-link type="primary" @click="goToArea(row.areaId)" :underline="false">
+          <el-link type="primary" @click="goToArea(row.areaId)" :underline="'never'">
             <el-icon><Location /></el-icon>
             {{ row.areaPath }}
           </el-link>

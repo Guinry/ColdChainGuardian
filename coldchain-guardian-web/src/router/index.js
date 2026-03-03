@@ -47,6 +47,18 @@ const routes = [
     name: 'Monitor',
     component: () => import('../views/monitor/MonitorView.vue'),
     meta: { requiresAuth: true, permissions: ['monitor:view'] }
+  },
+  {
+    path: '/work-orders',
+    name: 'WorkOrderCenter',
+    component: () => import('../views/work-order/WorkOrderCenterView.vue'),
+    meta: { requiresAuth: true, permissions: ['workorder:view'] }
+  },
+  {
+    path: '/alerts',
+    name: 'AlertCenter',
+    component: () => import('../views/alert/AlertCenterView.vue'),
+    meta: { requiresAuth: true, permissions: ['alert:view'] }
   }
 ]
 

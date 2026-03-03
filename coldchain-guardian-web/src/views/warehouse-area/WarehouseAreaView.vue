@@ -57,12 +57,16 @@
                   {{ getLevelLabel(data.areaLevel) }}
                 </el-tag>
                 <div class="node-status-icons">
-                  <el-tooltip content="已禁用" placement="top" v-show="data.status === 0">
-                    <el-icon class="status-icon disabled"><CircleCloseFilled /></el-icon>
-                  </el-tooltip>
-                  <el-tooltip content="告警已关闭" placement="top" v-show="data.alarmEnabled === 0">
-                    <el-icon class="status-icon alarm-disabled"><Mute /></el-icon>
-                  </el-tooltip>
+                  <template v-if="data.status === 0">
+                    <el-tooltip content="已禁用" placement="top">
+                      <el-icon class="status-icon disabled"><CircleCloseFilled /></el-icon>
+                    </el-tooltip>
+                  </template>
+                  <template v-if="data.alarmEnabled === 0">
+                    <el-tooltip content="告警已关闭" placement="top">
+                      <el-icon class="status-icon alarm-disabled"><Mute /></el-icon>
+                    </el-tooltip>
+                  </template>
                 </div>
                 <div class="node-actions" @click.stop>
                   <el-button
