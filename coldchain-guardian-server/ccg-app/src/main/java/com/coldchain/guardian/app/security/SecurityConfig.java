@@ -29,11 +29,13 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/api/auth/**").permitAll()  // 允许认证接口无需认证
+                        .requestMatchers("/api/auth/**", "/error").permitAll()  // 允许认证接口和错误页面无需认证
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()  // 允许Swagger接口
                         .requestMatchers("/ws/**").permitAll()  // 允许WebSocket接口
                         .requestMatchers("/api/monitor/**").hasAnyRole("ADMIN", "MANAGER", "USER")  // 允许监控接口
                         .requestMatchers("/api/areas/**").hasAnyRole("ADMIN", "MANAGER", "USER")  // 允许库区管理接口
+                        .requestMatchers("/api/work-orders/**").hasAnyRole("ADMIN", "MANAGER", "USER")  // 允许工单管理接口
+                        .requestMatchers("/api/alerts/**").hasAnyRole("ADMIN", "MANAGER", "USER")  // 允许告警管理接口
                         .anyRequest().authenticated()  // 其他请求都需要认证
                 )
                 .addFilterBefore(jwtAuthenticationTokenFilter, UsernamePasswordAuthenticationFilter.class);

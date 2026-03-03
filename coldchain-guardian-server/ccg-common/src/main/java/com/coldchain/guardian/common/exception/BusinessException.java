@@ -3,24 +3,42 @@ package com.coldchain.guardian.common.exception;
 public class BusinessException extends RuntimeException {
 
     private int code;
-    private String message;
+    private String errorMessage;
 
     public BusinessException(ErrorCode errorCode) {
         super(errorCode.getMessage());
         this.code = errorCode.getCode();
-        this.message = errorCode.getMessage();
+        this.errorMessage = errorCode.getMessage();
+    }
+
+    public BusinessException(ErrorCode errorCode, String message) {
+        super(message);
+        this.code = errorCode.getCode();
+        this.errorMessage = message;
+    }
+
+    public BusinessException(ErrorCode errorCode, String message, Throwable cause) {
+        super(message, cause);
+        this.code = errorCode.getCode();
+        this.errorMessage = message;
     }
 
     public BusinessException(int code, String message) {
         super(message);
         this.code = code;
-        this.message = message;
+        this.errorMessage = message;
+    }
+
+    public BusinessException(int code, String message, Throwable cause) {
+        super(message, cause);
+        this.code = code;
+        this.errorMessage = message;
     }
 
     public BusinessException(String message) {
         super(message);
         this.code = ErrorCode.SYSTEM_ERROR.getCode();
-        this.message = message;
+        this.errorMessage = message;
     }
 
     public int getCode() {
@@ -33,10 +51,10 @@ public class BusinessException extends RuntimeException {
 
     @Override
     public String getMessage() {
-        return message;
+        return errorMessage;
     }
 
-    public void setMessage(String message) {
-        this.message = message;
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
     }
 }

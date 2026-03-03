@@ -104,7 +104,7 @@ public class AuthService {
 
         // 设置默认值
         if (user.getRole() == null) {
-            user.setRole("employee"); // 默认角色为员工
+            user.setRole("USER"); // 默认角色为普通用户 (大写以匹配SecurityConfig)
         }
         if (user.getStatus() == null) {
             user.setStatus(1); // 默认启用状态

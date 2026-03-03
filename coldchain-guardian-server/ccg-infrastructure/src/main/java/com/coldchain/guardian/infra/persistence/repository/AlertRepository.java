@@ -38,26 +38,7 @@ public class AlertRepository {
      * 根据设备ID查询告警列表（分页）
      */
     public List<AlertEntity> findByDeviceId(Long deviceId, Integer page, Integer size, String alertType, String alertLevel, String status, LocalDateTime startTime, LocalDateTime endTime) {
-        LambdaQueryWrapper<AlertEntity> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(AlertEntity::getDeviceId, deviceId);
-
-        if (alertType != null && !alertType.isEmpty()) {
-            queryWrapper.eq(AlertEntity::getAlertType, alertType);
-        }
-        if (alertLevel != null && !alertLevel.isEmpty()) {
-            queryWrapper.eq(AlertEntity::getAlertLevel, alertLevel);
-        }
-        if (status != null && !status.isEmpty()) {
-            queryWrapper.eq(AlertEntity::getStatus, status);
-        }
-        if (startTime != null) {
-            queryWrapper.ge(AlertEntity::getFirstTime, startTime);
-        }
-        if (endTime != null) {
-            queryWrapper.le(AlertEntity::getFirstTime, endTime);
-        }
-
-        queryWrapper.orderByDesc(AlertEntity::getFirstTime);
+        LambdaQueryWrapper<AlertEntity> queryWrapper = buildCommonQueryWrapper(deviceId, alertType, alertLevel, status, startTime, endTime);
 
         // 使用MyBatis-Plus的分页插件
         Page<AlertEntity> pageInfo = new Page<>(page, size);
@@ -69,25 +50,7 @@ public class AlertRepository {
      * 根据设备ID查询告警总数
      */
     public long countByDeviceId(Long deviceId, String alertType, String alertLevel, String status, LocalDateTime startTime, LocalDateTime endTime) {
-        LambdaQueryWrapper<AlertEntity> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(AlertEntity::getDeviceId, deviceId);
-
-        if (alertType != null && !alertType.isEmpty()) {
-            queryWrapper.eq(AlertEntity::getAlertType, alertType);
-        }
-        if (alertLevel != null && !alertLevel.isEmpty()) {
-            queryWrapper.eq(AlertEntity::getAlertLevel, alertLevel);
-        }
-        if (status != null && !status.isEmpty()) {
-            queryWrapper.eq(AlertEntity::getStatus, status);
-        }
-        if (startTime != null) {
-            queryWrapper.ge(AlertEntity::getFirstTime, startTime);
-        }
-        if (endTime != null) {
-            queryWrapper.le(AlertEntity::getFirstTime, endTime);
-        }
-
+        LambdaQueryWrapper<AlertEntity> queryWrapper = buildCommonQueryWrapper(deviceId, alertType, alertLevel, status, startTime, endTime);
         return alertMapper.selectCount(queryWrapper);
     }
 
@@ -107,10 +70,10 @@ public class AlertRepository {
             queryWrapper.eq(AlertEntity::getAlertLevel, alertLevel);
         }
         if (startTime != null) {
-            queryWrapper.ge(AlertEntity::getFirstTime, startTime);
+            queryWrapper.ge(AlertEntity::getCreateTime, startTime);  // 修改为使用getCreateTime
         }
         if (endTime != null) {
-            queryWrapper.le(AlertEntity::getFirstTime, endTime);
+            queryWrapper.le(AlertEntity::getCreateTime, endTime);  // 修改为使用getCreateTime
         }
 
         return alertMapper.selectCount(queryWrapper);
@@ -135,7 +98,49 @@ public class AlertRepository {
      */
     public List<AlertEntity> findAll() {
         LambdaQueryWrapper<AlertEntity> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.orderByDesc(AlertEntity::getFirstTime);
+        queryWrapper.orderByDesc(AlertEntity::getCreateTime);  // 修改为使用getCreateTime
         return alertMapper.selectList(queryWrapper);
+    }
+
+    /**
+     * 查询紧急告警（未处理的紧急和高危告警）
+     */
+    public List<AlertEntity> findUrgentAlerts() {
+        LambdaQueryWrapper<AlertEntity> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(AlertEntity::getStatus, "UNHANDLED")
+                   .and(wrapper -> wrapper.eq(AlertEntity::getAlertLevel, "CRITICAL")
+                                         .or()
+                                         .eq(AlertEntity::getAlertLevel, "HIGH"));
+        queryWrapper.orderByDesc(AlertEntity::getCreateTime);  // 修改为使用getCreateTime
+        return alertMapper.selectList(queryWrapper);
+    }
+
+    /**
+     * 构建通用查询条件
+     */
+    private LambdaQueryWrapper<AlertEntity> buildCommonQueryWrapper(Long deviceId, String alertType, String alertLevel, String status, LocalDateTime startTime, LocalDateTime endTime) {
+        LambdaQueryWrapper<AlertEntity> queryWrapper = new LambdaQueryWrapper<>();
+
+        if (deviceId != null) {
+            queryWrapper.eq(AlertEntity::getDeviceId, deviceId);
+        }
+        if (alertType != null && !alertType.isEmpty()) {
+            queryWrapper.eq(AlertEntity::getAlertType, alertType);
+        }
+        if (alertLevel != null && !alertLevel.isEmpty()) {
+            queryWrapper.eq(AlertEntity::getAlertLevel, alertLevel);
+        }
+        if (status != null && !status.isEmpty()) {
+            queryWrapper.eq(AlertEntity::getStatus, status);
+        }
+        if (startTime != null) {
+            queryWrapper.ge(AlertEntity::getCreateTime, startTime);  // 修改为使用getCreateTime
+        }
+        if (endTime != null) {
+            queryWrapper.le(AlertEntity::getCreateTime, endTime);  // 修改为使用getCreateTime
+        }
+
+        queryWrapper.orderByDesc(AlertEntity::getCreateTime);  // 修改为使用getCreateTime
+        return queryWrapper;
     }
 }

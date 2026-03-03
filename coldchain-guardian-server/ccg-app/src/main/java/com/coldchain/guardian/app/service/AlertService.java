@@ -2,8 +2,9 @@ package com.coldchain.guardian.app.service;
 
 import com.coldchain.guardian.contract.dto.alert.AlertDto;
 import com.coldchain.guardian.contract.dto.alert.CreateAlertRequestDto;
+import com.coldchain.guardian.contract.dto.workorder.CreateWorkOrderRequestDto;
+import com.coldchain.guardian.contract.dto.workorder.WorkOrderDto;
 import com.coldchain.guardian.infra.persistence.entity.AlertEntity;
-import com.coldchain.guardian.infra.persistence.entity.DeviceEntity;
 import com.coldchain.guardian.infra.persistence.repository.AlertRepository;
 import com.coldchain.guardian.infra.persistence.repository.DeviceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,9 @@ public class AlertService {
 
     @Autowired
     private DeviceRepository deviceRepository;
+
+    @Autowired
+    private WorkOrderService workOrderService;
 
     /**
      * 根据设备ID获取告警列表（分页）
@@ -122,6 +126,10 @@ public class AlertService {
         entity.setHandleTime(LocalDateTime.now());
         entity.setHandleRemark(handleRemark);
 
+        if ("RESOLVED".equals(status)) {
+            entity.setResolvedTime(LocalDateTime.now());
+        }
+
         alertRepository.save(entity);
 
         return convertToAlertDto(entity);
@@ -188,6 +196,161 @@ public class AlertService {
         stats.setIgnoredCount(ignoredCount);
 
         return stats;
+    }
+
+    /**
+     * 搜索告警（多维度）
+     */
+    public List<AlertDto> searchAlerts(String keyword, String location, String level, String status,
+                                      String startTime, String endTime, Integer page, Integer size) {
+        LocalDateTime startDateTime = null;
+        LocalDateTime endDateTime = null;
+
+        if (startTime != null && !startTime.isEmpty()) {
+            startDateTime = LocalDateTime.parse(startTime.replace("Z", ""), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        }
+        if (endTime != null && !endTime.isEmpty()) {
+            endDateTime = LocalDateTime.parse(endTime.replace("Z", ""), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        }
+
+        // 使用现有的repository方法，传入所有过滤条件
+        // 我们不能直接使用null的deviceId，而是需要根据location查找
+        List<AlertEntity> entities = alertRepository.findByDeviceId(
+            null, page, size, null, level, status, startDateTime, endDateTime);
+
+        // 对keyword和location进行内存中的过滤
+        List<AlertEntity> filteredEntities = entities.stream()
+            .filter(alert -> keyword == null || keyword.isEmpty() ||
+                           (alert.getMessage() != null && alert.getMessage().contains(keyword)) ||
+                           (alert.getDeviceName() != null && alert.getDeviceName().contains(keyword)))
+            .filter(alert -> location == null || location.isEmpty() ||
+                           (alert.getAreaName() != null && alert.getAreaName().contains(location)) ||
+                           (alert.getDeviceName() != null && alert.getDeviceName().contains(location)))
+            .collect(Collectors.toList());
+
+        return filteredEntities.stream()
+                .map(this::convertToAlertDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 获取告警总数量（用于分页计算）
+     */
+    public long getTotalAlertCount(String keyword, String location, String level, String status,
+                                  String startTime, String endTime) {
+        LocalDateTime startDateTime = null;
+        LocalDateTime endDateTime = null;
+
+        if (startTime != null && !startTime.isEmpty()) {
+            startDateTime = LocalDateTime.parse(startTime.replace("Z", ""), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        }
+        if (endTime != null && !endTime.isEmpty()) {
+            endDateTime = LocalDateTime.parse(endTime.replace("Z", ""), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        }
+
+        // 如果提供了具体的位置（库区/设备），我们可能需要先从其他地方获取对应的设备ID
+        Long deviceId = null;
+        if (location != null && !location.isEmpty()) {
+            // 在实际实现中，这里需要从库区/设备名称查找ID
+            // 目前暂时设为null，这将导致忽略位置筛选
+            // 未来可以扩展设备服务来提供此功能
+        }
+
+        // 使用repository的计数方法
+        long totalCount = alertRepository.countByDeviceId(
+            deviceId, null, level, status, startDateTime, endDateTime);
+
+        // 对keyword进行内存中的计数
+        if (keyword != null && !keyword.isEmpty()) {
+            // 由于我们无法直接在数据库中进行关键词搜索，需要先获取所有匹配的记录
+            List<AlertEntity> entities = alertRepository.findByDeviceId(
+                deviceId, 1, (int)totalCount, null, level, status, startDateTime, endDateTime);
+
+            return entities.stream()
+                .filter(alert -> keyword == null || keyword.isEmpty() ||
+                               (alert.getMessage() != null && alert.getMessage().contains(keyword)) ||
+                               (alert.getDeviceName() != null && alert.getDeviceName().contains(keyword)))
+                .filter(alert -> location == null || location.isEmpty() ||
+                               (alert.getAreaName() != null && alert.getAreaName().contains(location)) ||
+                               (alert.getDeviceName() != null && alert.getDeviceName().contains(location)))
+                .count();
+        } else if (location != null && !location.isEmpty()) {
+            // 如果只有位置筛选，也需要在内存中过滤
+            List<AlertEntity> entities = alertRepository.findByDeviceId(
+                deviceId, 1, (int)totalCount, null, level, status, startDateTime, endDateTime);
+
+            return entities.stream()
+                .filter(alert -> location == null || location.isEmpty() ||
+                               (alert.getAreaName() != null && alert.getAreaName().contains(location)) ||
+                               (alert.getDeviceName() != null && alert.getDeviceName().contains(location)))
+                .count();
+        }
+
+        return totalCount;
+    }
+
+    /**
+     * 将告警转为工单
+     */
+    public WorkOrderDto convertAlertToWorkOrder(Long alertId, Long assigneeId, String assigneeName, String description) {
+        AlertEntity alert = alertRepository.findById(alertId);
+        if (alert == null) {
+            return null;
+        }
+
+        // Create work order from alert
+        CreateWorkOrderRequestDto workOrderRequest = new CreateWorkOrderRequestDto();
+        workOrderRequest.setTitle("告警处理工单 - " + alert.getAlertType());
+        workOrderRequest.setDescription(description != null ? description : "处理来自告警的工单: " + alert.getMessage());
+        workOrderRequest.setPriority(convertAlertLevelToPriority(alert.getAlertLevel()));
+        workOrderRequest.setAssigneeId(assigneeId);
+        workOrderRequest.setReporterId(1L); // System or admin user
+        workOrderRequest.setAlertId(alertId);
+
+        // Update alert status to HANDLING
+        alert.setStatus("HANDLING");
+        alert.setHandleTime(LocalDateTime.now());
+        alertRepository.save(alert);
+
+        return workOrderService.createWorkOrder(workOrderRequest);
+    }
+
+    /**
+     * 批量将告警转为工单
+     */
+    public List<WorkOrderDto> batchConvertAlertsToWorkOrders(List<Long> alertIds, Long assigneeId, String assigneeName, String description) {
+        return alertIds.stream()
+                .map(alertId -> convertAlertToWorkOrder(alertId, assigneeId, assigneeName,
+                      description != null ? description + " (批量创建)" : "批量处理告警工单"))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 获取紧急告警列表（未处理的紧急和高危告警）
+     */
+    public List<AlertDto> getUrgentAlerts() {
+        List<AlertEntity> urgentAlerts = alertRepository.findUrgentAlerts();
+        return urgentAlerts.stream()
+                .map(this::convertToAlertDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Helper method to convert alert level to priority
+     */
+    private String convertAlertLevelToPriority(String alertLevel) {
+        switch (alertLevel) {
+            case "CRITICAL":
+                return "URGENT";
+            case "HIGH":
+                return "HIGH";
+            case "MEDIUM":
+                return "MEDIUM";
+            case "LOW":
+                return "LOW";
+            default:
+                return "MEDIUM";
+        }
     }
 
     private AlertDto convertToAlertDto(AlertEntity entity) {

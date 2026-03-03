@@ -6,15 +6,23 @@ public class WorkOrderDto {
     private String title;
     private String description;
     private String status; // CREATED, ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED
+    private String workType; // 工单类型：ALERT_DEFECT, ROUTINE_INSPECTION, EQUIPMENT_MAINTENANCE
     private String priority; // LOW, MEDIUM, HIGH, URGENT
     private Long assigneeId;
     private String assigneeName;
     private Long reporterId;
     private String reporterName;
     private Long alertId; // 关联的告警ID
+    private Long warehouseId;
+    private String warehouseName;
+    private Long deviceId;
+    private String deviceName;
+    private String locationDetail;
+    private Long dueDate; // 截止时间戳
+    private Long completedAt;
+    private Long verifiedAt; // 验收时间戳
     private Long createdAt;
     private Long updatedAt;
-    private Long completedAt;
 
     // getters and setters
     public Long getId() {
@@ -47,6 +55,14 @@ public class WorkOrderDto {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getWorkType() {
+        return workType;
+    }
+
+    public void setWorkType(String workType) {
+        this.workType = workType;
     }
 
     public String getPriority() {
@@ -97,6 +113,70 @@ public class WorkOrderDto {
         this.alertId = alertId;
     }
 
+    public Long getWarehouseId() {
+        return warehouseId;
+    }
+
+    public void setWarehouseId(Long warehouseId) {
+        this.warehouseId = warehouseId;
+    }
+
+    public String getWarehouseName() {
+        return warehouseName;
+    }
+
+    public void setWarehouseName(String warehouseName) {
+        this.warehouseName = warehouseName;
+    }
+
+    public Long getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(Long deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    public String getDeviceName() {
+        return deviceName;
+    }
+
+    public void setDeviceName(String deviceName) {
+        this.deviceName = deviceName;
+    }
+
+    public String getLocationDetail() {
+        return locationDetail;
+    }
+
+    public void setLocationDetail(String locationDetail) {
+        this.locationDetail = locationDetail;
+    }
+
+    public Long getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(Long dueDate) {
+        this.dueDate = dueDate;
+    }
+
+    public Long getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(Long completedAt) {
+        this.completedAt = completedAt;
+    }
+
+    public Long getVerifiedAt() {
+        return verifiedAt;
+    }
+
+    public void setVerifiedAt(Long verifiedAt) {
+        this.verifiedAt = verifiedAt;
+    }
+
     public Long getCreatedAt() {
         return createdAt;
     }
@@ -111,13 +191,5 @@ public class WorkOrderDto {
 
     public void setUpdatedAt(Long updatedAt) {
         this.updatedAt = updatedAt;
-    }
-
-    public Long getCompletedAt() {
-        return completedAt;
-    }
-
-    public void setCompletedAt(Long completedAt) {
-        this.completedAt = completedAt;
     }
 }

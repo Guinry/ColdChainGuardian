@@ -57,46 +57,46 @@ public class AlertEntity extends BaseEntity {
     @TableField("handle_remark")
     private String handleRemark; // 处理备注
 
-    @TableField("acknowledged_time")
+    @TableField(value = "acknowledged_time", exist = false)
     private LocalDateTime acknowledgedTime; // 确认时间
 
-    @TableField("resolved_time")
+    @TableField(value = "resolved_time", exist = false)
     private LocalDateTime resolvedTime; // 解决时间
 
-    @TableField("first_time")
+    @TableField(value = "first_time", exist = false)
     private LocalDateTime firstTime; // 首次触发时间
 
-    @TableField("last_time")
+    @TableField(value = "last_time", exist = false)
     private LocalDateTime lastTime; // 最后一次触发时间
 
-    @TableField("trigger_count")
+    @TableField(value = "trigger_count", exist = false)
     private Integer triggerCount; // 触发次数
 
-    @TableField("device_code")
+    @TableField(value = "device_code", exist = false)
     private String deviceCode; // 设备编码
 
-    @TableField("device_name")
+    @TableField(value = "device_name", exist = false)
     private String deviceName; // 设备名称
 
-    @TableField("area_id")
+    @TableField(value = "area_id", exist = false)
     private Long areaId; // 库区ID
 
-    @TableField("area_name")
+    @TableField(value = "area_name", exist = false)
     private String areaName; // 库区名称
 
-    @TableField("handler_name")
+    @TableField(value = "handler_name", exist = false)
     private String handlerName; // 处理人姓名
 
-    @TableField("temperature_threshold_min")
+    @TableField(value = "temperature_threshold_min", exist = false)
     private BigDecimal temperatureThresholdMin; // 温度阈值下限
 
-    @TableField("temperature_threshold_max")
+    @TableField(value = "temperature_threshold_max", exist = false)
     private BigDecimal temperatureThresholdMax; // 温度阈值上限
 
-    @TableField("humidity_threshold_min")
+    @TableField(value = "humidity_threshold_min", exist = false)
     private BigDecimal humidityThresholdMin; // 湿度阈值下限
 
-    @TableField("humidity_threshold_max")
+    @TableField(value = "humidity_threshold_max", exist = false)
     private BigDecimal humidityThresholdMax; // 湿度阈值上限
 
     // 构造函数
