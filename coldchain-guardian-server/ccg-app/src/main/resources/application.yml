@@ -21,6 +21,17 @@ spring:
           max-idle: 10
           min-idle: 1
           time-between-eviction-runs: 10s
+
+  ai:
+    openai:
+      api-key: "sk-sp-88d22e2a8a694bcc8ea3f28dcb1d1922"
+      # 2. 因为我们是用 OpenAI 的壳子调用通义千问，所以必须替换 Base URL
+      base-url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
+      chat:
+        options:
+          # 3. 指定使用的通义千问模型版本
+          model: "qwen3.5-plus"
+
   main:
     allow-bean-definition-overriding: true
 
