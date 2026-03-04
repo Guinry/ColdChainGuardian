@@ -1,167 +1,176 @@
 <template>
-  <div class="ai-assistant-container">
-    <!-- 左侧历史会话栏 -->
-    <div class="history-sidebar">
-      <div class="sidebar-header">
-        <el-button type="primary" icon="Plus" @click="createNewChat">
-          + 新建洞察
-        </el-button>
-      </div>
+  <Layout>
+    <div class="ai-assistant-container">
+      <!-- 左侧历史会话栏 -->
+      <div class="history-sidebar">
+        <div class="sidebar-header">
+          <el-button type="primary" icon="Plus" @click="createNewChat">
+            + 新建洞察
+          </el-button>
+        </div>
 
-      <div class="chat-history-list">
-        <div
-          v-for="session in chatSessions"
-          :key="session.id"
-          class="chat-item"
-          :class="{ active: session.id === currentSessionId }"
-          @mouseenter="hoveredSessionId = session.id"
-          @mouseleave="hoveredSessionId = null"
-          @click="switchSession(session.id)"
-        >
-          <div class="chat-info">
-            <div class="chat-title">{{ session.title }}</div>
-            <div class="chat-time">{{ formatDate(session.lastUpdated) }}</div>
-          </div>
-          <div class="chat-actions" v-show="hoveredSessionId === session.id">
-            <el-icon @click.stop="renameSession(session.id)" class="action-icon"><Edit /></el-icon>
-            <el-icon @click.stop="deleteSession(session.id)" class="action-icon"><Delete /></el-icon>
+        <div class="chat-history-list">
+          <div
+            v-for="session in chatSessions"
+            :key="session.id"
+            class="chat-item"
+            :class="{ active: session.id === currentSessionId }"
+            @mouseenter="hoveredSessionId = session.id"
+            @mouseleave="hoveredSessionId = null"
+            @click="switchSession(session.id)"
+          >
+            <div class="chat-info">
+              <div class="chat-title">{{ session.title }}</div>
+              <div class="chat-time">{{ formatDate(session.lastUpdated) }}</div>
+            </div>
+            <div class="chat-actions" v-show="hoveredSessionId === session.id">
+              <el-icon @click.stop="renameSession(session.id)" class="action-icon"><Edit /></el-icon>
+              <el-icon @click.stop="deleteSession(session.id)" class="action-icon"><Delete /></el-icon>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 右侧核心对话区 -->
-    <div class="chat-main-area">
-      <!-- 消息列表 -->
-      <div class="messages-container" ref="messagesContainer">
-        <!-- 空状态 -->
-        <div v-if="currentMessages.length === 0" class="empty-state">
-          <div class="welcome-message">
-            <h2>您好，我是冷链守护 AI</h2>
-            <p>我可以帮您分析告警、排查设备故障，或生成运维报告。</p>
-          </div>
-
-          <!-- 快捷指令卡片 -->
-          <div class="prompt-suggestions">
-            <el-card
-              v-for="prompt in quickPrompts"
-              :key="prompt.id"
-              class="prompt-card"
-              @click="sendPrompt(prompt.text)"
-            >
-              <el-icon><Lightning /></el-icon>
-              {{ prompt.text }}
-            </el-card>
-          </div>
-        </div>
-
+      <!-- 右侧核心对话区 -->
+      <div class="chat-main-area">
         <!-- 消息列表 -->
-        <div
-          v-for="(message, index) in currentMessages"
-          :key="index"
-          class="message-wrapper"
-          :class="{ 'user-message': message.role === 'user', 'assistant-message': message.role === 'assistant' }"
-        >
-          <!-- AI消息带头像 -->
-          <div v-if="message.role === 'assistant'" class="assistant-content">
+        <div class="messages-container" ref="messagesContainer">
+          <!-- 空状态 -->
+          <div v-if="currentMessages.length === 0" class="empty-state">
+            <div class="welcome-message">
+              <h2>您好，我是冷链守护 AI</h2>
+              <p>我可以帮您分析告警、排查设备故障，或生成运维报告。</p>
+            </div>
+
+            <!-- 快捷指令卡片 -->
+            <div class="prompt-suggestions">
+              <el-card
+                v-for="prompt in quickPrompts"
+                :key="prompt.id"
+                class="prompt-card"
+                @click="sendPrompt(prompt.text)"
+              >
+                <el-icon><Lightning /></el-icon>
+                {{ prompt.text }}
+              </el-card>
+            </div>
+          </div>
+
+          <!-- 消息列表 -->
+          <div
+            v-for="(message, index) in currentMessages"
+            :key="index"
+            class="message-wrapper"
+            :class="{ 'user-message': message.role === 'user', 'assistant-message': message.role === 'assistant' }"
+          >
+            <!-- AI消息带头像 -->
+            <div v-if="message.role === 'assistant'" class="assistant-content">
+              <div class="avatar">
+                <el-avatar :size="32" icon="ChatLineRound" />
+              </div>
+              <div class="message-bubble assistant-bubble">
+                <!-- AI回复内容 -->
+                <div class="message-text" v-html="renderMarkdown(message.content)" />
+
+                <!-- 结构化卡片渲染 -->
+                <div v-if="message.cards && message.cards.length > 0" class="structured-cards">
+                  <component
+                    v-for="(card, cardIndex) in message.cards"
+                    :key="cardIndex"
+                    :is="getCardComponent(card.type)"
+                    :data="card.data"
+                  />
+                </div>
+
+                <!-- 思考状态 -->
+                <div v-if="message.thinking" class="thinking-state">
+                  <el-icon><Loading /></el-icon>
+                  正在{{ message.thinkingText }}...
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="message-actions">
+                  <el-button size="small" icon="DocumentCopy" @click="copyMessage(message.content)">复制</el-button>
+                  <el-button size="small" icon="ThumbUp" @click="likeMessage(message)">赞</el-button>
+                  <el-button size="small" icon="ThumbDown" @click="dislikeMessage(message)">踩</el-button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 用户消息 -->
+            <div v-else class="user-content">
+              <div class="message-bubble user-bubble">
+                {{ message.content }}
+              </div>
+            </div>
+          </div>
+
+          <!-- AI正在思考状态 -->
+          <div v-if="isThinking" class="assistant-content">
             <div class="avatar">
               <el-avatar :size="32" icon="ChatLineRound" />
             </div>
-            <div class="message-bubble assistant-bubble">
-              <!-- AI回复内容 -->
-              <div class="message-text" v-html="renderMarkdown(message.content)" />
-
-              <!-- 结构化卡片渲染 -->
-              <div v-if="message.cards && message.cards.length > 0" class="structured-cards">
-                <component
-                  v-for="(card, cardIndex) in message.cards"
-                  :key="cardIndex"
-                  :is="getCardComponent(card.type)"
-                  :data="card.data"
-                />
-              </div>
-
-              <!-- 思考状态 -->
-              <div v-if="message.thinking" class="thinking-state">
-                <el-icon><Loading /></el-icon>
-                正在{{ message.thinkingText }}...
-              </div>
-
-              <!-- 操作按钮 -->
-              <div class="message-actions">
-                <el-button size="small" icon="DocumentCopy" @click="copyMessage(message.content)">复制</el-button>
-                <el-button size="small" icon="ThumbUp" @click="likeMessage(message)">赞</el-button>
-                <el-button size="small" icon="ThumbDown" @click="dislikeMessage(message)">踩</el-button>
-              </div>
-            </div>
-          </div>
-
-          <!-- 用户消息 -->
-          <div v-else class="user-content">
-            <div class="message-bubble user-bubble">
-              {{ message.content }}
+            <div class="message-bubble assistant-bubble thinking-bubble">
+              <el-icon><Loading /></el-icon>
+              {{ thinkingText }}
             </div>
           </div>
         </div>
 
-        <!-- AI正在思考状态 -->
-        <div v-if="isThinking" class="assistant-content">
-          <div class="avatar">
-            <el-avatar :size="32" icon="ChatLineRound" />
+        <!-- 底部输入区 -->
+        <div class="input-area">
+          <div class="context-tools">
+            <el-popover placement="top" trigger="click">
+              <template #reference>
+                <el-button icon="Plus" circle />
+              </template>
+              <div class="context-menu">
+                <el-checkbox-group v-model="attachedContext">
+                  <el-checkbox label="device-info">设备信息</el-checkbox>
+                  <el-checkbox label="alert-record">告警记录</el-checkbox>
+                  <el-checkbox label="workorder-detail">工单详情</el-checkbox>
+                  <el-checkbox label="trend-data">趋势数据</el-checkbox>
+                </el-checkbox-group>
+              </div>
+            </el-popover>
           </div>
-          <div class="message-bubble assistant-bubble thinking-bubble">
-            <el-icon><Loading /></el-icon>
-            {{ thinkingText }}
+
+          <div class="input-wrapper">
+            <el-input
+              v-model="inputMessage"
+              type="textarea"
+              :autosize="{ minRows: 1, maxRows: 5 }"
+              placeholder="输入您的问题，按 Enter 发送，Shift + Enter 换行..."
+              @keydown.enter.exact.prevent="sendMessage"
+              @keydown.shift.enter.native="insertNewline"
+            />
           </div>
-        </div>
-      </div>
 
-      <!-- 底部输入区 -->
-      <div class="input-area">
-        <div class="context-tools">
-          <el-popover placement="top" trigger="click">
-            <template #reference>
-              <el-button icon="Plus" circle />
-            </template>
-            <div class="context-menu">
-              <el-checkbox-group v-model="attachedContext">
-                <el-checkbox label="device-info">设备信息</el-checkbox>
-                <el-checkbox label="alert-record">告警记录</el-checkbox>
-                <el-checkbox label="workorder-detail">工单详情</el-checkbox>
-                <el-checkbox label="trend-data">趋势数据</el-checkbox>
-              </el-checkbox-group>
-            </div>
-          </el-popover>
-        </div>
-
-        <div class="input-wrapper">
-          <el-input
-            v-model="inputMessage"
-            type="textarea"
-            :autosize="{ minRows: 1, maxRows: 5 }"
-            placeholder="输入您的问题，按 Enter 发送，Shift + Enter 换行..."
-            @keydown.enter.exact.prevent="sendMessage"
-            @keydown.shift.enter.native="insertNewline"
-          />
-        </div>
-
-        <div class="send-tools">
-          <el-button
-            :icon="isThinking ? 'Close' : 'Right'"
-            :loading="isThinking"
-            @click="isThinking ? stopGeneration() : sendMessage()"
-          />
+          <div class="send-tools">
+            <el-button
+              :icon="isThinking ? 'Close' : 'Right'"
+              :loading="isThinking"
+              @click="isThinking ? stopGeneration() : sendMessage()"
+            />
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </Layout>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick, computed } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAiAssistant } from '@/composables/useAiAssistant'
 import MarkdownIt from 'markdown-it'
+import Layout from '@/components/Layout.vue'
+import {
+  Edit,
+  Delete,
+  Lightning,
+  Loading
+} from '@element-plus/icons-vue'
 
 // 引入卡片组件
 import AlertAnalysisCard from './components/AlertAnalysisCard.vue'
@@ -177,11 +186,8 @@ const md = new MarkdownIt({
 
 // 使用AI助手组合式函数
 const {
-  loading: aiLoading,
   chatSessions,
-  currentSession,
   sendMessage: sendAiMessage,
-  streamMessage: streamAiMessage,
   getChatHistory,
   createChatSession,
   deleteChatSession
