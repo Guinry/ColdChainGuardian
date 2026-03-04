@@ -36,6 +36,20 @@ public class DashboardService {
     private TelemetryRepository telemetryRepository;
 
     /**
+     * 安全解析日期，处理ISO 8601格式的时间戳
+     */
+    private LocalDate parseSafeDate(String dateStr) {
+        if (dateStr == null || dateStr.isEmpty()) {
+            return LocalDate.now();
+        }
+        // 如果包含 'T'，说明是前端传来的带时间的格式，我们只截取前 10 位 (yyyy-MM-dd)
+        if (dateStr.contains("T")) {
+            dateStr = dateStr.substring(0, 10);
+        }
+        return LocalDate.parse(dateStr);
+    }
+
+    /**
      * 获取综合趋势分析数据
      */
     public Map<String, Object> getComprehensiveTrendAnalysis(String startDate, String endDate, String interval, String dimension) {
@@ -60,8 +74,8 @@ public class DashboardService {
      * 获取温湿度趋势数据
      */
     public Map<String, Object> getEnvironmentTrend(String startDate, String endDate, String interval) {
-        LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now().minusMonths(1);
-        LocalDate end = endDate != null ? LocalDate.parse(endDate) : LocalDate.now();
+        LocalDate start = startDate != null ? parseSafeDate(startDate) : LocalDate.now().minusMonths(1);
+        LocalDate end = endDate != null ? parseSafeDate(endDate) : LocalDate.now();
 
         // 获取遥测数据
         List<TelemetryEntity> telemetryData = telemetryRepository.findAll();
@@ -154,8 +168,8 @@ public class DashboardService {
      * 获取告警趋势数据
      */
     public Map<String, Object> getAlertTrend(String startDate, String endDate, String interval) {
-        LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now().minusMonths(1);
-        LocalDate end = endDate != null ? LocalDate.parse(endDate) : LocalDate.now();
+        LocalDate start = startDate != null ? parseSafeDate(startDate) : LocalDate.now().minusMonths(1);
+        LocalDate end = endDate != null ? parseSafeDate(endDate) : LocalDate.now();
 
         List<AlertEntity> alerts = alertRepository.findAll();
 
@@ -184,8 +198,8 @@ public class DashboardService {
      * 获取工单趋势数据
      */
     public Map<String, Object> getWorkOrderTrend(String startDate, String endDate, String interval) {
-        LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now().minusMonths(1);
-        LocalDate end = endDate != null ? LocalDate.parse(endDate) : LocalDate.now();
+        LocalDate start = startDate != null ? parseSafeDate(startDate) : LocalDate.now().minusMonths(1);
+        LocalDate end = endDate != null ? parseSafeDate(endDate) : LocalDate.now();
 
         List<WorkOrderEntity> workOrders = workOrderRepository.findAll();
 
@@ -215,8 +229,8 @@ public class DashboardService {
      * 获取设备状态趋势数据
      */
     public Map<String, Object> getDeviceStatusTrend(String startDate, String endDate, String interval) {
-        LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now().minusMonths(1);
-        LocalDate end = endDate != null ? LocalDate.parse(endDate) : LocalDate.now();
+        LocalDate start = startDate != null ? parseSafeDate(startDate) : LocalDate.now().minusMonths(1);
+        LocalDate end = endDate != null ? parseSafeDate(endDate) : LocalDate.now();
 
         List<DeviceEntity> devices = deviceRepository.findAll();
 
