@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -163,6 +164,17 @@ public class AIAssistantService {
 
     // Method to create a new session
     public void createSession(AiChatSessionEntity session) {
+        // 设置默认用户ID，实际应用中应该从当前认证用户获取
+        if (session.getUserId() == null) {
+            session.setUserId(1L); // 默认用户ID，实际应用中应从SecurityContext获取
+        }
+        // 确保创建时间和更新时间被设置
+        if (session.getCreateTime() == null) {
+            session.setCreateTime(LocalDateTime.now());
+        }
+        if (session.getUpdateTime() == null) {
+            session.setUpdateTime(LocalDateTime.now());
+        }
         aiChatSessionRepository.insert(session);
     }
 
