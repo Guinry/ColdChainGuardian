@@ -23,6 +23,11 @@ public class AIAssistantController {
         return aiAssistantService.streamChat(request);
     }
 
+    @PostMapping("/chat")
+    public Flux<String> chat(@RequestBody ChatRequestDto request) {
+        return aiAssistantService.streamChat(request);
+    }
+
     @GetMapping("/sessions/{userId}")
     public List<AiChatSessionEntity> getChatSessions(@PathVariable Long userId) {
         return aiAssistantService.getSessionHistory(userId);
@@ -33,8 +38,21 @@ public class AIAssistantController {
         return aiAssistantService.getChatMessagesBySessionId(sessionId);
     }
 
-    @PostMapping("/chat")
-    public Flux<String> chat(@RequestBody ChatRequestDto request) {
-        return aiAssistantService.streamChat(request);
+    @PostMapping("/sessions")
+    public AiChatSessionEntity createChatSession(@RequestBody AiChatSessionEntity session) {
+        aiAssistantService.createSession(session);
+        return session;
+    }
+
+    @PutMapping("/sessions/{id}")
+    public AiChatSessionEntity updateChatSession(@PathVariable Long id, @RequestBody AiChatSessionEntity session) {
+        session.setId(id);
+        aiAssistantService.updateSession(session);
+        return session;
+    }
+
+    @DeleteMapping("/sessions/{id}")
+    public void deleteChatSession(@PathVariable Long id) {
+        aiAssistantService.deleteSession(id);
     }
 }

@@ -160,4 +160,19 @@ public class AIAssistantService {
     public List<AiChatMessageEntity> getChatMessagesBySessionId(Long sessionId) {
         return aiChatMessageRepository.findBySessionId(sessionId);
     }
+
+    // Method to create a new session
+    public void createSession(AiChatSessionEntity session) {
+        aiChatSessionRepository.insert(session);
+    }
+
+    // Method to update a session
+    public void updateSession(AiChatSessionEntity session) {
+        aiChatSessionRepository.updateById(session);
+    }
+
+    // Method to delete a session
+    public void deleteSession(Long id) {
+        aiChatSessionRepository.removeById(id);
+    }
 }
