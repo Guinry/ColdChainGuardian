@@ -65,6 +65,12 @@ const routes = [
     name: 'TrendAnalysis',
     component: () => import('../views/trend-analysis/TrendAnalysisView.vue'),
     meta: { requiresAuth: true, permissions: ['dashboard:view'] }
+  },
+  {
+    path: '/ai-assistant',
+    name: 'AIAssistant',
+    component: () => import('../views/ai-assistant/AIAssistantView.vue'),
+    meta: { requiresAuth: true, permissions: ['ai:assistant'] }
   }
 ]
 

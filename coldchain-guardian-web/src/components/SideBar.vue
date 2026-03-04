@@ -37,7 +37,7 @@
           <span>数据分析</span>
         </template>
         <el-menu-item index="/trend-analysis">趋势分析</el-menu-item>
-        <el-menu-item index="/analysis/ai">AI 智能助手</el-menu-item>
+        <el-menu-item index="/ai-assistant">AI 智能助手</el-menu-item>
       </el-sub-menu>
 
       <!-- System Management menu only visible for SUPER_ADMIN -->
