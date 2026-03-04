@@ -75,6 +75,13 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- Spring AI Dependencies -->
+        <!-- Using BOM managed versions - only OpenAI starter is needed as it brings in required dependencies -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+        </dependency>
+
         <!-- Local module dependencies -->
         <dependency>
             <groupId>com.coldchain</groupId>

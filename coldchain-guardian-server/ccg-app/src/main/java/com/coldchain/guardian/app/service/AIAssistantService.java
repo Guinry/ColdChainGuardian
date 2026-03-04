@@ -10,12 +10,10 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,7 +56,7 @@ public class AIAssistantService {
         }
 
         // 获取历史消息记录
-        List<Message> historyMessages = getChatHistory(sessionId);
+        List<Message> historyMessages = getChatMessageHistory(sessionId);
 
         // 构建最终用户消息，包括附件上下文
         String finalUserMessage = buildFinalUserMessage(request);
@@ -80,15 +78,16 @@ public class AIAssistantService {
                 .content();
 
         // 异步保存AI回复
+        Long finalSessionId = sessionId; // Make sessionId effectively final for lambda access
         StringBuilder responseBuilder = new StringBuilder();
         return responseFlux.doOnNext(token -> responseBuilder.append(token))
                 .doOnComplete(() -> {
                     // 保存AI的完整回复
-                    saveAssistantMessage(sessionId, responseBuilder.toString());
+                    saveAssistantMessage(finalSessionId, responseBuilder.toString());
                 });
     }
 
-    private List<Message> getChatHistory(Long sessionId) {
+    private List<Message> getChatMessageHistory(Long sessionId) {
         List<Message> history = new ArrayList<>();
         List<AiChatMessageEntity> messages = aiChatMessageRepository.findBySessionId(sessionId);
 
@@ -106,12 +105,12 @@ public class AIAssistantService {
     private String buildFinalUserMessage(ChatRequestDto request) {
         String userMessage = request.getMessage();
 
-        // 如果用户带了“附件”，后端主动去数据库查数据，喂给大模型
+        // 如果用户带了"附件"，后端主动去数据库查数据，喂给大模型
         if (request.getAttachmentType() != null && request.getAttachmentId() != null) {
             String context = "";
 
             if ("DEVICE".equals(request.getAttachmentType())) {
-                DeviceEntity device = deviceRepository.selectById(request.getAttachmentId());
+                DeviceEntity device = deviceRepository.findById(request.getAttachmentId());
                 if (device != null) {
                     context = String.format(
                         "【系统注入上下文】：用户正在询问关于设备 [%s] (%s) 的问题。该设备当前状态：%s，安装位置：%s。",
@@ -120,11 +119,11 @@ public class AIAssistantService {
                     );
                 }
             } else if ("ALERT".equals(request.getAttachmentType())) {
-                AlertEntity alert = alertRepository.selectById(request.getAttachmentId());
+                AlertEntity alert = alertRepository.findById(request.getAttachmentId());
                 if (alert != null) {
                     context = String.format(
                         "【系统注入上下文】：用户正在询问关于告警 [%s] 的问题。告警级别：%s，告警类型：%s，发生时间：%s。",
-                        alert.getMessage(), alert.getAlertLevel(), alert.getAlertType(), alert.getCreatedTime()
+                        alert.getMessage(), alert.getAlertLevel(), alert.getAlertType(), alert.getCreateTime()
                     );
                 }
             }
@@ -153,7 +152,8 @@ public class AIAssistantService {
         aiChatMessageRepository.insert(message);
     }
 
-    public List<AiChatSessionEntity> getChatHistory(Long userId) {
+    // Public method for getting session history
+    public List<AiChatSessionEntity> getSessionHistory(Long userId) {
         return aiChatSessionRepository.findByUserId(userId);
     }
 

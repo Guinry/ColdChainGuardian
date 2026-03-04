@@ -25,7 +25,7 @@ public class AIAssistantController {
 
     @GetMapping("/sessions/{userId}")
     public List<AiChatSessionEntity> getChatSessions(@PathVariable Long userId) {
-        return aiAssistantService.getChatHistory(userId);
+        return aiAssistantService.getSessionHistory(userId);
     }
 
     @GetMapping("/messages/{sessionId}")
