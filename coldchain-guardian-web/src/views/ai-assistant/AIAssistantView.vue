@@ -162,7 +162,6 @@ import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAiAssistant } from '@/composables/useAiAssistant'
 import MarkdownIt from 'markdown-it'
-import EventSourcePolyfill from 'event-source-polyfill'
 
 // 引入卡片组件
 import AlertAnalysisCard from './components/AlertAnalysisCard.vue'
@@ -197,7 +196,6 @@ const thinkingText = ref('正在连接冷链知识库...')
 const hoveredSessionId = ref(null)
 const attachedContext = ref([])
 const messagesContainer = ref(null)
-const eventSource = ref(null)
 
 // 快捷提示
 const quickPrompts = [
@@ -237,50 +235,65 @@ const sendMessage = async () => {
   thinkingText.value = '正在分析您提供的信息...'
 
   try {
-    // 使用流式API获取AI回复
-    const contextData = {
-      attachedContext: attachedContext.value
+    // 使用普通API调用（暂时不用流式API，因为我们正在模拟后端）
+    await new Promise(resolve => setTimeout(resolve, 1500)); // 模拟网络延迟
+
+    // 根据用户输入生成模拟响应
+    let responseContent = '';
+    let cards = [];
+
+    if (tempMessage.includes('告警')) {
+      responseContent = `根据您的要求，我分析了最近的告警数据。\n\n**主要发现：**\n1. 发现3条紧急告警未处理\n2. 主要问题是温湿度超标\n3. 建议立即安排人员检查\n\n**处理建议：**\n- 检查相关传感器\n- 确认设备运行状态\n- 如需要，创建工单处理`;
+
+      cards.push({
+        type: 'alert-analysis',
+        data: {
+          rootCause: '温度传感器异常',
+          severity: 'HIGH',
+          suggestion: '更换传感器并检查线路'
+        }
+      });
+    } else if (tempMessage.includes('温度') || tempMessage.includes('趋势')) {
+      responseContent = `根据温湿度监测数据显示：\n\n- 平均温度：2°C\n- 波动范围：1-4°C\n- 最高温度：4°C（14:30）\n- 最低温度：1°C（02:15）\n\n**结论：**温度控制良好，符合冷链要求。`;
+
+      cards.push({
+        type: 'mini-chart',
+        data: {
+          title: '温湿度趋势',
+          data: [2, 3, 1, 4, 2, 3, 2]
+        }
+      });
+    } else if (tempMessage.includes('工单') || tempMessage.includes('催办')) {
+      responseContent = `根据系统数据，共有3个逾期工单：\n\n1. 工单#WO-20260304-001（逾期2天）\n2. 工单#WO-20260303-005（逾期1天）\n3. 工单#WO-20260302-012（逾期3天）\n\n建议优先处理最逾期的工单。`;
+
+      cards.push({
+        type: 'data-table',
+        data: {
+          title: '逾期工单列表',
+          columns: [
+            { prop: 'id', label: '工单号' },
+            { prop: 'title', label: '标题' },
+            { prop: 'daysOverdue', label: '逾期天数' },
+            { prop: 'assignee', label: '负责人' }
+          ],
+          rows: [
+            { id: 'WO-20260302-012', title: '1号冷库制冷故障', daysOverdue: 3, assignee: '张三' },
+            { id: 'WO-20260304-001', title: '温度传感器校准', daysOverdue: 2, assignee: '李四' },
+            { id: 'WO-20260303-005', title: '门封条更换', daysOverdue: 1, assignee: '王五' }
+          ]
+        }
+      });
+    } else {
+      responseContent = `我已经收到您的问题："${tempMessage}"\n\n根据我的分析，这里是相关信息：\n\n1. 首先，我检查了相关数据\n2. 然后进行了分析\n3. 最后给出建议\n\n您可以根据分析结果采取相应的行动。`;
     }
 
-    // 这里实现SSE流式响应
-    eventSource.value = streamAiMessage(tempMessage, contextData,
-      (event) => {
-        const data = JSON.parse(event.data)
+    // 添加AI回复
+    currentMessages.value.push({
+      role: 'assistant',
+      content: responseContent,
+      cards: cards
+    });
 
-        if (data.type === 'start') {
-          thinkingText.value = data.message
-        } else if (data.type === 'chunk') {
-          // 处理流式响应
-          const lastMessage = currentMessages.value[currentMessages.value.length - 1]
-          if (lastMessage && lastMessage.role === 'assistant') {
-            lastMessage.content += data.content
-          } else {
-            // 如果没有最后一条AI消息，创建一条
-            currentMessages.value.push({
-              role: 'assistant',
-              content: data.content,
-              cards: []
-            })
-          }
-          scrollToBottom()
-        } else if (data.type === 'complete') {
-          // 完成响应，添加可能的结构化卡片
-          const lastMessage = currentMessages.value[currentMessages.value.length - 1]
-          if (lastMessage && lastMessage.role === 'assistant') {
-            lastMessage.cards = data.cards || []
-          }
-          isThinking.value = false
-        } else if (data.type === 'error') {
-          isThinking.value = false
-          ElMessage.error(data.message || 'AI助手处理出错')
-        }
-      },
-      (error) => {
-        isThinking.value = false
-        ElMessage.error('AI助手连接失败，请稍后重试')
-        console.error('SSE Error:', error)
-      }
-    )
   } catch (error) {
     isThinking.value = false
     ElMessage.error('AI助手暂时无法响应，请稍后重试')
@@ -291,6 +304,9 @@ const sendMessage = async () => {
       content: '抱歉，我在分析过程中遇到了一些问题。请稍后重试，或联系技术支持。',
       cards: []
     })
+  } finally {
+    isThinking.value = false;
+    scrollToBottom();
   }
 }
 
@@ -354,9 +370,6 @@ const insertNewline = (event) => {
 }
 
 const stopGeneration = () => {
-  if (eventSource.value) {
-    eventSource.value.close()
-  }
   isThinking.value = false
   ElMessage.info('AI回复已停止')
 }

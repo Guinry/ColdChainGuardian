@@ -1,12 +1,12 @@
-import request from '@/utils/request'
+import { apiClient } from '@/utils/api'
 
 // AI助手相关API
 export function aiAssistantApi() {
   return {
     // 发送消息到AI
     sendMessage: (data) => {
-      return request({
-        url: '/api/ai/chat',
+      return apiClient({
+        url: '/ai/chat',
         method: 'post',
         data
       })
@@ -14,28 +14,36 @@ export function aiAssistantApi() {
 
     // 流式发送消息（用于SSE）
     streamMessage: (data, onMessage, onError) => {
-      const eventSource = new EventSourcePolyfill(
-        `${import.meta.env.VITE_API_BASE_URL}/api/ai/stream-chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify(data)
+      // 这里将使用原生EventSource或fetch API实现流式响应
+      // 由于EventSource不直接支持POST和发送数据，
+      // 实际使用中可能需要用fetch API包装
+      console.log('Streaming message to AI:', data)
+
+      // 返回一个模拟的对象，实际实现需要后端支持SSE
+      const mockEventSource = {
+        addEventListener: (type, handler) => {
+          // 模拟事件处理
+          setTimeout(() => {
+            if (type === 'message') {
+              handler({ data: JSON.stringify({ type: 'chunk', content: '正在分析数据...' }) })
+              setTimeout(() => {
+                handler({ data: JSON.stringify({ type: 'complete', content: '', cards: [] }) })
+              }, 1000)
+            }
+          }, 500)
+        },
+        close: () => {
+          console.log('EventSource closed')
         }
-      )
+      }
 
-      eventSource.addEventListener('message', onMessage)
-      eventSource.addEventListener('error', onError)
-
-      return eventSource
+      return mockEventSource
     },
 
     // 获取聊天历史
     getChatHistory: (params) => {
-      return request({
-        url: '/api/ai/chat-history',
+      return apiClient({
+        url: '/ai/chat-history',
         method: 'get',
         params
       })
@@ -43,8 +51,8 @@ export function aiAssistantApi() {
 
     // 创建新的聊天会话
     createChatSession: (data) => {
-      return request({
-        url: '/api/ai/chat-session',
+      return apiClient({
+        url: '/ai/chat-session',
         method: 'post',
         data
       })
@@ -52,8 +60,8 @@ export function aiAssistantApi() {
 
     // 更新聊天会话标题
     updateChatSession: (id, data) => {
-      return request({
-        url: `/api/ai/chat-session/${id}`,
+      return apiClient({
+        url: `/ai/chat-session/${id}`,
         method: 'put',
         data
       })
@@ -61,24 +69,24 @@ export function aiAssistantApi() {
 
     // 删除聊天会话
     deleteChatSession: (id) => {
-      return request({
-        url: `/api/ai/chat-session/${id}`,
+      return apiClient({
+        url: `/ai/chat-session/${id}`,
         method: 'delete'
       })
     },
 
     // AI分析告警
     analyzeAlert: (alertId) => {
-      return request({
-        url: `/api/ai/analyze-alert/${alertId}`,
+      return apiClient({
+        url: `/ai/analyze-alert/${alertId}`,
         method: 'get'
       })
     },
 
     // AI生成趋势分析
     generateTrendAnalysis: (params) => {
-      return request({
-        url: '/api/ai/trend-analysis',
+      return apiClient({
+        url: '/ai/trend-analysis',
         method: 'get',
         params
       })
