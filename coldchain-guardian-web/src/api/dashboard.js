@@ -30,6 +30,11 @@ export const dashboardApi = {
   // 获取设备状态趋势
   getDeviceStatusTrend(params) {
     return apiClient.get('/dashboard/device-status-trend', { params })
+  },
+
+  // AI助手分析仪表盘数据
+  analyzeWithAI(params) {
+    return apiClient.post('/dashboard/ai-analyze', params)
   }
 }
 
@@ -40,3 +45,4 @@ export const getEnvironmentTrendApi = dashboardApi.getEnvironmentTrend
 export const getAlertTrendApi = dashboardApi.getAlertTrend
 export const getWorkOrderTrendApi = dashboardApi.getWorkOrderTrend
 export const getDeviceStatusTrendApi = dashboardApi.getDeviceStatusTrend
+export const analyzeDashboardWithAIApi = dashboardApi.analyzeWithAI

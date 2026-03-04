@@ -2,6 +2,7 @@
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { aiAssistantApi } from '@/api/ai-assistant'
+import { SSEClient } from '@/utils/sse'
 
 export function useAiAssistant() {
   const loading = ref(false)
@@ -12,14 +13,15 @@ export function useAiAssistant() {
   const api = aiAssistantApi()
 
   // 发送消息
-  const sendMessage = async (message, context = {}) => {
+  const sendMessage = async (message, attachmentType = null, attachmentId = null, sessionId = null) => {
     try {
       loading.value = true
 
       const response = await api.sendMessage({
         message,
-        context,
-        sessionId: currentSession.value?.id
+        attachmentType,
+        attachmentId,
+        sessionId
       })
 
       return response.data
@@ -33,25 +35,52 @@ export function useAiAssistant() {
   }
 
   // 流式发送消息（用于SSE）
-  const streamMessage = (message, context = {}, onMessage, onError) => {
+  const streamMessage = (message, attachmentType = null, attachmentId = null, sessionId = null, onTokenReceived, onError) => {
     const data = {
       message,
-      context,
-      sessionId: currentSession.value?.id
+      attachmentType,
+      attachmentId,
+      sessionId
     }
 
-    return api.streamMessage(data, onMessage, onError)
+    // Create SSE client
+    const sseClient = new SSEClient('/api/ai-assistant/chat/stream')
+
+    if (onTokenReceived) {
+      sseClient.setMessageHandler(onTokenReceived)
+    }
+
+    if (onError) {
+      sseClient.setErrorHandler(onError)
+    }
+
+    // Connect and send data
+    const controller = sseClient.connect(data)
+
+    return controller // Return controller to allow cancellation
   }
 
   // 获取聊天历史
-  const getChatHistory = async (params = {}) => {
+  const getChatHistory = async (userId = 1) => {
     try {
-      const response = await api.getChatHistory(params)
+      const response = await api.getChatHistory(userId)
       chatSessions.value = response.data
       return response.data
     } catch (error) {
       console.error('获取聊天历史失败:', error)
       ElMessage.error('获取聊天历史失败')
+      throw error
+    }
+  }
+
+  // 根据会话ID获取消息
+  const getChatMessages = async (sessionId) => {
+    try {
+      const response = await api.getChatMessages(sessionId)
+      return response.data
+    } catch (error) {
+      console.error('获取消息失败:', error)
+      ElMessage.error('获取消息失败')
       throw error
     }
   }
@@ -96,6 +125,7 @@ export function useAiAssistant() {
     sendMessage,
     streamMessage,
     getChatHistory,
+    getChatMessages,
     createChatSession,
     deleteChatSession
   }
