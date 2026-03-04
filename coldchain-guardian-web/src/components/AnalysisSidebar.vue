@@ -24,10 +24,10 @@
 
           <el-form-item label="告警等级">
             <el-checkbox-group v-model="filterForm.alertLevels">
-              <el-checkbox label="critical">严重</el-checkbox>
-              <el-checkbox label="high">高危</el-checkbox>
-              <el-checkbox label="medium">中等</el-checkbox>
-              <el-checkbox label="low">低危</el-checkbox>
+              <el-checkbox value="critical">严重</el-checkbox>
+              <el-checkbox value="high">高危</el-checkbox>
+              <el-checkbox value="medium">中等</el-checkbox>
+              <el-checkbox value="low">低危</el-checkbox>
             </el-checkbox-group>
           </el-form-item>
 

@@ -126,10 +126,10 @@
               </template>
               <div class="context-menu">
                 <el-checkbox-group v-model="attachedContext">
-                  <el-checkbox label="device-info">设备信息</el-checkbox>
-                  <el-checkbox label="alert-record">告警记录</el-checkbox>
-                  <el-checkbox label="workorder-detail">工单详情</el-checkbox>
-                  <el-checkbox label="trend-data">趋势数据</el-checkbox>
+                  <el-checkbox value="device-info">设备信息</el-checkbox>
+                  <el-checkbox value="alert-record">告警记录</el-checkbox>
+                  <el-checkbox value="workorder-detail">工单详情</el-checkbox>
+                  <el-checkbox value="trend-data">趋势数据</el-checkbox>
                 </el-checkbox-group>
               </div>
             </el-popover>

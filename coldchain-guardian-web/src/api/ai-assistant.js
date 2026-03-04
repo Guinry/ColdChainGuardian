@@ -6,7 +6,7 @@ export function aiAssistantApi() {
     // 发送消息到AI（流式）
     streamMessage: (data) => {
       return apiClient({
-        url: '/api/ai-assistant/chat/stream',
+        url: '/ai-assistant/chat/stream',
         method: 'post',
         data,
         headers: {
@@ -19,7 +19,7 @@ export function aiAssistantApi() {
     // 发送消息到AI（普通）
     sendMessage: (data) => {
       return apiClient({
-        url: '/api/ai-assistant/chat',
+        url: '/ai-assistant/chat',
         method: 'post',
         data
       })
@@ -28,7 +28,7 @@ export function aiAssistantApi() {
     // 获取用户的所有会话历史
     getChatHistory: (userId) => {
       return apiClient({
-        url: `/api/ai-assistant/sessions/${userId}`,
+        url: `/ai-assistant/sessions/${userId}`,
         method: 'get'
       })
     },
@@ -36,7 +36,7 @@ export function aiAssistantApi() {
     // 根据会话ID获取消息历史
     getChatMessages: (sessionId) => {
       return apiClient({
-        url: `/api/ai-assistant/messages/${sessionId}`,
+        url: `/ai-assistant/messages/${sessionId}`,
         method: 'get'
       })
     },
@@ -44,7 +44,7 @@ export function aiAssistantApi() {
     // 创建新的聊天会话
     createChatSession: (data) => {
       return apiClient({
-        url: '/api/ai-assistant/sessions',
+        url: '/ai-assistant/sessions',
         method: 'post',
         data
       })
@@ -53,7 +53,7 @@ export function aiAssistantApi() {
     // 更新聊天会话
     updateChatSession: (id, data) => {
       return apiClient({
-        url: `/api/ai-assistant/sessions/${id}`,
+        url: `/ai-assistant/sessions/${id}`,
         method: 'put',
         data
       })
@@ -62,7 +62,7 @@ export function aiAssistantApi() {
     // 删除聊天会话
     deleteChatSession: (id) => {
       return apiClient({
-        url: `/api/ai-assistant/sessions/${id}`,
+        url: `/ai-assistant/sessions/${id}`,
         method: 'delete'
       })
     }
