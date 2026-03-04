@@ -40,8 +40,7 @@ public class AIAssistantController {
 
     @PostMapping("/sessions")
     public AiChatSessionEntity createChatSession(@RequestBody AiChatSessionEntity session) {
-        aiAssistantService.createSession(session);
-        return session;
+        return aiAssistantService.createSession(session);
     }
 
     @PutMapping("/sessions/{id}")
