@@ -36,7 +36,7 @@
           <el-icon><DataAnalysis /></el-icon>
           <span>数据分析</span>
         </template>
-        <el-menu-item index="/analysis/trends">趋势分析</el-menu-item>
+        <el-menu-item index="/trend-analysis">趋势分析</el-menu-item>
         <el-menu-item index="/analysis/ai">AI 智能助手</el-menu-item>
       </el-sub-menu>
 
@@ -56,7 +56,7 @@
 <script setup>
 import {
   House, Monitor, Warning, DataAnalysis, Setting,
-  Grid, Operation, Tickets, Memo
+  DataLine
 } from '@element-plus/icons-vue';
 
 // Props
@@ -74,15 +74,26 @@ const props = defineProps({
 
 <style scoped>
 .side-menu {
-  width: 200px;
+  width: 220px;
   background-color: white;
   box-shadow: 2px 0 6px rgba(0, 21, 41, 0.35);
   overflow-y: auto;
   flex-shrink: 0;
   height: calc(100vh - 60px);
+  position: sticky;
+  top: 60px;
 }
 
 .menu {
   border-right: none;
+}
+
+@keyframes glow {
+  from {
+    box-shadow: 0 0 5px rgba(64, 158, 255, 0.3);
+  }
+  to {
+    box-shadow: 0 0 15px rgba(64, 158, 255, 0.6);
+  }
 }
 </style>

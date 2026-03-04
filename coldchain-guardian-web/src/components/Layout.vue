@@ -77,8 +77,8 @@ const settings = () => {
 .main-content {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
   min-height: 0;
   height: calc(100vh - 60px);
+  background-color: #f5f7fa;
 }
 </style>

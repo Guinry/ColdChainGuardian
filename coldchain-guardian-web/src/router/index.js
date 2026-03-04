@@ -59,6 +59,12 @@ const routes = [
     name: 'AlertCenter',
     component: () => import('../views/alert/AlertCenterView.vue'),
     meta: { requiresAuth: true, permissions: ['alert:view'] }
+  },
+  {
+    path: '/trend-analysis',
+    name: 'TrendAnalysis',
+    component: () => import('../views/trend-analysis/TrendAnalysisView.vue'),
+    meta: { requiresAuth: true, permissions: ['dashboard:view'] }
   }
 ]
 
