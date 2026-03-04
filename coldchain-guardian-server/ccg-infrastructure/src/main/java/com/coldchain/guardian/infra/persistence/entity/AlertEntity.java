@@ -57,19 +57,17 @@ public class AlertEntity extends BaseEntity {
     @TableField("handle_remark")
     private String handleRemark; // 处理备注
 
-    @TableField(value = "acknowledged_time", exist = false)
-    private LocalDateTime acknowledgedTime; // 确认时间
+    @TableField("work_order_id")
+    private Long workOrderId; // 关联的工单ID
 
-    @TableField(value = "resolved_time", exist = false)
-    private LocalDateTime resolvedTime; // 解决时间
-
-    @TableField(value = "first_time", exist = false)
+    // 告警收敛相关字段
+    @TableField("first_time")
     private LocalDateTime firstTime; // 首次触发时间
 
-    @TableField(value = "last_time", exist = false)
+    @TableField("last_time")
     private LocalDateTime lastTime; // 最后一次触发时间
 
-    @TableField(value = "trigger_count", exist = false)
+    @TableField("trigger_count")
     private Integer triggerCount; // 触发次数
 
     @TableField(value = "device_code", exist = false)

@@ -41,7 +41,7 @@ public class WorkOrderEntity extends BaseEntity {
     @TableField(value = "assignee_name", exist = false)
     private String assigneeName; // 责任人姓名 (关联查询字段)
 
-    @TableField("created_by")
+    @TableField("creator_id")
     private Long reporterId; // 报告人ID (理论上应该是创建者ID)
 
     @TableField(value = "reporter_name", exist = false)
