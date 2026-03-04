@@ -127,7 +127,7 @@ public class AlertService {
         entity.setHandleRemark(handleRemark);
 
         if ("RESOLVED".equals(status)) {
-            entity.setResolvedTime(LocalDateTime.now());
+            entity.setUpdateTime(LocalDateTime.now());
         }
 
         alertRepository.save(entity);
@@ -393,9 +393,9 @@ public class AlertService {
             dto.setCreatedAt(entity.getFirstTime().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
         }
 
-        // 将LocalDateTime类型的resolvedTime转换为Long类型的resolvedAt（毫秒时间戳）
-        if (entity.getResolvedTime() != null) {
-            dto.setResolvedAt(entity.getResolvedTime().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+        // 将LocalDateTime类型的updateTime转换为Long类型的resolvedAt（毫秒时间戳）
+        if (entity.getUpdateTime() != null) {
+            dto.setResolvedAt(entity.getUpdateTime().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
         }
 
         return dto;
