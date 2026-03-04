@@ -86,9 +86,9 @@ export function useAiAssistant() {
   }
 
   // 创建新会话
-  const createChatSession = async (title) => {
+  const createChatSession = async (sessionData) => {
     try {
-      const response = await api.createChatSession({ title })
+      const response = await api.createChatSession(sessionData)
       chatSessions.value.unshift(response.data)
       currentSession.value = response.data
       return response.data

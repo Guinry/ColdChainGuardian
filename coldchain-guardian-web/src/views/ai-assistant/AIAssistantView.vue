@@ -382,7 +382,10 @@ const stopGeneration = () => {
 
 const createNewChat = async () => {
   try {
-    const newSession = await createChatSession(`新会话 ${Date.now()}`)
+    const newSession = await createChatSession({
+      title: `新会话 ${Date.now()}`,
+      userId: 1 // 临时设置默认用户ID，实际应用中应从当前登录用户获取
+    })
     currentSessionId.value = newSession.id
     currentMessages.value = []
   } catch (error) {
