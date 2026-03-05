@@ -257,7 +257,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import AlertTriageDrawer from '@/components/alert/AlertTriageDrawer.vue';
+import AlertTriageDrawer from '@/views/alert/components/AlertTriageDrawer.vue';
 import Layout from '@/components/Layout.vue';
 import { alertApi } from '@/api/alert';
 

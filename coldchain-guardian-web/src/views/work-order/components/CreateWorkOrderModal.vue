@@ -102,7 +102,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import { workOrderApi } from '@/api/work-order';
+import { workOrderApi } from '@/api/work-order.js';
 
 // Props
 const props = defineProps({

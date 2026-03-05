@@ -1,23 +1,22 @@
 <template>
   <Layout>
     <div class="ai-assistant-container">
-      <!-- 左侧历史会话栏 -->
       <div class="history-sidebar">
         <div class="sidebar-header">
-          <el-button type="primary" icon="Plus" @click="createNewChat">
-            + 新建洞察
+          <el-button type="primary" icon="Plus" @click="createNewChat" class="new-chat-btn">
+            <el-icon><EditPen /></el-icon> 新建洞察
           </el-button>
         </div>
 
         <div class="chat-history-list">
           <div
-            v-for="session in chatSessions"
-            :key="session.id"
-            class="chat-item"
-            :class="{ active: session.id === currentSessionId }"
-            @mouseenter="hoveredSessionId = session.id"
-            @mouseleave="hoveredSessionId = null"
-            @click="switchSession(session.id)"
+              v-for="session in chatSessions"
+              :key="session.id"
+              class="chat-item"
+              :class="{ active: session.id === currentSessionId }"
+              @mouseenter="hoveredSessionId = session.id"
+              @mouseleave="hoveredSessionId = null"
+              @click="switchSession(session.id)"
           >
             <div class="chat-info">
               <div class="chat-title">{{ session.title }}</div>
@@ -31,24 +30,20 @@
         </div>
       </div>
 
-      <!-- 右侧核心对话区 -->
       <div class="chat-main-area">
-        <!-- 消息列表 -->
         <div class="messages-container" ref="messagesContainer">
-          <!-- 空状态 -->
           <div v-if="currentMessages.length === 0" class="empty-state">
             <div class="welcome-message">
               <h2>您好，我是冷链守护 AI</h2>
               <p>我可以帮您分析告警、排查设备故障，或生成运维报告。</p>
             </div>
 
-            <!-- 快捷指令卡片 -->
             <div class="prompt-suggestions">
               <el-card
-                v-for="prompt in quickPrompts"
-                :key="prompt.id"
-                class="prompt-card"
-                @click="sendPrompt(prompt.text)"
+                  v-for="prompt in quickPrompts"
+                  :key="prompt.id"
+                  class="prompt-card"
+                  @click="sendPrompt(prompt.text)"
               >
                 <el-icon><Lightning /></el-icon>
                 {{ prompt.text }}
@@ -56,80 +51,70 @@
             </div>
           </div>
 
-          <!-- 消息列表 -->
           <div
-            v-for="(message, index) in currentMessages"
-            :key="index"
-            class="message-wrapper"
-            :class="{ 'user-message': message.role === 'user', 'assistant-message': message.role === 'assistant' }"
+              v-for="(message, index) in currentMessages"
+              :key="index"
+              class="message-wrapper"
+              :class="{ 'user-message': message.role === 'user', 'assistant-message': message.role === 'assistant' }"
           >
-            <!-- AI消息带头像 -->
             <div v-if="message.role === 'assistant'" class="assistant-content">
               <div class="avatar">
-                <el-avatar :size="32" icon="ChatLineRound" />
+                <el-avatar :size="32" icon="Monitor" style="background-color: #f2f6fc; color: #409eff;" />
               </div>
               <div class="message-bubble assistant-bubble">
-                <!-- AI回复内容 -->
-                <div class="message-text" v-html="renderMarkdown(message.content)" />
 
-                <!-- 结构化卡片渲染 -->
+                <div v-if="isThinking && !message.content && index === currentMessages.length - 1" class="typing-indicator">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                </div>
+
+                <div v-else class="message-text">
+                  <div class="markdown-body" v-html="renderMarkdown(message.content)"></div>
+                  <span v-if="isThinking && index === currentMessages.length - 1" class="blinking-cursor">▍</span>
+                </div>
+
                 <div v-if="message.cards && message.cards.length > 0" class="structured-cards">
                   <component
-                    v-for="(card, cardIndex) in message.cards"
-                    :key="cardIndex"
-                    :is="getCardComponent(card.type)"
-                    :data="card.data"
+                      v-for="(card, cardIndex) in message.cards"
+                      :key="cardIndex"
+                      :is="getCardComponent(card.type)"
+                      :data="card.data"
                   />
                 </div>
 
-                <!-- 思考状态 -->
-                <div v-if="message.thinking" class="thinking-state">
-                  <el-icon><Loading /></el-icon>
-                  正在{{ message.thinkingText }}...
-                </div>
-
-                <!-- 操作按钮 -->
-                <div class="message-actions">
-                  <el-button size="small" icon="DocumentCopy" @click="copyMessage(message.content)">复制</el-button>
-                  <el-button size="small" icon="ThumbUp" @click="likeMessage(message)">赞</el-button>
-                  <el-button size="small" icon="ThumbDown" @click="dislikeMessage(message)">踩</el-button>
+                <div class="message-actions" v-if="!isThinking || index !== currentMessages.length - 1">
+                  <el-tooltip content="复制内容" placement="top">
+                    <el-button link size="small" icon="CopyDocument" @click="copyMessage(message.content)" />
+                  </el-tooltip>
+                  <el-tooltip content="有帮助" placement="top">
+                    <el-button link size="small" icon="Select" @click="likeMessage(message)" />
+                  </el-tooltip>
+                  <el-tooltip content="无帮助" placement="top">
+                    <el-button link size="small" icon="CloseBold" @click="dislikeMessage(message)" />
+                  </el-tooltip>
                 </div>
               </div>
             </div>
 
-            <!-- 用户消息 -->
             <div v-else class="user-content">
-              <div class="message-bubble user-bubble">
-                {{ message.content }}
-              </div>
-            </div>
-          </div>
-
-          <!-- AI正在思考状态 -->
-          <div v-if="isThinking" class="assistant-content">
-            <div class="avatar">
-              <el-avatar :size="32" icon="ChatLineRound" />
-            </div>
-            <div class="message-bubble assistant-bubble thinking-bubble">
-              <el-icon><Loading /></el-icon>
-              {{ thinkingText }}
+              <div class="message-bubble user-bubble">{{ message.content }}</div>
             </div>
           </div>
         </div>
 
-        <!-- 底部输入区 -->
         <div class="input-area">
           <div class="context-tools">
-            <el-popover placement="top" trigger="click">
+            <el-popover placement="top-start" trigger="click" :width="200">
               <template #reference>
-                <el-button icon="Plus" circle />
+                <el-button icon="Paperclip" circle title="附加系统上下文" />
               </template>
               <div class="context-menu">
-                <el-checkbox-group v-model="attachedContext">
-                  <el-checkbox value="device-info">设备信息</el-checkbox>
-                  <el-checkbox value="alert-record">告警记录</el-checkbox>
-                  <el-checkbox value="workorder-detail">工单详情</el-checkbox>
-                  <el-checkbox value="trend-data">趋势数据</el-checkbox>
+                <div style="margin-bottom: 8px; font-size: 12px; color: #909399;">选择要发给AI的系统数据</div>
+                <el-checkbox-group v-model="attachedContext" class="context-checkboxes">
+                  <el-checkbox value="device-info">当前设备状态</el-checkbox>
+                  <el-checkbox value="alert-record">最新告警记录</el-checkbox>
+                  <el-checkbox value="workorder-detail">我的待办工单</el-checkbox>
                 </el-checkbox-group>
               </div>
             </el-popover>
@@ -137,20 +122,32 @@
 
           <div class="input-wrapper">
             <el-input
-              v-model="inputMessage"
-              type="textarea"
-              :autosize="{ minRows: 1, maxRows: 5 }"
-              placeholder="输入您的问题，按 Enter 发送，Shift + Enter 换行..."
-              @keydown.enter.exact.prevent="sendMessage"
-              @keydown.shift.enter.native="insertNewline"
+                v-model="inputMessage"
+                type="textarea"
+                :autosize="{ minRows: 1, maxRows: 6 }"
+                placeholder="输入您的问题，按 Enter 发送，Shift + Enter 换行..."
+                @keydown.enter.exact.prevent="sendMessage"
+                @keydown.shift.enter.native="insertNewline"
+                :disabled="isThinking"
             />
           </div>
 
           <div class="send-tools">
             <el-button
-              :icon="isThinking ? 'Close' : 'Right'"
-              :loading="isThinking"
-              @click="isThinking ? stopGeneration() : sendMessage()"
+                v-if="!isThinking"
+                type="primary"
+                icon="Top"
+                circle
+                @click="sendMessage"
+                :disabled="!inputMessage.trim()"
+            />
+            <el-button
+                v-else
+                type="danger"
+                icon="VideoPause"
+                circle
+                @click="stopGeneration"
+                title="停止生成"
             />
           </div>
         </div>
@@ -160,7 +157,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAiAssistant } from '@/composables/useAiAssistant'
 import MarkdownIt from 'markdown-it'
@@ -169,41 +166,42 @@ import {
   Edit,
   Delete,
   Lightning,
-  Loading
+  EditPen,
+  Paperclip,
+  Top,
+  VideoPause,
+  CopyDocument,
+  Select,
+  CloseBold,
+  Monitor
 } from '@element-plus/icons-vue'
 
-// 引入卡片组件
 import AlertAnalysisCard from './components/AlertAnalysisCard.vue'
 import MiniChartCard from './components/MiniChartCard.vue'
 import DataTableCard from './components/DataTableCard.vue'
 
-// 初始化Markdown解析器
-const md = new MarkdownIt({
-  html: true,
-  linkify: true,
-  typographer: true
-})
+const md = new MarkdownIt({ html: true, linkify: true, typographer: true })
 
-// 使用AI助手组合式函数
 const {
   chatSessions,
-  sendMessage: sendAiMessage,
   getChatHistory,
   createChatSession,
-  deleteChatSession
+  deleteChatSession,
+  streamMessage,
+  getChatMessages
 } = useAiAssistant()
 
-// 响应式数据
 const inputMessage = ref('')
 const currentSessionId = ref(null)
 const currentMessages = ref([])
 const isThinking = ref(false)
-const thinkingText = ref('正在连接冷链知识库...')
 const hoveredSessionId = ref(null)
 const attachedContext = ref([])
 const messagesContainer = ref(null)
 
-// 快捷提示
+let currentSSEController = null
+let scrollObserver = null
+
 const quickPrompts = [
   { id: 1, text: '分析最近 24 小时未处理的紧急告警' },
   { id: 2, text: '生成本周冷库温湿度波动总结' },
@@ -211,214 +209,168 @@ const quickPrompts = [
   { id: 4, text: '帮我催办所有已逾期的运维工单' }
 ]
 
-// 滚动到底部
-const scrollToBottom = () => {
-  nextTick(() => {
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+// 核心优化：利用 MutationObserver 监听 DOM 变化实现丝滑自动滚动
+const setupScrollObserver = () => {
+  if (!messagesContainer.value) return
+
+  scrollObserver = new MutationObserver(() => {
+    const container = messagesContainer.value
+    // 如果用户往上翻看历史记录（距离底部超过 150px），则不强制滚动到底部，尊重用户操作
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150
+    if (isNearBottom || isThinking.value) {
+      container.scrollTop = container.scrollHeight
     }
+  })
+
+  scrollObserver.observe(messagesContainer.value, {
+    childList: true,
+    subtree: true,
+    characterData: true
   })
 }
 
-// 发送消息
 const sendMessage = async () => {
-  if (!inputMessage.value.trim()) return
+  if (!inputMessage.value.trim() || isThinking.value) return
 
-  const userMessage = {
-    role: 'user',
-    content: inputMessage.value.trim()
-  }
-
-  // 添加用户消息到当前会话
-  currentMessages.value.push(userMessage)
-
-  // 清空输入框
-  const tempMessage = inputMessage.value
+  const userText = inputMessage.value.trim()
+  currentMessages.value.push({ role: 'user', content: userText })
   inputMessage.value = ''
 
-  // 显示AI正在思考
   isThinking.value = true
-  thinkingText.value = '正在分析您提供的信息...'
 
   try {
-    // 使用普通API调用（暂时不用流式API，因为我们正在模拟后端）
-    await new Promise(resolve => setTimeout(resolve, 1500)); // 模拟网络延迟
-
-    // 根据用户输入生成模拟响应
-    let responseContent = '';
-    let cards = [];
-
-    if (tempMessage.includes('告警')) {
-      responseContent = `根据您的要求，我分析了最近的告警数据。\n\n**主要发现：**\n1. 发现3条紧急告警未处理\n2. 主要问题是温湿度超标\n3. 建议立即安排人员检查\n\n**处理建议：**\n- 检查相关传感器\n- 确认设备运行状态\n- 如需要，创建工单处理`;
-
-      cards.push({
-        type: 'alert-analysis',
-        data: {
-          rootCause: '温度传感器异常',
-          severity: 'HIGH',
-          suggestion: '更换传感器并检查线路'
-        }
-      });
-    } else if (tempMessage.includes('温度') || tempMessage.includes('趋势')) {
-      responseContent = `根据温湿度监测数据显示：\n\n- 平均温度：2°C\n- 波动范围：1-4°C\n- 最高温度：4°C（14:30）\n- 最低温度：1°C（02:15）\n\n**结论：**温度控制良好，符合冷链要求。`;
-
-      cards.push({
-        type: 'mini-chart',
-        data: {
-          title: '温湿度趋势',
-          data: [2, 3, 1, 4, 2, 3, 2]
-        }
-      });
-    } else if (tempMessage.includes('工单') || tempMessage.includes('催办')) {
-      responseContent = `根据系统数据，共有3个逾期工单：\n\n1. 工单#WO-20260304-001（逾期2天）\n2. 工单#WO-20260303-005（逾期1天）\n3. 工单#WO-20260302-012（逾期3天）\n\n建议优先处理最逾期的工单。`;
-
-      cards.push({
-        type: 'data-table',
-        data: {
-          title: '逾期工单列表',
-          columns: [
-            { prop: 'id', label: '工单号' },
-            { prop: 'title', label: '标题' },
-            { prop: 'daysOverdue', label: '逾期天数' },
-            { prop: 'assignee', label: '负责人' }
-          ],
-          rows: [
-            { id: 'WO-20260302-012', title: '1号冷库制冷故障', daysOverdue: 3, assignee: '张三' },
-            { id: 'WO-20260304-001', title: '温度传感器校准', daysOverdue: 2, assignee: '李四' },
-            { id: 'WO-20260303-005', title: '门封条更换', daysOverdue: 1, assignee: '王五' }
-          ]
-        }
-      });
-    } else {
-      responseContent = `我已经收到您的问题："${tempMessage}"\n\n根据我的分析，这里是相关信息：\n\n1. 首先，我检查了相关数据\n2. 然后进行了分析\n3. 最后给出建议\n\n您可以根据分析结果采取相应的行动。`;
-    }
-
-    // 添加AI回复
+    // 1. 🌟 先直接把空数据推入响应式数组中
     currentMessages.value.push({
       role: 'assistant',
-      content: responseContent,
-      cards: cards
-    });
-
-  } catch (error) {
-    isThinking.value = false
-    ElMessage.error('AI助手暂时无法响应，请稍后重试')
-
-    // 添加错误信息
-    currentMessages.value.push({
-      role: 'assistant',
-      content: '抱歉，我在分析过程中遇到了一些问题。请稍后重试，或联系技术支持。',
+      content: '',
       cards: []
     })
-  } finally {
-    isThinking.value = false;
-    scrollToBottom();
+
+    // 如果还没有会话，自动创建一个隐式会话
+    if (!currentSessionId.value) {
+      const newSession = await createChatSession({ title: userText.substring(0, 15) })
+      currentSessionId.value = newSession.id
+    }
+
+    let fullResponse = ''
+
+    // 2. 🌟🌟🌟 极其关键：从数组的最后一位，把刚刚推入的那个对象"捞"出来！
+    // 这个被捞出来的 targetMessage 是被 Vue 包装过的 Proxy 响应式对象！
+    const targetMessage = currentMessages.value[currentMessages.value.length - 1]
+
+    currentSSEController = streamMessage(
+        userText,
+        null,
+        null,
+        currentSessionId.value,
+        (token) => {
+          // 防错兼容：如果 sse.js 传过来的是对象，就提取 content，否则直接用字符串
+          const chunkText = typeof token === 'string' ? token : (token.content || '')
+
+          // 过滤掉后端的流结束标识符(如果有的话)
+          if (chunkText === '[DONE]') return
+
+          fullResponse += chunkText
+
+          // 3. 🌟 修改这个 Proxy 对象的 content，就能瞬间触发 Vue 的视图刷新！
+          targetMessage.content = fullResponse
+        },
+        (error) => {
+          console.error('SSE error:', error)
+          if (fullResponse === '') {
+            targetMessage.content = '抱歉，连接服务器失败，请稍后重试。'
+          }
+          isThinking.value = false
+        },
+        () => {
+          // 流完成回调：设置 isThinking 为 false 并清理状态
+          isThinking.value = false
+          currentSSEController = null
+        }
+    )
+
+  } catch (error) {
+    console.error('发送失败:', error)
+    isThinking.value = false
   }
 }
 
-// 格式化日期
-const formatDate = (date) => {
-  const now = new Date()
-  const diff = now - date
-  const dayDiff = Math.floor(diff / (1000 * 60 * 60 * 24))
-
-  if (dayDiff === 0) {
-    return '今天'
-  } else if (dayDiff === 1) {
-    return '昨天'
-  } else if (dayDiff <= 7) {
-    return `${dayDiff}天前`
-  } else {
-    return date.toLocaleDateString()
-  }
-}
-
-// 渲染Markdown
-const renderMarkdown = (text) => {
-  return md.render(text)
-}
-
-// 获取卡片组件
-const getCardComponent = (type) => {
-  switch (type) {
-    case 'alert-analysis':
-      return AlertAnalysisCard
-    case 'mini-chart':
-      return MiniChartCard
-    case 'data-table':
-      return DataTableCard
-    default:
-      return null
-  }
-}
-
-// 复制消息
-const copyMessage = (content) => {
-  navigator.clipboard.writeText(content).then(() => {
-    ElMessage.success('已复制到剪贴板')
-  })
-}
-
-// 赞/踩消息
-const likeMessage = (message) => {
-  ElMessage.success('已点赞这条回复')
-}
-const dislikeMessage = (message) => {
-  ElMessage.warning('已反馈这条回复')
-}
-
-// 其他辅助方法
-const insertNewline = (event) => {
-  if (event.shiftKey) {
-    event.target.value += '\n'
-    event.preventDefault()
-  }
+// 供 sse.js 中 `if (data === '[DONE]')` 触发时调用的结束方法 (如已实现可接入)
+const onStreamComplete = () => {
+  isThinking.value = false
+  currentSSEController = null
 }
 
 const stopGeneration = () => {
+  if (currentSSEController) {
+    currentSSEController.abort()
+    currentSSEController = null
+  }
   isThinking.value = false
-  ElMessage.info('AI回复已停止')
 }
 
-const createNewChat = async () => {
-  try {
-    const newSession = await createChatSession({
-      title: `新会话 ${Date.now()}`,
-      userId: 1 // 临时设置默认用户ID，实际应用中应从当前登录用户获取
-    })
-    currentSessionId.value = newSession.id
-    currentMessages.value = []
-  } catch (error) {
-    ElMessage.error('创建会话失败')
+const formatDate = (date) => {
+  if (!date) return '刚刚'
+  const dateObj = typeof date === 'string' ? new Date(date) : date
+  if (isNaN(dateObj.getTime())) return '刚刚'
+
+  const now = new Date()
+  const diff = now - dateObj
+  const dayDiff = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+  if (dayDiff === 0) return dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  if (dayDiff === 1) return '昨天'
+  if (dayDiff <= 7) return `${dayDiff}天前`
+  return dateObj.toLocaleDateString()
+}
+
+const renderMarkdown = (text) => {
+  if (!text) return ''
+  return md.render(text)
+}
+
+const getCardComponent = (type) => {
+  switch (type) {
+    case 'alert-analysis': return AlertAnalysisCard
+    case 'mini-chart': return MiniChartCard
+    case 'data-table': return DataTableCard
+    default: return null
   }
 }
 
-const switchSession = async (sessionId) => {
-  currentSessionId.value = sessionId
-  // 实际应用中需要从后端获取该会话的消息历史
-  currentMessages.value = []
+const copyMessage = (content) => {
+  navigator.clipboard.writeText(content).then(() => ElMessage.success('已复制'))
+}
+const likeMessage = () => ElMessage.success('感谢反馈')
+const dislikeMessage = () => ElMessage.info('已记录您的反馈，我们会继续改进')
 
-  // 模拟获取历史消息
-  if (sessionId === 1) {
-    currentMessages.value = [
-      {
-        role: 'user',
-        content: '帮我分析1号冷库的温度异常问题'
-      },
-      {
-        role: 'assistant',
-        content: '根据我的分析，1号冷库在过去24小时内温度波动较大，主要原因是制冷设备运行不稳定。\n\n**建议措施：**\n1. 检查制冷剂压力\n2. 清洁冷凝器\n3. 检查电气连接',
-        cards: [
-          {
-            type: 'mini-chart',
-            data: {
-              title: '1号冷库温度趋势',
-              data: [2, 3, 1, 4, 2, 5, 3]
-            }
-          }
-        ]
+const insertNewline = (event) => {
+  event.target.value += '\n'
+  inputMessage.value = event.target.value
+}
+
+const createNewChat = async () => {
+  if (isThinking.value) return
+  currentSessionId.value = null
+  currentMessages.value = []
+}
+
+const switchSession = async (sessionId) => {
+  if (isThinking.value) return
+  currentSessionId.value = sessionId
+  try {
+    const messages = await getChatMessages(sessionId)
+    currentMessages.value = messages.map(msg => ({
+      role: msg.role.toLowerCase(),
+      content: msg.content
+    }))
+    nextTick(() => {
+      if (messagesContainer.value) {
+        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
       }
-    ]
+    })
+  } catch (error) {
+    currentMessages.value = []
   }
 }
 
@@ -427,10 +379,7 @@ const renameSession = (sessionId) => {
   ElMessageBox.prompt('请输入新的会话标题', '重命名', {
     inputValue: session?.title
   }).then(({ value }) => {
-    // 这里应该调用API更新标题
-    if (session) {
-      session.title = value
-    }
+    if (session) session.title = value
   }).catch(() => {})
 }
 
@@ -441,9 +390,7 @@ const deleteSession = async (sessionId) => {
       currentSessionId.value = null
       currentMessages.value = []
     }
-  } catch (error) {
-    ElMessage.error('删除会话失败')
-  }
+  } catch (error) {}
 }
 
 const sendPrompt = (prompt) => {
@@ -452,28 +399,26 @@ const sendPrompt = (prompt) => {
 }
 
 onMounted(async () => {
-  // 加载聊天历史
-  try {
-    await getChatHistory()
-  } catch (error) {
-    console.error('加载聊天历史失败:', error)
-  }
+  await getChatHistory()
+  setupScrollObserver()
+})
 
-  scrollToBottom()
+onUnmounted(() => {
+  if (scrollObserver) scrollObserver.disconnect()
 })
 </script>
 
 <style scoped>
 .ai-assistant-container {
   display: flex;
-  height: calc(100vh - 60px); /* 减去顶部导航高度 */
-  background-color: #f5f7fa;
+  height: calc(100vh - 60px);
+  background-color: #ffffff;
 }
 
+/* 左侧栏样式优化 */
 .history-sidebar {
-  width: 25%;
-  min-width: 250px;
-  background: white;
+  width: 260px;
+  background: #f9f9f9;
   border-right: 1px solid #e4e7ed;
   display: flex;
   flex-direction: column;
@@ -481,263 +426,275 @@ onMounted(async () => {
 
 .sidebar-header {
   padding: 16px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid transparent; /* 保持高度占位 */
+}
+
+.new-chat-btn {
+  width: 100%;
+  border-radius: 8px;
+  font-weight: 500;
 }
 
 .chat-history-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 8px 12px;
 }
 
 .chat-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
+  color: #303133;
 }
 
 .chat-item:hover {
-  background-color: #f5f7fa;
+  background-color: #eef2f9;
 }
 
 .chat-item.active {
-  background-color: #ecf5ff;
-  border-left: 3px solid #409eff;
-}
-
-.chat-info {
-  flex: 1;
+  background-color: #e1edfd;
+  color: #409eff;
 }
 
 .chat-title {
+  font-size: 14px;
   font-weight: 500;
   margin-bottom: 4px;
-}
-
-.chat-time {
-  font-size: 12px;
-  color: #909399;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
 }
 
 .chat-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .action-icon {
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.2s;
+  padding: 4px;
+  border-radius: 4px;
 }
 
 .action-icon:hover {
-  opacity: 1;
+  background-color: #dcdfe6;
+  color: #f56c6c;
 }
 
+/* 主对话区优化 */
 .chat-main-area {
   flex: 1;
   display: flex;
   flex-direction: column;
+  background: #ffffff;
 }
 
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 24px 15%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  text-align: center;
-}
-
-.welcome-message h2 {
-  color: #303133;
-  margin-bottom: 12px;
-}
-
-.welcome-message p {
-  color: #606266;
-  margin-bottom: 30px;
-}
-
-.prompt-suggestions {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.prompt-card {
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.prompt-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  gap: 24px;
+  scroll-behavior: smooth;
 }
 
 .message-wrapper {
   display: flex;
-  max-width: 85%;
+  width: 100%;
 }
 
 .user-message {
   justify-content: flex-end;
+  /* 确保父容器占满整行，但子元素靠右对齐 */
+  width: 100%;
 }
 
-.assistant-message {
-  justify-content: flex-start;
-}
+.user-bubble {
+  background-color: #f4f6f8;
+  color: #303133;
+  border-radius: 16px;
+  padding: 10px 16px; /* 稍微调小一点内边距，看起来更紧凑 */
 
-.user-content {
-  display: flex;
-  justify-content: flex-end;
+  /* 🌟 核心修复 1：不要设为块级元素，设为 inline-block 可以让气泡紧贴文字宽度 */
+  display: inline-block;
+
+  /* 🌟 核心修复 2：取消固定的 max-width 80%，改用 vw 或 fit-content */
+  max-width: fit-content;
+
+  font-size: 15px;
+  line-height: 1.6;
+
+  /* 保留 pre-wrap 以支持用户输入的真实换行 */
+  white-space: pre-wrap;
+  word-break: break-word;
+
+  /* 确保文本靠左对齐，但气泡整体靠右 */
+  text-align: left;
 }
 
 .assistant-content {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.avatar {
-  margin-top: 4px;
-}
-
-.message-bubble {
-  padding: 12px 16px;
-  border-radius: 18px;
-  max-width: 100%;
-  word-wrap: break-word;
-  position: relative;
-}
-
-.user-bubble {
-  background-color: #409eff;
-  color: white;
-  border-bottom-right-radius: 4px;
+  gap: 16px;
+  max-width: 90%;
 }
 
 .assistant-bubble {
-  background-color: white;
+  flex: 1;
   color: #303133;
-  border: 1px solid #e4e7ed;
-  border-bottom-left-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  font-size: 15px;
+  line-height: 1.7;
 }
 
-.thinking-bubble {
+/* Markdown 排版细节优化 */
+.markdown-body :deep(p) { margin-top: 0; margin-bottom: 1em; }
+.markdown-body :deep(p:last-child) { margin-bottom: 0; }
+.markdown-body :deep(code) {
+  background-color: #f0f2f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 13px;
+  color: #f56c6c;
+}
+.markdown-body :deep(pre) {
+  background-color: #282c34;
+  color: #abb2bf;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 16px 0;
+}
+.markdown-body :deep(pre code) {
+  background-color: transparent;
+  color: inherit;
+  padding: 0;
+}
+.markdown-body :deep(ul), .markdown-body :deep(ol) {
+  padding-left: 24px;
+  margin-bottom: 16px;
+}
+
+/* 光标与动画 */
+.blinking-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background-color: #409eff;
+  vertical-align: middle;
+  animation: blink 1s step-end infinite;
+  margin-left: 4px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.typing-indicator {
   display: flex;
   align-items: center;
-  gap: 8px;
+  height: 24px;
+  gap: 4px;
+  padding: 4px 8px;
 }
 
-.message-text {
-  line-height: 1.6;
+.dot {
+  width: 6px;
+  height: 6px;
+  background-color: #a8abb2;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
 }
 
-.message-text :deep(p) {
-  margin: 8px 0;
-}
+.dot:nth-child(1) { animation-delay: -0.32s; }
+.dot:nth-child(2) { animation-delay: -0.16s; }
 
-.message-text :deep(ul),
-.message-text :deep(ol) {
-  margin: 8px 0;
-  padding-left: 20px;
-}
-
-.message-text :deep(li) {
-  margin: 4px 0;
-}
-
-.message-text :deep(strong) {
-  font-weight: bold;
-}
-
-.message-text :deep(code) {
-  background-color: #f5f7fa;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: monospace;
-}
-
-.message-text :deep(pre) {
-  background-color: #2d2d2d;
-  color: #f8f8f2;
-  padding: 12px;
-  border-radius: 4px;
-  overflow-x: auto;
-  margin: 12px 0;
-}
-
-.structured-cards {
-  margin-top: 12px;
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+  40% { transform: scale(1); opacity: 1; }
 }
 
 .message-actions {
-  margin-top: 12px;
+  margin-top: 8px;
   display: flex;
-  gap: 8px;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 
-.thinking-state {
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #909399;
-  font-style: italic;
+.assistant-content:hover .message-actions {
+  opacity: 1;
 }
 
+/* 输入区优化 */
 .input-area {
-  padding: 16px;
-  background: white;
-  border-top: 1px solid #e4e7ed;
+  padding: 16px 15%;
+  background: #ffffff;
   display: flex;
   align-items: flex-end;
   gap: 12px;
+  position: relative;
 }
 
-.context-tools {
-  margin-right: 8px;
+.input-area::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(to top, rgba(255,255,255,1), rgba(255,255,255,0));
+  pointer-events: none;
 }
 
 .input-wrapper {
   flex: 1;
+  background: #f4f6f8;
+  border-radius: 16px;
+  padding: 4px;
+  border: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+.input-wrapper:focus-within {
+  border-color: #c0c4cc;
+  background: #ffffff;
 }
 
-.send-tools {
-  margin-left: 8px;
+.input-wrapper :deep(.el-textarea__inner) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 8px 12px;
+  font-size: 15px;
+  resize: none;
 }
 
-/* 滚动条样式 */
-.messages-container::-webkit-scrollbar {
-  width: 6px;
+.context-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.messages-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
+/* 空状态卡片优化 */
+.empty-state {
+  margin-top: 10vh;
 }
-
-.messages-container::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
+.welcome-message h2 { font-size: 28px; margin-bottom: 12px; font-weight: 600; }
+.prompt-card {
+  border-radius: 12px;
+  border: 1px solid #ebeef5;
+  color: #606266;
+  font-size: 14px;
 }
-
-.messages-container::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+.prompt-card:hover {
+  border-color: #409eff;
+  color: #409eff;
 }
 </style>

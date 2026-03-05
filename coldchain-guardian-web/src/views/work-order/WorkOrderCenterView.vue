@@ -220,8 +220,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import CreateWorkOrderModal from '@/components/work-order/CreateWorkOrderModal.vue';
-import WorkOrderDrawer from '@/components/work-order/WorkOrderDrawer.vue';
+import CreateWorkOrderModal from '@/views/work-order/components/CreateWorkOrderModal.vue';
+import WorkOrderDrawer from '@/views/work-order/components/WorkOrderDrawer.vue';
 import Layout from '@/components/Layout.vue';
 import { workOrderApi } from '@/api/work-order';
 

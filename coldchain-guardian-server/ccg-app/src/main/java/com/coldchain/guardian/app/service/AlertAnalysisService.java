@@ -32,36 +32,44 @@ public class AlertAnalysisService {
     public Map<String, Object> getAlertTrendAnalysis(String period) {
         List<AlertEntity> alerts = alertRepository.findAll();
 
+        // Filter alerts with null firstTime to prevent NPE in groupingBy
+        List<AlertEntity> validAlerts = alerts.stream()
+            .filter(alert -> getSafeAlertTime(alert) != null)
+            .collect(Collectors.toList());
+
         // 根据时间段分析告警趋势
-        Map<String, Long> trendData = alerts.stream()
+        Map<String, Long> trendData = validAlerts.stream()
             .collect(Collectors.groupingBy(
-                alert -> getPeriodKey(alert.getFirstTime(), period),
+                alert -> getPeriodKey(getSafeAlertTime(alert), period),
                 Collectors.counting()
             ));
 
-        // 统计告警类型分布
-        Map<String, Long> typeDistribution = alerts.stream()
+        // 统计告警类型分布 - filter out alerts with null alertType
+        Map<String, Long> typeDistribution = validAlerts.stream()
+            .filter(alert -> alert.getAlertType() != null)
             .collect(Collectors.groupingBy(
                 AlertEntity::getAlertType,
                 Collectors.counting()
             ));
 
-        // 统计设备告警排行
-        Map<String, Long> deviceRanking = alerts.stream()
+        // 统计设备告警排行 - filter out alerts with null deviceName
+        Map<String, Long> deviceRanking = validAlerts.stream()
+            .filter(alert -> alert.getDeviceName() != null)
             .collect(Collectors.groupingBy(
                 AlertEntity::getDeviceName,
                 Collectors.counting()
             ));
 
-        // 按级别统计
-        Map<String, Long> levelStats = alerts.stream()
+        // 按级别统计 - filter out alerts with null alertLevel
+        Map<String, Long> levelStats = validAlerts.stream()
+            .filter(alert -> alert.getAlertLevel() != null)
             .collect(Collectors.groupingBy(
                 AlertEntity::getAlertLevel,
                 Collectors.counting()
             ));
 
         // 计算告警增长率
-        double growthRate = calculateGrowthRate(alerts);
+        double growthRate = calculateGrowthRate(validAlerts);
 
         // 构建分析结果
         Map<String, Object> result = new HashMap<>();
@@ -69,7 +77,7 @@ public class AlertAnalysisService {
         result.put("typeDistribution", typeDistribution);
         result.put("deviceRanking", deviceRanking);
         result.put("levelStats", levelStats);
-        result.put("totalAlerts", (long) alerts.size());
+        result.put("totalAlerts", (long) validAlerts.size());
         result.put("growthRate", growthRate);
         return result;
     }
@@ -81,8 +89,13 @@ public class AlertAnalysisService {
     public Map<String, Object> getRecurringAlertAnalysis() {
         List<AlertEntity> alerts = alertRepository.findAll();
 
+        // Filter alerts with null deviceName or alertType to prevent NPE in groupingBy
+        List<AlertEntity> validAlerts = alerts.stream()
+            .filter(alert -> alert.getDeviceName() != null && alert.getAlertType() != null)
+            .collect(Collectors.toList());
+
         // 按设备和告警类型分组，找出高频告警
-        Map<String, List<AlertEntity>> groupedAlerts = alerts.stream()
+        Map<String, List<AlertEntity>> groupedAlerts = validAlerts.stream()
             .collect(Collectors.groupingBy(
                 alert -> alert.getDeviceName() + "|" + alert.getAlertType()
             ));
@@ -96,7 +109,7 @@ public class AlertAnalysisService {
             ));
 
         // 计算重复告警占比
-        long totalAlerts = alerts.size();
+        long totalAlerts = validAlerts.size();
         long recurringCount = recurringAlerts.values().stream().mapToLong(Long::longValue).sum();
         double recurringPercentage = totalAlerts > 0 ? (double) recurringCount / totalAlerts * 100 : 0;
 
@@ -104,7 +117,7 @@ public class AlertAnalysisService {
         Map<String, Object> result = new HashMap<>();
         result.put("recurringAlerts", recurringAlerts);
         result.put("recurringPercentage", recurringPercentage);
-        result.put("totalCount", (long) alerts.size());
+        result.put("totalCount", (long) validAlerts.size());
         return result;
     }
 
@@ -115,8 +128,13 @@ public class AlertAnalysisService {
     public Map<String, Object> getDeviceHealthScore() {
         List<AlertEntity> alerts = alertRepository.findAll();
 
+        // Filter alerts with null deviceName to prevent NPE in groupingBy
+        List<AlertEntity> validAlerts = alerts.stream()
+            .filter(alert -> alert.getDeviceName() != null)
+            .collect(Collectors.toList());
+
         // 按设备分组统计
-        Map<String, List<AlertEntity>> alertsByDevice = alerts.stream()
+        Map<String, List<AlertEntity>> alertsByDevice = validAlerts.stream()
             .collect(Collectors.groupingBy(AlertEntity::getDeviceName));
 
         // 计算每个设备的健康得分
@@ -148,11 +166,16 @@ public class AlertAnalysisService {
     public Map<String, Object> getRootCauseAnalysis() {
         List<AlertEntity> alerts = alertRepository.findAll();
 
+        // Filter alerts with null firstTime to prevent NPE in groupingBy
+        List<AlertEntity> validAlerts = alerts.stream()
+            .filter(alert -> getSafeAlertTime(alert) != null)
+            .collect(Collectors.toList());
+
         // 按时间窗口分组分析告警集群
         // 将LocalDateTime转换为String格式以确保类型一致
-        Map<String, List<AlertEntity>> alertClusters = alerts.stream()
+        Map<String, List<AlertEntity>> alertClusters = validAlerts.stream()
             .collect(Collectors.groupingBy(
-                alert -> alert.getFirstTime().withMinute(0).withSecond(0).toString() // 按小时聚合，转换为字符串
+                alert -> getSafeAlertTime(alert).withMinute(0).withSecond(0).toString() // 按小时聚合，转换为字符串
             ));
 
         // 找出同时发生的相关告警
@@ -162,6 +185,7 @@ public class AlertAnalysisService {
                 Map.Entry::getKey,
                 entry -> entry.getValue().stream()
                     .map(AlertEntity::getAlertType)
+                    .filter(type -> type != null) // Filter out null alert types
                     .distinct()
                     .collect(Collectors.toList())
             ));
@@ -170,7 +194,7 @@ public class AlertAnalysisService {
         Map<String, Object> result = new HashMap<>();
         result.put("correlatedAlerts", correlatedAlerts);
         result.put("clusterCount", (long) alertClusters.size());
-        result.put("totalAlerts", (long) alerts.size());
+        result.put("totalAlerts", (long) validAlerts.size());
         return result;
     }
 
@@ -182,17 +206,20 @@ public class AlertAnalysisService {
             return 0.0;
         }
 
-        // 获取最早的告警时间
-        LocalDateTime earliest = alerts.stream()
-            .map(AlertEntity::getFirstTime)
-            .min(LocalDateTime::compareTo)
-            .orElse(LocalDateTime.now());
+        // Filter alerts with null firstTime to prevent NPE
+        List<LocalDateTime> validTimes = alerts.stream()
+            .map(this::getSafeAlertTime)
+            .filter(time -> time != null)
+            .sorted()
+            .collect(Collectors.toList());
 
-        // 获取最晚的告警时间
-        LocalDateTime latest = alerts.stream()
-            .map(AlertEntity::getFirstTime)
-            .max(LocalDateTime::compareTo)
-            .orElse(LocalDateTime.now());
+        if (validTimes.size() < 2) {
+            return 0.0;
+        }
+
+        // Get earliest and latest times
+        LocalDateTime earliest = validTimes.get(0);
+        LocalDateTime latest = validTimes.get(validTimes.size() - 1);
 
         // 计算时间跨度内的告警数量变化率
         long daysBetween = java.time.Duration.between(earliest, latest).toDays();
@@ -241,8 +268,9 @@ public class AlertAnalysisService {
                 default -> 0.0;
             };
 
-            // 如果告警在近期产生，额外扣分
-            if (alert.getFirstTime().isAfter(LocalDateTime.now().minusDays(7))) {
+            // 如果告警在近期产生，额外扣分 - using safe alert time
+            LocalDateTime alertTime = getSafeAlertTime(alert);
+            if (alertTime != null && alertTime.isAfter(LocalDateTime.now().minusDays(7))) {
                 score -= switch (alert.getAlertLevel()) {
                     case "CRITICAL" -> 5.0;
                     case "HIGH" -> 3.0;
@@ -255,6 +283,17 @@ public class AlertAnalysisService {
 
         // 确保分数在合理范围内
         return Math.max(0.0, Math.min(100.0, score));
+    }
+
+    // 新增私有辅助方法：安全获取告警时间，防止空指针
+    private java.time.LocalDateTime getSafeAlertTime(com.coldchain.guardian.infra.persistence.entity.AlertEntity alert) {
+        if (alert.getFirstTime() != null) {
+            return alert.getFirstTime();
+        }
+        if (alert.getCreateTime() != null) {
+            return alert.getCreateTime();
+        }
+        return java.time.LocalDateTime.now(); // 终极兜底
     }
 
     /**

@@ -31,14 +31,14 @@ const routes = [
   {
     path: '/devices/:deviceId/data',
     name: 'DeviceData',
-    component: () => import('../views/device/DeviceDataView.vue'),
+    component: () => import('../views/device/components/DeviceDataView.vue'),
     meta: { requiresAuth: true, permissions: ['device:view'] },
     props: true
   },
   {
     path: '/devices/:deviceId/alerts',
     name: 'DeviceAlerts',
-    component: () => import('../views/device/DeviceAlertView.vue'),
+    component: () => import('../views/device/components/DeviceAlertView.vue'),
     meta: { requiresAuth: true, permissions: ['device:view', 'alert:view'] },
     props: true
   },

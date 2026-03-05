@@ -35,7 +35,7 @@ export function useAiAssistant() {
   }
 
   // 流式发送消息（用于SSE）
-  const streamMessage = (message, attachmentType = null, attachmentId = null, sessionId = null, onTokenReceived, onError) => {
+  const streamMessage = (message, attachmentType = null, attachmentId = null, sessionId = null, onTokenReceived, onError, onDone) => {
     const data = {
       message,
       attachmentType,
@@ -52,6 +52,10 @@ export function useAiAssistant() {
 
     if (onError) {
       sseClient.setErrorHandler(onError)
+    }
+
+    if (onDone) {
+      sseClient.setDoneHandler(onDone)
     }
 
     // Connect and send data

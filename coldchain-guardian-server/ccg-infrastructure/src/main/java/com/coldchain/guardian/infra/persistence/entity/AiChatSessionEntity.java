@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -31,4 +32,10 @@ public class AiChatSessionEntity extends BaseEntity {
 
     // 构造函数
     public AiChatSessionEntity() {}
+
+    // JSON alias for frontend compatibility - map updateTime to lastUpdated
+    @JsonProperty("lastUpdated")
+    public LocalDateTime getLastUpdated() {
+        return this.getUpdateTime();
+    }
 }

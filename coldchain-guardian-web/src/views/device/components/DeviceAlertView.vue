@@ -281,8 +281,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import Layout from '@/components/Layout.vue'
-import { deviceApi } from '@/api/device'
-import { alertApi } from '@/api/alert'
+import { deviceApi } from '@/api/device.js'
+import { alertApi } from '@/api/alert.js'
 
 // 路由
 const route = useRoute()

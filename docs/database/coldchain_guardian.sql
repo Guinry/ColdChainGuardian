@@ -11,11 +11,44 @@
  Target Server Version : 80042 (8.0.42)
  File Encoding         : 65001
 
- Date: 04/03/2026 11:15:59
+ Date: 04/03/2026 20:13:59
 */
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
+
+-- ----------------------------
+-- Table structure for ai_chat_messages
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_chat_messages`;
+CREATE TABLE `ai_chat_messages`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `session_id` bigint NOT NULL COMMENT '所属会话ID (关联 ai_chat_sessions 表)',
+  `role` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '角色类型：USER(用户提问), ASSISTANT(AI回答), SYSTEM(系统预设)',
+  `content` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '消息内容(支持Markdown格式)',
+  `attachment_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '关联附件类型(DEVICE/ALERT/WORK_ORDER/AREA)',
+  `attachment_id` bigint NULL DEFAULT NULL COMMENT '关联附件的业务ID',
+  `tokens_used` int NULL DEFAULT 0 COMMENT '消耗的Token数量(可选，用于后续统计大模型API成本)',
+  `created_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '消息发送时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_session_time`(`session_id` ASC, `created_time` ASC) USING BTREE COMMENT '用于按时间顺序拉取某个会话的所有聊天记录',
+  CONSTRAINT `fk_msg_session` FOREIGN KEY (`session_id`) REFERENCES `ai_chat_sessions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI助手-消息明细表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for ai_chat_sessions
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_chat_sessions`;
+CREATE TABLE `ai_chat_sessions`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL COMMENT '所属用户ID (关联 users 表)',
+  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '新对话' COMMENT '会话标题(由AI根据首轮对话自动生成总结)',
+  `is_deleted` tinyint NOT NULL DEFAULT 0 COMMENT '是否已删除(1是 0否，用于前端历史列表的软删除)',
+  `created_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '会话创建时间',
+  `updated_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后对话时间(用于列表排序)',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_user_time`(`user_id` ASC, `updated_time` DESC) USING BTREE COMMENT '用于快速拉取某用户的历史会话列表'
+) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI助手-会话表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for alert_configs
@@ -64,6 +97,9 @@ CREATE TABLE `alerts`  (
   `handle_remark` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '处理备注',
   `created_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '告警发生时间',
   `updated_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `first_time` timestamp NULL DEFAULT NULL COMMENT '首次触发时间',
+  `last_time` timestamp NULL DEFAULT NULL COMMENT '最后一次触发时间',
+  `trigger_count` int NULL DEFAULT 1 COMMENT '触发次数',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_status`(`status` ASC) USING BTREE,
   INDEX `idx_level`(`alert_level` ASC) USING BTREE,
@@ -234,7 +270,6 @@ CREATE TABLE `work_orders`  (
   `verified_time` timestamp NULL DEFAULT NULL COMMENT '审核/验收时间',
   `verification_result` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '审核/验收结果描述',
   `location_detail` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '发生位置详细说明',
-  `created_by` bigint NULL DEFAULT NULL COMMENT '创建人/上报人ID',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `order_no`(`order_no` ASC) USING BTREE,
   INDEX `idx_status`(`status` ASC) USING BTREE,

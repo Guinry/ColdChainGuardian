@@ -206,10 +206,10 @@ import {
 import { debounce } from 'lodash-es'
 import { ElMessage } from 'element-plus'
 import Layout from '@/components/Layout.vue'
-import KpiCard from '@/components/KpiCard.vue'
-import Echarts from '@/components/Echarts.vue'
-import DataTable from '@/components/DataTable.vue'
-import AnalysisSidebar from '@/components/AnalysisSidebar.vue'
+import KpiCard from '@/views/trend-analysis/components/KpiCard.vue'
+import Echarts from '@/views/trend-analysis/components/Echarts.vue'
+import DataTable from '@/views/trend-analysis/components/DataTable.vue'
+import AnalysisSidebar from '@/views/trend-analysis/components/AnalysisSidebar.vue'
 
 // 响应式数据
 const isLoading = ref(false)

@@ -150,7 +150,7 @@
 <script setup>
 import { ref, computed, watchEffect } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { alertApi } from '@/api/alert';
+import { alertApi } from '@/api/alert.js';
 
 // Props
 const props = defineProps({

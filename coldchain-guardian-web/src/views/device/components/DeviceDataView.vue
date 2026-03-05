@@ -127,7 +127,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import Layout from '@/components/Layout.vue'
-import { deviceApi } from '@/api/device'
+import { deviceApi } from '@/api/device.js'
 import * as echarts from 'echarts'
 
 // 路由
