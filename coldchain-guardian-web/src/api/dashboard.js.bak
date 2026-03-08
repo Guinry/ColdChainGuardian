@@ -49,7 +49,7 @@ export const dashboardApi = {
 
   // 获取设备列表
   getDevices() {
-    return apiClient.get('/devices', { params: { pageNum: 1, pageSize: 100 } })
+    return apiClient.get('/devices/list', { params: { pageNum: 1, pageSize: 100 } })
   },
 
   // AI助手分析仪表盘数据

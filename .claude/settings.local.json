@@ -28,7 +28,9 @@
       "Bash(mvn package:*)",
       "Bash(xargs grep:*)",
       "Bash(awk:*)",
-      "Bash(ls:*.)"
+      "Bash(temp_dashboard_api.js:*)",
+      "Bash(sed:*)",
+      "Bash(powershell:*)"
     ]
   }
 }

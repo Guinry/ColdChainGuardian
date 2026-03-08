@@ -9,17 +9,11 @@ import java.time.LocalDateTime;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("telemetry_data")
+@TableName("sensor_data")
 public class TelemetryEntity extends BaseEntity {
 
     @TableField("device_id")
     private Long deviceId;
-
-    @TableField("device_code")
-    private String deviceCode;
-
-    @TableField("device_name")
-    private String deviceName;
 
     @TableField("temperature")
     private Double temperature;
@@ -38,4 +32,10 @@ public class TelemetryEntity extends BaseEntity {
 
     @TableField("data_time")
     private LocalDateTime dataTime;
+
+    @TableField("created_time")
+    private LocalDateTime createdTime;
+
+    @TableField("update_time")
+    private LocalDateTime updateTime;
 }

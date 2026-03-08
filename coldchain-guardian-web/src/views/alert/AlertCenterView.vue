@@ -463,10 +463,12 @@ const fetchAlerts = async () => {
 
     const response = await alertApi.search(params);
     if (response && response.data) {
-      // 数据适配器：处理后端返回的不同格式
-      const rawAlerts = response.data.data?.records || [];
+      // 🌟 核心修复：兼容后端返回的 'records' 或 'data' 字段
+      const paginationData = response.data.data || {};
+      const rawAlerts = paginationData.records || paginationData.data || [];
+
       alerts.value = rawAlerts.map(adaptAlertData);
-      pagination.total = response.data.data?.total || 0;
+      pagination.total = paginationData.total || 0;
     } else {
       alerts.value = [];
       pagination.total = 0;
@@ -485,8 +487,10 @@ const fetchAlerts = async () => {
 const adaptAlertData = (rawAlert) => {
   // 确保status字段存在
   if (!rawAlert.status) {
-    // 如果原始数据有isResolved字段，则根据它来推断状态
-    if (rawAlert.isResolved !== undefined) {
+    // 🌟 核心修复：后端传的是 resolved，而不是 isResolved
+    if (rawAlert.resolved !== undefined) {
+      rawAlert.status = rawAlert.resolved ? 'RESOLVED' : 'UNHANDLED';
+    } else if (rawAlert.isResolved !== undefined) { // 兼容旧逻辑
       rawAlert.status = rawAlert.isResolved ? 'RESOLVED' : 'UNHANDLED';
     } else {
       // 默认为未处理

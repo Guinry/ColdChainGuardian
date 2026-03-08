@@ -143,8 +143,6 @@ public class TelemetryService {
         TelemetryDto dto = new TelemetryDto();
         dto.setId(entity.getId());
         dto.setDeviceId(entity.getDeviceId());
-        dto.setDeviceCode(entity.getDeviceCode());
-        dto.setDeviceName(entity.getDeviceName());
         dto.setTemperature(entity.getTemperature());
         dto.setHumidity(entity.getHumidity());
         dto.setBatteryLevel(entity.getBatteryLevel());

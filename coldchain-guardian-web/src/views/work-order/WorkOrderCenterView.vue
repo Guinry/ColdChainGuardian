@@ -404,38 +404,63 @@ const getUserAvatar = (userId) => {
   return '';
 };
 
-// 处理工单相关操作
-const handleProcess = (row) => {
-  // 根据当前状态决定默认操作
-  if (row.status === 'PENDING') {
-    handleAccept(row);
-  } else if (row.status === 'PROCESSING') {
-    handleComplete(row);
-  } else if (row.status === 'VERIFYING') {
-    handleVerify(row);
-  } else if (row.status === 'COMPLETED') {
-    handleClose(row);
+// 统一处理工单状态变更操作 (替换掉原来的 handleAccept, handleComplete 等)
+const updateWorkOrderStatus = async (row, action, targetStatus, title, message) => {
+  try {
+    await ElMessageBox.confirm(message, title, {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+
+    // 发送真实的后端请求
+    const response = await workOrderApi.updateStatus(row.id, {
+      status: targetStatus,
+      remark: `通过工单列表快捷操作: ${title}`,
+      operatorId: 1, // 当前登录用户ID，实际项目中从 authStore 获取
+      operatorName: '当前用户' // 当前登录用户名称
+    });
+
+    if (response.data.success) {
+      ElMessage.success(`${title}成功`);
+      // 操作成功后，刷新表格数据和顶部的 KPI 统计数据
+      fetchWorkOrders();
+      fetchWorkOrderStats();
+    } else {
+      ElMessage.error(response.data.message || `${title}失败`);
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(`工单${title}操作失败:`, error);
+      ElMessage.error(`操作失败，请检查网络或联系管理员`);
+    }
   }
 };
 
+// 按钮点击入口
+const handleProcess = (row) => {
+  // 默认点击主按钮时的行为
+  if (row.status === 'PENDING') handleAccept(row);
+  else if (row.status === 'PROCESSING') handleComplete(row);
+  else if (row.status === 'VERIFYING') handleVerify(row);
+  else if (row.status === 'COMPLETED') handleClose(row);
+};
+
+// 各个具体操作的封装
 const handleAccept = (row) => {
-  // 接受工单的逻辑
-  console.log('接受工单:', row);
+  updateWorkOrderStatus(row, 'ACCEPTED', 'PROCESSING', '接受工单', '确认开始处理此工单吗？');
 };
 
 const handleComplete = (row) => {
-  // 完成工单的逻辑
-  console.log('完成工单:', row);
+  updateWorkOrderStatus(row, 'COMPLETED', 'VERIFYING', '完成工单', '确认已完成工单处理，提交验收吗？');
 };
 
 const handleVerify = (row) => {
-  // 验收工单的逻辑
-  console.log('验收工单:', row);
+  updateWorkOrderStatus(row, 'VERIFIED', 'COMPLETED', '验收通过', '确认此工单已处理合格并验收通过吗？');
 };
 
 const handleClose = (row) => {
-  // 关闭工单的逻辑
-  console.log('关闭工单:', row);
+  updateWorkOrderStatus(row, 'CLOSED', 'CLOSED', '关闭工单', '确认归档关闭此工单吗？关闭后将不可更改。');
 };
 
 // 工单创建成功回调
