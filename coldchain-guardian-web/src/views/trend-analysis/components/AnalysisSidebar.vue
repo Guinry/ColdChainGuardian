@@ -113,12 +113,12 @@
               <el-statistic title="设备总数" :value="totalDevices" />
             </el-col>
             <el-col :span="12">
-              <el-statistic title="平均温度" :value="avgTemperature" suffix="°C" />
+              <el-statistic title="平均温度" :precision="1" :value="avgTemperature" suffix="°C" />
             </el-col>
           </el-row>
           <el-divider />
           <el-progress :percentage="deviceOnlineRate" :stroke-width="12" status="success">
-            <span>{{ deviceOnlineRate }}% 在线率</span>
+            <span>{{ deviceOnlineRate.toFixed(1) }}% 在线率</span>
           </el-progress>
         </div>
       </el-collapse-item>
@@ -146,18 +146,25 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
-import { Download, Document, Printer, ChatLineRound } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
+
+// 🌟 1. 声明 Props 接收真实数据
+const props = defineProps({
+  realStats: {
+    type: Object,
+    default: () => ({})
+  }
+})
 
 // Active collapse panel
 const activeNames = ref(['1'])
 
-// Stats data
-const totalAlerts = ref(124)
-const totalWorkOrders = ref(87)
-const totalDevices = ref(142)
-const avgTemperature = ref(4.2)
-const deviceOnlineRate = ref(98.5)
+// Stats data - 初始值为 0，等待从父组件或API获取真实数据
+const totalAlerts = ref(0)
+const totalWorkOrders = ref(0)
+const totalDevices = ref(0)
+const avgTemperature = ref(0)
+const deviceOnlineRate = ref(0)
 
 // Time data
 const currentTime = ref(new Date().toLocaleString())
@@ -179,6 +186,18 @@ const comparisonForm = reactive({
 
 // Timer for updating time
 let timeTimer = null
+
+// 更新统计数据显示
+const updateStatsDisplay = () => {
+  // 优先使用父组件传递的真实数据，否则使用后端API数据
+  if (props.realStats && Object.keys(props.realStats).length > 0) {
+    totalAlerts.value = props.realStats.totalAlerts || 0
+    totalWorkOrders.value = props.realStats.totalWorkOrders || 0
+    totalDevices.value = props.realStats.totalDevices || 0
+    avgTemperature.value = parseFloat(props.realStats.avgTemperature) || 0
+    deviceOnlineRate.value = parseFloat(props.realStats.deviceOnlineRate) || 0
+  }
+}
 
 // Apply filters
 const applyFilters = () => {
@@ -235,8 +254,16 @@ const emit = defineEmits([
   'ai-analysis-requested'
 ])
 
+// Watch for changes in realStats prop
+watch(() => props.realStats, () => {
+  updateStatsDisplay()
+}, { deep: true })
+
 // Lifecycle hooks
 onMounted(() => {
+  // 初始化统计数据
+  updateStatsDisplay()
+
   // Start timer to update time
   timeTimer = setInterval(updateTime, 1000)
 })

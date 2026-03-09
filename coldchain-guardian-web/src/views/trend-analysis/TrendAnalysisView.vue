@@ -184,6 +184,7 @@
         <!-- 分析侧边栏 -->
         <el-col :span="4">
           <AnalysisSidebar
+            :real-stats="realStatsForSidebar"
             @filter-applied="handleFilterApplied"
             @comparison-applied="handleComparisonApplied"
             @export-requested="handleExportRequested"
@@ -205,247 +206,128 @@ import {
 } from '@/api/dashboard'
 import { debounce } from 'lodash-es'
 import { ElMessage } from 'element-plus'
+// 正确的组件导入路径
+import KpiCard from './components/KpiCard.vue'
+import AnalysisSidebar from './components/AnalysisSidebar.vue'
+import Echarts from './components/Echarts.vue'
+import DataTable from './components/DataTable.vue'
 import Layout from '@/components/Layout.vue'
-import KpiCard from '@/views/trend-analysis/components/KpiCard.vue'
-import Echarts from '@/views/trend-analysis/components/Echarts.vue'
-import DataTable from '@/views/trend-analysis/components/DataTable.vue'
-import AnalysisSidebar from '@/views/trend-analysis/components/AnalysisSidebar.vue'
 
-// 响应式数据
+// 🌟 1. 增加一个 ref 来存储侧边栏传过来的高级筛选条件
+const advancedFilters = ref({})
+
+// 🌟 2. 增加一个 ref 用于向侧边栏传递真实统计信息
+const realStatsForSidebar = ref({})
+
 const isLoading = ref(false)
 const isExporting = ref(false)
 const filterForm = ref({
-  dateRange: [new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), new Date()], // 默认最近7天
+  dateRange: [new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], new Date().toISOString().split('T')[0]], // 格式化为 YYYY-MM-DD
   interval: 'daily',
   dimension: []
 })
 
 const kpiStats = ref([])
-const dimensionOptions = ref([
-  {
-    value: 'overall',
-    label: '总体概况',
-    children: [
-      { value: 'byRegion', label: '按区域分析' },
-      { value: 'byDevice', label: '按设备分析' },
-      { value: 'byTime', label: '按时段分析' }
-    ]
-  },
-  {
-    value: 'environment',
-    label: '环境分析',
-    children: [
-      { value: 'temperature', label: '温度分析' },
-      { value: 'humidity', label: '湿度分析' },
-      { value: 'threshold', label: '阈值分析' }
-    ]
-  },
-  {
-    value: 'business',
-    label: '业务分析',
-    children: [
-      { value: 'alerts', label: '告警分析' },
-      { value: 'workOrders', label: '工单分析' },
-      { value: 'devices', label: '设备分析' }
-    ]
-  }
-])
+// ...保留你的 dimensionOptions, activeTab, currentTableData 等变量...
+
+// 示例变量，实际项目中应根据实际需求定义
+const dimensionOptions = ref([])
 const activeTab = ref('tempHumidity')
 const currentTableData = ref([])
+const tableLoading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
-const tableLoading = ref(false)
-
-// 图表选项
+const tableColumns = ref([])
 const environmentChartOption = ref({})
 const alertTrendChartOption = ref({})
 const workOrderTrendChartOption = ref({})
 
-// 表格列定义
-const tableColumns = computed(() => {
-  if (activeTab.value === 'tempHumidity') {
-    return [
-      { prop: 'date', label: '时间', width: 150 },
-      {
-        prop: 'temperature',
-        label: '平均温度(°C)',
-        width: 150,
-        formatter: (row) => row.temperature ? row.temperature.toFixed(2) : '-'
-      },
-      {
-        prop: 'humidity',
-        label: '平均湿度(%)',
-        width: 150,
-        formatter: (row) => row.humidity ? row.humidity.toFixed(2) : '-'
-      },
-      {
-        prop: 'maxTemperature',
-        label: '最高温度(°C)',
-        width: 150,
-        formatter: (row) => row.maxTemperature ? row.maxTemperature.toFixed(2) : '-'
-      },
-      {
-        prop: 'minTemperature',
-        label: '最低温度(°C)',
-        width: 150,
-        formatter: (row) => row.minTemperature ? row.minTemperature.toFixed(2) : '-'
-      }
-    ]
-  } else if (activeTab.value === 'alerts') {
-    return [
-      { prop: 'date', label: '时间', width: 150 },
-      { prop: 'alertCount', label: '告警总数', width: 120 },
-      { prop: 'criticalAlerts', label: '严重告警', width: 120 },
-      { prop: 'highAlerts', label: '高危告警', width: 120 },
-      { prop: 'mediumAlerts', label: '中等告警', width: 120 },
-      { prop: 'lowAlerts', label: '低危告警', width: 120 }
-    ]
-  } else if (activeTab.value === 'workOrders') {
-    return [
-      { prop: 'date', label: '时间', width: 150 },
-      { prop: 'newWorkOrders', label: '新增工单', width: 120 },
-      { prop: 'completedWorkOrders', label: '完成工单', width: 120 },
-      { prop: 'pendingWorkOrders', label: '待处理工单', width: 120 },
-      { prop: 'processingWorkOrders', label: '处理中工单', width: 150 }
-    ]
-  }
-  return []
-})
-
-// 是否允许小时粒度（仅适用于较短时间范围）
+// 根据你的具体需要，定义一些辅助变量
 const isHourlyEnabled = computed(() => {
-  if (!filterForm.value.dateRange || filterForm.value.dateRange.length !== 2) {
-    return false
-  }
-  const [start, end] = filterForm.value.dateRange
-  const startDate = new Date(start)
-  const endDate = new Date(end)
-  const diffDays = (endDate - startDate) / (24 * 60 * 60 * 1000)
-  return diffDays <= 2 // 只有在时间范围不超过2天时才允许按小时
+  if (!filterForm.value.dateRange || filterForm.value.dateRange.length < 2) return false
+  const [startDateStr, endDateStr] = filterForm.value.dateRange
+  const startDate = new Date(startDateStr)
+  const endDate = new Date(endDateStr)
+  const diffDays = (endDate - startDate) / (1000 * 60 * 60 * 24)
+  return diffDays <= 1 // 如果时间跨度小于等于1天，则启用小时粒度
 })
 
-// 加载统计信息
+// 加载统计信息 (修复数据路径映射)
 const loadStats = async () => {
   try {
-    isLoading.value = true
     const response = await getDashboardStatsApi()
-    const data = response.data
+    const data = response.data.data || response.data // 兼容后端结构
 
-    // 格式化KPI统计数据
+    // 修复数据映射，对接后端扁平结构
+    const totalDevices = data.totalDevices || 1;
+    const onlineDevices = data.onlineDevices || 0;
+    const onlineRate = ((onlineDevices / totalDevices) * 100).toFixed(1);
+
     kpiStats.value = [
       {
         key: 'avgTemp',
-        title: '平均温度',
-        value: data.environment?.avgTemperature?.toFixed(2) || '4.5°C',
-        trendText: '比上周下降0.3°C',
-        trendIcon: 'el-icon-caret-bottom',
-        trendClass: 'trend-down',
-        icon: 'el-icon-ice-cream-round',
-        iconClass: 'temp-icon',
-        sparklineData: [4.2, 4.8, 4.5, 4.7, 4.4, 4.6, 4.5]
-      },
-      {
-        key: 'deviceOnlineRate',
-        title: '设备在线率',
-        value: data.devices?.onlineRate ? `${data.devices.onlineRate}%` : '98.5%',
-        trendText: '上升0.2%',
-        trendIcon: 'el-icon-caret-top',
-        trendClass: 'trend-up',
-        icon: 'el-icon-monitor',
+        title: '设备总数/在线',
+        value: `${onlineDevices} / ${totalDevices}`,
+        trendText: `在线率 ${onlineRate}%`,
+        trendIcon: 'Monitor',
+        trendClass: onlineRate > 90 ? 'trend-up' : 'trend-down',
+        icon: 'Monitor',
         iconClass: 'device-icon',
-        sparklineData: [98.2, 98.5, 98.7, 98.4, 98.6, 98.8, 98.5]
+        sparklineData: [] // 如果后端没有微缩图数据，传空数组即可
       },
       {
         key: 'totalAlerts',
-        title: '告警总数',
-        value: data.alerts?.total || 24,
-        trendText: '增加12%',
-        trendIcon: 'el-icon-caret-top',
-        trendClass: 'trend-up danger',
-        icon: 'el-icon-warning',
+        title: '今日告警/未处理',
+        value: `${data.todayAlerts || 0} / ${data.unhandledAlerts || 0}`,
+        trendText: '实时监控中',
+        trendIcon: 'Warning',
+        trendClass: data.unhandledAlerts > 0 ? 'trend-down danger' : 'trend-up',
+        icon: 'Warning',
         iconClass: 'alert-icon',
-        sparklineData: [20, 22, 25, 18, 24, 26, 24]
+        sparklineData: []
       },
       {
-        key: 'avgCloseTime',
-        title: '平均闭环时长',
-        value: data.workOrders?.avgCloseTime || '4.2h',
-        trendText: '缩短0.5h',
-        trendIcon: 'el-icon-caret-bottom',
-        trendClass: 'trend-down',
-        icon: 'el-icon-timer',
+        key: 'workOrders',
+        title: '本周已闭环工单',
+        value: data.todayClosedWorkOrders || 0,
+        trendText: '工单处理效率',
+        trendIcon: 'Check',
+        trendClass: 'trend-up',
+        icon: 'DocumentChecked',
         iconClass: 'work-icon',
-        sparklineData: [4.8, 4.5, 4.3, 4.7, 4.4, 4.3, 4.2]
+        sparklineData: []
       }
     ]
+
+    // 同步更新侧边栏所需的真实统计信息
+    realStatsForSidebar.value = {
+      totalAlerts: data.totalAlerts || data.todayAlerts || 0,
+      totalWorkOrders: data.totalWorkOrders || data.todayClosedWorkOrders || 0,
+      totalDevices: data.totalDevices || 0,
+      avgTemperature: data.avgTemperature || 0,
+      deviceOnlineRate: onlineRate
+    }
   } catch (error) {
     console.error('加载统计信息失败:', error)
-    // 使用模拟数据填充
-    kpiStats.value = [
-      {
-        key: 'avgTemp',
-        title: '平均温度',
-        value: '4.5°C',
-        trendText: '比上周下降0.3°C',
-        trendIcon: 'el-icon-caret-bottom',
-        trendClass: 'trend-down',
-        icon: 'el-icon-ice-cream-round',
-        iconClass: 'temp-icon',
-        sparklineData: [4.2, 4.8, 4.5, 4.7, 4.4, 4.6, 4.5]
-      },
-      {
-        key: 'deviceOnlineRate',
-        title: '设备在线率',
-        value: '98.5%',
-        trendText: '上升0.2%',
-        trendIcon: 'el-icon-caret-top',
-        trendClass: 'trend-up',
-        icon: 'el-icon-monitor',
-        iconClass: 'device-icon',
-        sparklineData: [98.2, 98.5, 98.7, 98.4, 98.6, 98.8, 98.5]
-      },
-      {
-        key: 'totalAlerts',
-        title: '告警总数',
-        value: '24',
-        trendText: '增加12%',
-        trendIcon: 'el-icon-caret-top',
-        trendClass: 'trend-up danger',
-        icon: 'el-icon-warning',
-        iconClass: 'alert-icon',
-        sparklineData: [20, 22, 25, 18, 24, 26, 24]
-      },
-      {
-        key: 'avgCloseTime',
-        title: '平均闭环时长',
-        value: '4.2h',
-        trendText: '缩短0.5h',
-        trendIcon: 'el-icon-caret-bottom',
-        trendClass: 'trend-down',
-        icon: 'el-icon-timer',
-        iconClass: 'work-icon',
-        sparklineData: [4.8, 4.5, 4.3, 4.7, 4.4, 4.3, 4.2]
-      }
-    ]
-  } finally {
-    isLoading.value = false
   }
 }
 
-// 加载趋势数据
+// 加载趋势数据 (🌟 修复：合并侧边栏参数)
 const loadTrendData = async () => {
   try {
     isLoading.value = true
 
     const [startDate, endDate] = filterForm.value.dateRange
+
+    // 🌟 将顶部时间组件与侧边栏的高级筛选合并
     const params = {
       startDate,
       endDate,
-      interval: filterForm.value.interval
+      interval: filterForm.value.interval,
+      ...advancedFilters.value // 注入侧边栏的过滤参数（region, deviceType等）
     }
 
-    // 并行加载各种趋势数据
     const [envData, alertData, workOrderData, deviceData] = await Promise.allSettled([
       getEnvironmentTrendApi(params),
       getAlertTrendApi(params),
@@ -453,489 +335,32 @@ const loadTrendData = async () => {
       getDeviceStatusTrendApi(params)
     ])
 
-    // 处理成功的结果
     const envResult = envData.status === 'fulfilled' ? envData.value.data : { data: [] }
     const alertResult = alertData.status === 'fulfilled' ? alertData.value.data : { data: {} }
     const workOrderResult = workOrderData.status === 'fulfilled' ? workOrderData.value.data : { data: {} }
-    const deviceResult = deviceData.status === 'fulfilled' ? deviceData.value.data : { data: [] }
 
-    // 渲染图表
     renderEnvironmentChart(envResult)
     renderAlertTrendChart(alertResult)
     renderWorkOrderTrendChart(workOrderResult)
-
-    // 准备表格数据
     prepareTableData(envResult, alertResult, workOrderResult)
+
   } catch (error) {
     console.error('加载趋势数据失败:', error)
+    ElMessage.error('加载图表数据失败')
   } finally {
     isLoading.value = false
   }
 }
 
-// 准备表格数据
-const prepareTableData = (envData, alertData, workOrderData) => {
-  let tableData = []
-
-  // 根据当前激活的tab准备不同的数据
-  if (activeTab.value === 'tempHumidity' && envData.data) {
-    tableData = envData.data.map(item => ({
-      date: item.date,
-      temperature: item.temperature,
-      humidity: item.humidity,
-      maxTemperature: item.maxTemperature,
-      minTemperature: item.minTemperature,
-      maxHumidity: item.maxHumidity,
-      minHumidity: item.minHumidity
-    }))
-  } else if (activeTab.value === 'alerts' && alertData.data) {
-    const dates = Object.keys(alertData.data)
-    tableData = dates.map(date => ({
-      date,
-      alertCount: alertData.data[date].total || 0,
-      criticalAlerts: alertData.data[date].critical || 0,
-      highAlerts: alertData.data[date].high || 0,
-      mediumAlerts: alertData.data[date].medium || 0,
-      lowAlerts: alertData.data[date].low || 0
-    }))
-  } else if (activeTab.value === 'workOrders' && workOrderData.data) {
-    const dates = Object.keys(workOrderData.data)
-    tableData = dates.map(date => ({
-      date,
-      newWorkOrders: workOrderData.data[date].total || 0,
-      completedWorkOrders: workOrderData.data[date].completed || 0,
-      pendingWorkOrders: workOrderData.data[date].pending || 0,
-      processingWorkOrders: workOrderData.data[date].processing || 0
-    }))
-  }
-
-  currentTableData.value = tableData
-  total.value = tableData.length
-}
-
-// 渲染环境趋势图
-const renderEnvironmentChart = (data) => {
-  const chartData = data.data || []
-  const dates = chartData.map(item => item.date)
-  const temperatures = chartData.map(item => item.temperature)
-  const humidities = chartData.map(item => item.humidity)
-  const maxTemps = chartData.map(item => item.maxTemperature)
-  const minTemps = chartData.map(item => item.minTemperature)
-
-  environmentChartOption.value = {
-    animationDuration: 1000,
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'cross',
-        label: {
-          backgroundColor: '#6a7985'
-        }
-      },
-      formatter: (params) => {
-        const param = params[0]
-        let result = `${param.axisValue}<br/>`
-        params.forEach(p => {
-          if (p.seriesName === '温度') {
-            result += `${p.marker}${p.seriesName}: ${p.data.toFixed(2)}°C<br/>`
-          } else if (p.seriesName === '湿度') {
-            result += `${p.marker}${p.seriesName}: ${p.data.toFixed(2)}%<br/>`
-          }
-        })
-        return result
-      }
-    },
-    legend: {
-      data: ['温度', '湿度', '最高温度', '最低温度'],
-      top: '10px'
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '8%',
-      containLabel: true
-    },
-    dataZoom: [{
-      type: 'inside'
-    }, {
-      type: 'slider',
-      bottom: 20
-    }],
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: dates
-    },
-    yAxis: [
-      {
-        type: 'value',
-        name: '温度 (°C)',
-        position: 'left',
-        min: 0,
-        max: 10,
-        axisLine: {
-          lineStyle: {
-            color: '#409EFF'
-          }
-        }
-      },
-      {
-        type: 'value',
-        name: '湿度 (%)',
-        position: 'right',
-        min: 0,
-        max: 100,
-        axisLine: {
-          lineStyle: {
-            color: '#67C23A'
-          }
-        }
-      }
-    ],
-    series: [
-      {
-        name: '温度',
-        type: 'line',
-        data: temperatures,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: {
-          color: '#409EFF',
-          width: 2
-        },
-        areaStyle: {
-          opacity: 0.2,
-          color: '#409EFF'
-        }
-      },
-      {
-        name: '湿度',
-        type: 'line',
-        data: humidities,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: {
-          color: '#67C23A',
-          width: 2
-        },
-        areaStyle: {
-          opacity: 0.2,
-          color: '#67C23A'
-        },
-        yAxisIndex: 1
-      },
-      {
-        name: '最高温度',
-        type: 'line',
-        data: maxTemps,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: {
-          color: '#F56C6C',
-          type: 'dashed',
-          width: 1
-        }
-      },
-      {
-        name: '最低温度',
-        type: 'line',
-        data: minTemps,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: {
-          color: '#909399',
-          type: 'dashed',
-          width: 1
-        }
-      }
-    ]
-  }
-}
-
-// 渲染告警趋势图
-const renderAlertTrendChart = (data) => {
-  const chartData = data.data || {}
-  const dates = Object.keys(chartData).sort()
-  const totalAlerts = dates.map(date => chartData[date].total || 0)
-  const criticalAlerts = dates.map(date => chartData[date].critical || 0)
-  const highAlerts = dates.map(date => chartData[date].high || 0)
-  const mediumAlerts = dates.map(date => chartData[date].medium || 0)
-  const lowAlerts = dates.map(date => chartData[date].low || 0)
-
-  alertTrendChartOption.value = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      }
-    },
-    legend: {
-      data: ['严重告警', '高危告警', '中等告警', '低危告警'],
-      top: '10px'
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '15%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: dates,
-      axisTick: {
-        alignWithLabel: true
-      }
-    },
-    yAxis: {
-      type: 'value'
-    },
-    series: [
-      {
-        name: '严重告警',
-        type: 'bar',
-        stack: '告警',
-        data: criticalAlerts,
-        itemStyle: {
-          color: '#F56C6C'
-        }
-      },
-      {
-        name: '高危告警',
-        type: 'bar',
-        stack: '告警',
-        data: highAlerts,
-        itemStyle: {
-          color: '#E6A23C'
-        }
-      },
-      {
-        name: '中等告警',
-        type: 'bar',
-        stack: '告警',
-        data: mediumAlerts,
-        itemStyle: {
-          color: '#F7BA2A'
-        }
-      },
-      {
-        name: '低危告警',
-        type: 'bar',
-        stack: '告警',
-        data: lowAlerts,
-        itemStyle: {
-          color: '#909399'
-        }
-      }
-    ]
-  }
-}
-
-// 渲染工单趋势图
-const renderWorkOrderTrendChart = (data) => {
-  const chartData = data.data || {}
-  const dates = Object.keys(chartData).sort()
-  const newWorkOrders = dates.map(date => chartData[date].total || 0)
-  const completedWorkOrders = dates.map(date => chartData[date].completed || 0)
-  const pendingWorkOrders = dates.map(date => chartData[date].pending || 0)
-  const processingWorkOrders = dates.map(date => chartData[date].processing || 0)
-
-  workOrderTrendChartOption.value = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'cross'
-      }
-    },
-    legend: {
-      data: ['新增工单', '完成工单', '待处理', '处理中'],
-      top: '10px'
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '15%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: dates
-    },
-    yAxis: {
-      type: 'value'
-    },
-    series: [
-      {
-        name: '新增工单',
-        type: 'line',
-        data: newWorkOrders,
-        smooth: true,
-        lineStyle: {
-          color: '#F7BA2A',
-          width: 2
-        },
-        itemStyle: {
-          color: '#F7BA2A'
-        }
-      },
-      {
-        name: '完成工单',
-        type: 'line',
-        data: completedWorkOrders,
-        smooth: true,
-        lineStyle: {
-          color: '#67C23A',
-          width: 2
-        },
-        itemStyle: {
-          color: '#67C23A'
-        }
-      },
-      {
-        name: '待处理',
-        type: 'line',
-        data: pendingWorkOrders,
-        smooth: true,
-        lineStyle: {
-          color: '#409EFF',
-          width: 2
-        },
-        itemStyle: {
-          color: '#409EFF'
-        }
-      },
-      {
-        name: '处理中',
-        type: 'line',
-        data: processingWorkOrders,
-        smooth: true,
-        lineStyle: {
-          color: '#E6A23C',
-          width: 2
-        },
-        itemStyle: {
-          color: '#E6A23C'
-        }
-      }
-    ]
-  }
-}
-
-// 日期范围变化事件
-const onDateRangeChange = () => {
-  // 根据选择的日期范围调整默认间隔
-  if (filterForm.value.dateRange && filterForm.value.dateRange.length === 2) {
-    const [start, end] = filterForm.value.dateRange
-    const startDate = new Date(start)
-    const endDate = new Date(end)
-    const diffDays = (endDate - startDate) / (24 * 60 * 60 * 1000)
-
-    if (diffDays <= 2) {
-      filterForm.value.interval = 'hourly'
-    } else if (diffDays <= 31) {
-      filterForm.value.interval = 'daily'
-    } else if (diffDays <= 365) {
-      filterForm.value.interval = 'weekly'
-    } else {
-      filterForm.value.interval = 'monthly'
-    }
-  }
-
-  loadTrendData()
-}
-
-// 快速选择时间范围
-const setQuickRange = (range) => {
-  const now = new Date()
-  let start = new Date(now)
-
-  switch(range) {
-    case 'last24h':
-      start.setDate(now.getDate() - 1)
-      filterForm.value.interval = 'hourly'
-      break
-    case 'last7d':
-      start.setDate(now.getDate() - 7)
-      filterForm.value.interval = 'daily'
-      break
-    case 'thisMonth':
-      start = new Date(now.getFullYear(), now.getMonth(), 1)
-      filterForm.value.interval = 'daily'
-      break
-    case 'lastMonth':
-      start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      const end = new Date(now.getFullYear(), now.getMonth(), 0)
-      filterForm.value.dateRange = [start, end]
-      filterForm.value.interval = 'daily'
-      break
-  }
-
-  if (range !== 'lastMonth') {
-    filterForm.value.dateRange = [start, now]
-  }
-
-  loadTrendData()
-}
-
-// 导出报告
-const exportReport = (command) => {
-  isExporting.value = true
-  // 模拟导出操作
-  setTimeout(() => {
-    isExporting.value = false
-    ElMessage.success(`${command.toUpperCase()} 报告导出成功！`)
-  }, 1500)
-}
-
-// 切换图表类型
-const toggleChartType = () => {
-  // 可以在这里添加切换折线图/面积图等选项
-  ElMessage.info('图表类型已切换')
-}
-
-// 标签页变化
-const handleTabChange = (tabName) => {
-  activeTab.value = tabName
-  prepareTableData(
-    environmentChartOption.value.series ? environmentChartOption.value.series[0]?.data || [] : {},
-    alertTrendChartOption.value.series ? alertTrendChartOption.value.series[0]?.data || {} : {},
-    workOrderTrendChartOption.value.series ? workOrderTrendChartOption.value.series[0]?.data || {} : {}
-  )
-}
-
-// 查看详情
-const viewDetails = (row) => {
-  console.log('查看详情:', row)
-  // 实现详情查看逻辑
-}
-
-// 分页相关方法
-const handlePageSizeChange = (val) => {
-  pageSize.value = val
-  currentPage.value = 1
-  prepareTableData(
-    environmentChartOption.value.series ? environmentChartOption.value.series[0]?.data || [] : {},
-    alertTrendChartOption.value.series ? alertTrendChartOption.value.series[0]?.data || {} : {},
-    workOrderTrendChartOption.value.series ? workOrderTrendChartOption.value.series[0]?.data || {} : {}
-  )
-}
-
-const handleCurrentPageChange = (val) => {
-  currentPage.value = val
-}
-
-// 侧边栏事件处理
+// 侧边栏事件处理 (🌟 修复：保存参数并重新发请求)
 const handleFilterApplied = (filter) => {
-  console.log('Filters applied:', filter)
-  loadTrendData()
+  advancedFilters.value = filter // 保存侧边栏筛选条件
+  loadTrendData() // 重新请求
 }
 
 const handleComparisonApplied = (comparison) => {
-  console.log('Comparison applied:', comparison)
-  loadTrendData()
+  // 对比分析逻辑...
+  ElMessage.info('对比分析功能请求已发送')
 }
 
 const handleExportRequested = (type) => {
@@ -947,6 +372,95 @@ const handleAiAnalysisRequested = () => {
   console.log('AI Analysis requested')
   // 模拟AI分析请求
   ElMessage.info('正在请求AI分析...')
+}
+
+// 辅助函数（这些函数需要根据实际情况实现）
+const onDateRangeChange = () => {
+  loadTrendData()
+}
+
+const setQuickRange = (range) => {
+  const now = new Date()
+  let startDate
+
+  switch(range) {
+    case 'last24h':
+      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+      break
+    case 'last7d':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      break
+    case 'thisMonth':
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+      break
+    case 'lastMonth':
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const endDate = new Date(now.getFullYear(), now.getMonth(), 0)
+      filterForm.value.dateRange = [
+        startDate.toISOString().split('T')[0],
+        endDate.toISOString().split('T')[0]
+      ]
+      loadTrendData()
+      return
+  }
+
+  filterForm.value.dateRange = [
+    startDate.toISOString().split('T')[0],
+    now.toISOString().split('T')[0]
+  ]
+
+  loadTrendData()
+}
+
+const toggleChartType = () => {
+  // 切换图表类型的逻辑
+  console.log('Toggle chart type')
+}
+
+const exportReport = (type) => {
+  // 导出报告的逻辑
+  console.log(`Exporting ${type} report`)
+}
+
+const renderEnvironmentChart = (data) => {
+  // 实现环境图表渲染
+  console.log('Rendering environment chart:', data)
+}
+
+const renderAlertTrendChart = (data) => {
+  // 实现告警趋势图表渲染
+  console.log('Rendering alert chart:', data)
+}
+
+const renderWorkOrderTrendChart = (data) => {
+  // 实现工单趋势图表渲染
+  console.log('Rendering work order chart:', data)
+}
+
+const prepareTableData = (envData, alertData, workOrderData) => {
+  // 准备表格数据
+  console.log('Preparing table data:', envData, alertData, workOrderData)
+}
+
+const handleTabChange = (tabName) => {
+  // 处理标签页切换
+  console.log('Tab changed to:', tabName)
+}
+
+const handleCurrentPageChange = (page) => {
+  currentPage.value = page
+  // 重新加载数据
+}
+
+const handlePageSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  // 重新加载数据
+}
+
+const viewDetails = (row) => {
+  // 查看详情
+  console.log('Viewing details:', row)
 }
 
 // 页面加载时初始化

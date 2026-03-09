@@ -14,7 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -193,34 +195,20 @@ public class WorkOrderService {
      * 获取工单统计信息
      */
     public Map<String, Object> getWorkOrderStats() {
-        List<WorkOrderEntity> allWorkOrders = workOrderMapper.selectList(null);
+        // 直接通过Mapper获取各种状态的工单数量，提高效率和准确性
+        long pendingCount = workOrderMapper.countWorkOrdersByStatus(WorkOrderStatus.PENDING.getCode());
+        long processingCount = workOrderMapper.countWorkOrdersByStatus(WorkOrderStatus.PROCESSING.getCode());
+        long completedCount = workOrderMapper.countWorkOrdersByStatus(WorkOrderStatus.COMPLETED.getCode());
+        long closedCount = workOrderMapper.countWorkOrdersByStatus(WorkOrderStatus.CLOSED.getCode());
 
         // 计算逾期工单数（截止日期已过且状态不是已完成或已关闭）
-        long overdueCount = allWorkOrders.stream()
-            .filter(wo -> wo.getDueDate() != null &&
-                         wo.getDueDate().isBefore(LocalDateTime.now()) &&
-                         !WorkOrderStatus.COMPLETED.getCode().equals(wo.getStatus()) &&
-                         !WorkOrderStatus.CLOSED.getCode().equals(wo.getStatus()))
-            .count();
+        long overdueCount = workOrderMapper.countOverdueWorkOrders();
 
-        // 计算待处理工单数
-        long pendingCount = allWorkOrders.stream()
-            .filter(wo -> WorkOrderStatus.PENDING.getCode().equals(wo.getStatus()))
-            .count();
+        // 修复：计算本周完成的工单数 - 使用精确的周开始时间
+        LocalDate startOfWeek = LocalDate.now().with(java.time.DayOfWeek.MONDAY);
+        LocalDate endOfWeek = LocalDate.now();
 
-        // 计算处理中工单数
-        long processingCount = allWorkOrders.stream()
-            .filter(wo -> WorkOrderStatus.PROCESSING.getCode().equals(wo.getStatus()))
-            .count();
-
-        // 计算本周已闭环工单数（本周内完成的工单）
-        LocalDateTime startOfWeek = LocalDateTime.now().with(java.time.DayOfWeek.MONDAY)
-                                                 .truncatedTo(java.time.temporal.ChronoUnit.DAYS);
-        long completedThisWeek = allWorkOrders.stream()
-            .filter(wo -> wo.getCompletedTime() != null &&
-                         wo.getCompletedTime().isAfter(startOfWeek) &&
-                         WorkOrderStatus.COMPLETED.getCode().equals(wo.getStatus()))
-            .count();
+        long completedThisWeek = workOrderMapper.countCompletedThisWeek(startOfWeek.atStartOfDay(), endOfWeek.atTime(LocalTime.MAX));
 
         return Map.of(
             "overdueCount", overdueCount,

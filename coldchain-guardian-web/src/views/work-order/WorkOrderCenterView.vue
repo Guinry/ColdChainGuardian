@@ -219,7 +219,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import CreateWorkOrderModal from '@/views/work-order/components/CreateWorkOrderModal.vue';
 import WorkOrderDrawer from '@/views/work-order/components/WorkOrderDrawer.vue';
 import Layout from '@/components/Layout.vue';
@@ -258,24 +258,60 @@ const showCreateModal = ref(false);
 const showWorkOrderDrawer = ref(false);
 const selectedWorkOrderId = ref(null);
 
+// 🌟 核心修复：定义缺失的数据适配器函数
+const adaptWorkOrderData = (rawOrder) => {
+  return {
+    ...rawOrder,
+    // 处理时间字段差异
+    createdAt: rawOrder.createTime || rawOrder.createdAt,
+    completedAt: rawOrder.completedTime || rawOrder.updateTime || rawOrder.completedAt,
+
+    // 如果没有名字，暂时用 ID 兜底显示，防止页面空白
+    assigneeName: rawOrder.assigneeName || (rawOrder.assigneeId ? `用户 ${rawOrder.assigneeId}` : '未分配'),
+    warehouseName: rawOrder.warehouseName || (rawOrder.warehouseId ? `库区 ${rawOrder.warehouseId}` : '未知库区'),
+    deviceName: rawOrder.deviceName || (rawOrder.deviceId ? `设备 ${rawOrder.deviceId}` : '未知设备'),
+
+    // 确保状态值匹配 (防脏数据)
+    status: rawOrder.status || 'PENDING'
+  };
+};
+
 // 获取工单数据
 const fetchWorkOrders = async () => {
   loading.value = true;
 
   try {
+    // 🌟 核心修复：手动构建参数，只把有值的条件放进去，剔除空字符串
     const params = {
-      ...filterForm,
       page: pagination.currentPage,
       size: pagination.pageSize
     };
 
+    if (filterForm.keyword) params.keyword = filterForm.keyword;
+    if (filterForm.workType) params.workType = filterForm.workType;
+    if (filterForm.priority) params.priority = filterForm.priority;
+    if (filterForm.status) params.status = filterForm.status;
+    if (filterForm.assigneeId) params.assigneeId = filterForm.assigneeId;
+
+    // 发送请求，此时 URL 就会非常干净，比如: /api/work-orders?page=1&size=10
     const response = await workOrderApi.getList(params);
-    workOrders.value = response.data.data?.records || [];
-    // 使用分页数据中的总数
-    pagination.total = response.data.data?.total || 0;
+
+    if (response && response.data) {
+      const paginationData = response.data.data || {};
+      const rawOrders = paginationData.records || paginationData.data || [];
+
+      // 现在这里调用 adaptWorkOrderData 就不会报错了
+      workOrders.value = rawOrders.map(adaptWorkOrderData);
+      pagination.total = paginationData.total || 0;
+    } else {
+      workOrders.value = [];
+      pagination.total = 0;
+    }
   } catch (error) {
     console.error('获取工单失败:', error);
     ElMessage.error('获取工单失败');
+    workOrders.value = [];
+    pagination.total = 0;
   } finally {
     loading.value = false;
   }
@@ -341,6 +377,8 @@ const getWorkTypeName = (type) => {
     case 'ALERT_DEFECT': return '告警消缺';
     case 'ROUTINE_INSPECTION': return '日常巡检';
     case 'EQUIPMENT_MAINTENANCE': return '设备维保';
+    case 'ALERT_FIX': return '告警修复'; // Added based on your DB log
+    case 'INSPECTION': return '例行巡检'; // Added based on your DB log
     default: return '未知';
   }
 };
@@ -404,7 +442,7 @@ const getUserAvatar = (userId) => {
   return '';
 };
 
-// 统一处理工单状态变更操作 (替换掉原来的 handleAccept, handleComplete 等)
+// 统一处理工单状态变更操作
 const updateWorkOrderStatus = async (row, action, targetStatus, title, message) => {
   try {
     await ElMessageBox.confirm(message, title, {

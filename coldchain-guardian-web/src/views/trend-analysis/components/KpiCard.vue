@@ -2,12 +2,12 @@
   <div class="kpi-card" :class="{ 'highlight': highlight }">
     <div class="kpi-header">
       <div class="kpi-icon" :class="iconClass">
-        <i :class="icon"></i>
+        <el-icon><component :is="iconComponent" /></el-icon>
       </div>
       <div class="kpi-info">
         <div class="kpi-title">{{ title }}</div>
         <div class="kpi-trend" :class="trendClass">
-          <i :class="trendIcon"></i>{{ trendText }}
+          <el-icon><component :is="trendIconComponent" /></el-icon>{{ trendText }}
         </div>
       </div>
     </div>
@@ -27,7 +27,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick, watch, computed } from 'vue'
+import {
+  Monitor,
+  Warning,
+  DocumentChecked,
+  StarFilled,
+  ArrowUp,
+  ArrowDown
+} from '@element-plus/icons-vue'
 
 // Props
 const props = defineProps({
@@ -45,7 +53,7 @@ const props = defineProps({
   },
   icon: {
     type: String,
-    default: 'el-icon-star-filled'
+    default: 'StarFilled'
   },
   iconClass: {
     type: String,
@@ -57,7 +65,7 @@ const props = defineProps({
   },
   trendIcon: {
     type: String,
-    default: 'el-icon-arrow-up'
+    default: 'ArrowUp'
   },
   trendClass: {
     type: String,
@@ -83,6 +91,55 @@ const props = defineProps({
     type: Boolean,
     default: false
   }
+})
+
+// 将图标类名转换为组件
+const iconComponent = computed(() => {
+  // 移除 'el-icon-' 前缀，提取图标名称并转换为首字母大写格式
+  let iconName = props.icon.replace('el-icon-', '')
+  if (iconName.startsWith('el-')) {
+    iconName = iconName.substring(3) // 移除 'el-' 前缀
+  }
+
+  // 特殊处理一些常见图标名称映射
+  const iconMap = {
+    'monitor': Monitor,
+    'warning': Warning,
+    'document-checked': DocumentChecked,
+    'star-filled': StarFilled,
+    'arrow-up': ArrowUp,
+    'arrow-down': ArrowDown,
+    // 处理驼峰命名
+    'Monitor': Monitor,
+    'Warning': Warning,
+    'DocumentChecked': DocumentChecked,
+    'StarFilled': StarFilled,
+    'ArrowUp': ArrowUp,
+    'ArrowDown': ArrowDown
+  }
+
+  return iconMap[iconName] || StarFilled
+})
+
+const trendIconComponent = computed(() => {
+  let iconName = props.trendIcon.replace('el-icon-', '')
+  if (iconName.startsWith('el-')) {
+    iconName = iconName.substring(3) // 移除 'el-' 前缀
+  }
+
+  // 特殊处理一些常见图标名称映射
+  const iconMap = {
+    'monitor': Monitor,
+    'warning': Warning,
+    'document-checked': DocumentChecked,
+    'star-filled': StarFilled,
+    'arrow-up': ArrowUp,
+    'arrow-down': ArrowDown,
+    'ArrowUp': ArrowUp,
+    'ArrowDown': ArrowDown
+  }
+
+  return iconMap[iconName] || ArrowUp
 })
 
 // Refs

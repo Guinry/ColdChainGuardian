@@ -30,7 +30,8 @@
       "Bash(awk:*)",
       "Bash(temp_dashboard_api.js:*)",
       "Bash(sed:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(git config:*)"
     ]
   }
 }
