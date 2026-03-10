@@ -1,0 +1,75 @@
+<!-- pages/workorder/detail/detail.wxml -->
+<view class="container">
+  <!-- 工单信息区 -->
+  <view class="info-section">
+    <view class="info-item">
+      <text class="label">工单标题:</text>
+      <text class="value">{{workOrder.title}}</text>
+    </view>
+    <view class="info-item">
+      <text class="label">故障描述:</text>
+      <text class="value multiline">{{workOrder.description}}</text>
+    </view>
+    <view class="info-item">
+      <text class="label">位置:</text>
+      <text class="value">{{workOrder.location}}</text>
+    </view>
+    <view class="info-item">
+      <text class="label">任务类型:</text>
+      <text class="value">{{workOrder.type}}</text>
+    </view>
+    <view class="info-item">
+      <text class="label">截止时间:</text>
+      <text class="value">{{workOrder.deadline}}</text>
+    </view>
+  </view>
+
+  <!-- 操作流区 -->
+  <view class="operation-section">
+    <!-- 扫码签到按钮 -->
+    <view class="operation-item">
+      <button class="checkin-btn" bindtap="scanCheckIn">
+        📍 扫码签到
+      </button>
+    </view>
+
+    <!-- 现场照片区域 -->
+    <view class="operation-item">
+      <text class="operation-label">现场照片</text>
+      <view class="photo-grid">
+        <view class="photo-add" bindtap="takePhoto">
+          <text class="photo-add-icon">+</text>
+          <text class="photo-add-text">拍照</text>
+        </view>
+        <view class="photo-item" wx:for="{{photos}}" wx:key="index">
+          <image class="photo-image" src="{{item}}" mode="aspectFill"></image>
+          <view class="photo-delete" bindtap="deletePhoto" data-index="{{index}}">
+            <text class="delete-icon">×</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 处理记录 -->
+    <view class="operation-item">
+      <text class="operation-label">处理记录</text>
+      <view class="record-input-container">
+        <textarea class="record-textarea"
+                  placeholder="请输入处理记录..."
+                  value="{{recordText}}"
+                  bindinput="inputRecord"
+                  maxlength="500" />
+        <view class="voice-input-btn" bindtap="voiceInput">
+          🎤
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 底部固定栏 -->
+<view class="fixed-bottom-bar">
+  <button class="submit-btn" bindtap="submitForReview">
+    提交验收
+  </button>
+</view>

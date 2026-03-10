@@ -1,0 +1,183 @@
+/* pages/workbench/workbench.wxss */
+
+.container {
+  padding: 20rpx;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+/* 顶部欢迎区 */
+.welcome-section {
+  background: linear-gradient(135deg, #409EFF, #66b1ff);
+  border-radius: 20rpx;
+  padding: 40rpx;
+  margin-bottom: 30rpx;
+  color: white;
+  position: relative;
+}
+
+.greeting {
+  font-size: 36rpx;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.shift {
+  font-size: 28rpx;
+  opacity: 0.9;
+  display: block;
+  margin-bottom: 20rpx;
+}
+
+.weather {
+  font-size: 26rpx;
+  opacity: 0.8;
+}
+
+/* 核心操作区 */
+.hero-section {
+  display: flex;
+  gap: 30rpx;
+  margin-bottom: 30rpx;
+}
+
+.hero-btn {
+  flex: 1;
+  height: 200rpx;
+  border-radius: 20rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: white;
+  box-shadow: 0 8rpx 16rpx rgba(0,0,0,0.1);
+}
+
+.scan-btn {
+  background: linear-gradient(135deg, #409EFF, #66b1ff);
+}
+
+.voice-btn {
+  background: linear-gradient(135deg, #E6A23C, #f0c78a);
+}
+
+.btn-icon {
+  font-size: 48rpx;
+  margin-bottom: 10rpx;
+}
+
+.btn-text {
+  font-size: 28rpx;
+}
+
+/* 高频数据看板 */
+.dashboard-section {
+  display: flex;
+  background: white;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+}
+
+.dashboard-item {
+  flex: 1;
+  text-align: center;
+}
+
+.item-title {
+  font-size: 26rpx;
+  color: #909399;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.item-value {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #303133;
+  display: block;
+}
+
+.divider {
+  width: 2rpx;
+  height: 80rpx;
+  background-color: #e4e7ed;
+  margin: auto 20rpx;
+}
+
+/* 紧急插队任务列表 */
+.urgent-tasks-section {
+  background: white;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 20rpx;
+  display: block;
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.task-card {
+  border-radius: 16rpx;
+  padding: 25rpx;
+  background-color: #fff;
+  border-left: 6rpx solid #E6A23C;
+  box-shadow: 0 4rpx 8rpx rgba(0,0,0,0.05);
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15rpx;
+}
+
+.task-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #303133;
+  flex: 1;
+}
+
+.task-location {
+  font-size: 26rpx;
+  color: #909399;
+  margin-left: 10rpx;
+}
+
+.task-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.task-time {
+  font-size: 24rpx;
+  color: #909399;
+}
+
+.action-btn {
+  height: 60rpx;
+  padding: 0 30rpx;
+  border-radius: 30rpx;
+  font-size: 24rpx;
+  font-weight: bold;
+  color: white;
+}
+
+.primary-btn {
+  background-color: #409EFF;
+}

@@ -1,0 +1,54 @@
+<!-- pages/workbench/workbench.wxml -->
+<view class="container">
+  <!-- 顶部欢迎区 -->
+  <view class="welcome-section">
+    <text class="greeting">{{userInfo.name}}，早安</text>
+    <text class="shift">班次：{{userInfo.shift}}</text>
+    <view class="weather">
+      <text>{{weather}}</text>
+    </view>
+  </view>
+
+  <!-- 核心操作区 -->
+  <view class="hero-section">
+    <button class="hero-btn scan-btn" bindtap="scanQRCode">
+      <text class="btn-icon">📷</text>
+      <text class="btn-text">扫一扫</text>
+    </button>
+    <button class="hero-btn voice-btn" bindlongpress="voiceRepair">
+      <text class="btn-icon">🎤</text>
+      <text class="btn-text">语音报修</text>
+    </button>
+  </view>
+
+  <!-- 高频数据看板 -->
+  <view class="dashboard-section">
+    <view class="dashboard-item">
+      <text class="item-title">待我处理</text>
+      <text class="item-value">{{pendingTasks}}</text>
+    </view>
+    <view class="divider"></view>
+    <view class="dashboard-item">
+      <text class="item-title">今日已办</text>
+      <text class="item-value">{{completedToday}}</text>
+    </view>
+  </view>
+
+  <!-- 紧急插队任务列表 -->
+  <view class="urgent-tasks-section">
+    <text class="section-title">紧急任务</text>
+    <view class="task-list">
+      <view class="task-card" wx:for="{{urgentTasks}}" wx:key="id"
+            style="border-left: 6rpx solid {{item.priority === 'urgent' ? '#F56C6C' : '#E6A23C'}};">
+        <view class="task-header">
+          <text class="task-title">{{item.title}}</text>
+          <text class="task-location">{{item.location}}</text>
+        </view>
+        <view class="task-meta">
+          <text class="task-time">{{item.time}}</text>
+          <button class="action-btn primary-btn">立即前往</button>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

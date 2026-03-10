@@ -1,0 +1,92 @@
+/* pages/workorder/workorder.wxss */
+
+.container {
+  padding: 20rpx;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+/* 顶部过滤器 */
+.filter-section {
+  margin-bottom: 30rpx;
+}
+
+.tab-container {
+  display: flex;
+  background: white;
+  border-radius: 50rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+}
+
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  font-size: 28rpx;
+  color: #909399;
+  transition: all 0.3s ease;
+}
+
+.tab.active {
+  color: #409EFF;
+  background-color: #ecf5ff;
+  font-weight: bold;
+}
+
+/* 工单列表 */
+.workorder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.workorder-card {
+  background: white;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+}
+
+.workorder-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.workorder-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #303133;
+  flex: 1;
+}
+
+.workorder-type {
+  font-size: 24rpx;
+  color: #909399;
+  margin-left: 10rpx;
+  padding: 4rpx 12rpx;
+  background-color: #ecf5ff;
+  border-radius: 20rpx;
+}
+
+.workorder-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.workorder-location {
+  font-size: 26rpx;
+  color: #606266;
+}
+
+.workorder-deadline {
+  font-size: 24rpx;
+  color: #909399;
+}
+
+.workorder-deadline.overdue {
+  color: #F56C6C;
+  font-weight: bold;
+}

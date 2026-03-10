@@ -1,0 +1,55 @@
+<!-- pages/alert/alert.wxml -->
+<view class="container">
+  <!-- 顶部过滤器 -->
+  <view class="filter-section">
+    <view class="tab-container">
+      <view class="tab {{activeTab === 'unhandled' ? 'active' : ''}}"
+            data-tab="unhandled"
+            bindtap="switchTab">
+        未处理
+      </view>
+      <view class="tab {{activeTab === 'processing' ? 'active' : ''}}"
+            data-tab="processing"
+            bindtap="switchTab">
+        处理中
+      </view>
+    </view>
+  </view>
+
+  <!-- 告警卡片列表 -->
+  <view class="alert-list">
+    <view class="alert-card"
+          wx:for="{{alerts}}"
+          wx:key="id"
+          style="border-left: 8rpx solid {{item.priority === 'urgent' ? '#F56C6C' : item.priority === 'high' ? '#E6A23C' : '#409EFF'}};">
+      <view class="alert-header">
+        <text class="alert-title">{{item.title}}</text>
+        <text class="alert-location">{{item.location}}</text>
+      </view>
+
+      <view class="alert-data">
+        <text class="current-value {{item.priority === 'urgent' ? 'urgent' : item.priority === 'high' ? 'high' : 'normal'}}">
+          {{item.currentValue}}
+        </text>
+        <text class="threshold-value">阈值: {{item.thresholdValue}}</text>
+      </view>
+
+      <view class="alert-meta">
+        <text class="alert-time">{{item.time}}</text>
+
+        <view class="action-buttons">
+          <button class="action-btn dismiss-btn"
+                  data-id="{{item.id}}"
+                  bindtap="dismissAlert">
+            误报消除
+          </button>
+          <button class="action-btn create-btn"
+                  data-id="{{item.id}}"
+                  bindtap="createWorkOrder">
+            一键转工单
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

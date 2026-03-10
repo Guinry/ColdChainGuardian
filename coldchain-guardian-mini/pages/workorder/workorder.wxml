@@ -1,0 +1,45 @@
+<!-- pages/workorder/workorder.wxml -->
+<view class="container">
+  <!-- 顶部过滤器 -->
+  <view class="filter-section">
+    <view class="tab-container">
+      <view class="tab {{activeTab === 'pending' ? 'active' : ''}}"
+            data-tab="pending"
+            bindtap="switchTab">
+        待接收
+      </view>
+      <view class="tab {{activeTab === 'processing' ? 'active' : ''}}"
+            data-tab="processing"
+            bindtap="switchTab">
+        待处理
+      </view>
+      <view class="tab {{activeTab === 'completed' ? 'active' : ''}}"
+            data-tab="completed"
+            bindtap="switchTab">
+        已完成
+      </view>
+    </view>
+  </view>
+
+  <!-- 工单列表 -->
+  <view class="workorder-list">
+    <view class="workorder-card"
+          wx:for="{{workOrders}}"
+          wx:key="id"
+          bindtap="goToDetail"
+          data-id="{{item.id}}"
+          style="border-left: 6rpx solid {{item.priority === 'urgent' ? '#F56C6C' : item.priority === 'high' ? '#E6A23C' : '#409EFF'}};">
+      <view class="workorder-header">
+        <text class="workorder-title">{{item.title}}</text>
+        <text class="workorder-type">{{item.type}}</text>
+      </view>
+
+      <view class="workorder-meta">
+        <text class="workorder-location">📍 {{item.location}}</text>
+        <text class="workorder-deadline {{item.deadline.includes('逾期') ? 'overdue' : ''}}">
+          ⏰ {{item.deadline}}
+        </text>
+      </view>
+    </view>
+  </view>
+</view>

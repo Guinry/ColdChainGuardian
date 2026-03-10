@@ -1,0 +1,81 @@
+<!-- pages/profile/profile.wxml -->
+<view class="container">
+  <!-- 个人信息区 -->
+  <view class="profile-section">
+    <view class="avatar-container">
+      <image class="avatar" src="{{userInfo.avatar}}" mode="aspectFill"></image>
+      <view class="user-info">
+        <text class="user-name">{{userInfo.name}}</text>
+        <text class="user-department">{{userInfo.department}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 我的绩效区 -->
+  <view class="performance-section">
+    <text class="section-title">我的绩效</text>
+    <view class="performance-grid">
+      <view class="performance-item">
+        <text class="metric-value">{{performance.completionRate}}</text>
+        <text class="metric-label">按时完成率</text>
+      </view>
+      <view class="performance-item">
+        <text class="metric-value">{{performance.processedCount}}</text>
+        <text class="metric-label">处理单数</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 消息设置区 -->
+  <view class="notification-section">
+    <text class="section-title">消息设置</text>
+    <view class="notification-list">
+      <view class="notification-item" wx:for="{{notificationSettings}}" wx:key="id">
+        <text class="notification-name">{{item.name}}</text>
+        <switch class="notification-switch"
+                checked="{{item.enabled}}"
+                data-id="{{item.id}}"
+                bindchange="toggleNotification" />
+      </view>
+    </view>
+  </view>
+
+  <!-- 离线数据中心 -->
+  <view class="offline-section">
+    <text class="section-title">离线数据中心</text>
+    <view class="offline-content">
+      <view class="offline-status">
+        <text class="status-text">同步状态: {{offlineData.syncStatus}}</text>
+        <text class="status-indicator {{offlineData.syncStatus === '已连接' ? 'connected' : 'disconnected'}}"></text>
+      </view>
+      <view class="offline-data">
+        <text class="data-text">待同步工单: {{offlineData.pendingWorkOrders}} 条</text>
+        <button class="sync-btn" bindtap="manualSync" wx:if="{{offlineData.pendingWorkOrders > 0}}">
+          立即同步
+        </button>
+        <button class="sync-btn disabled" wx:else>
+          无需同步
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 其他设置 -->
+  <view class="other-settings-section">
+    <text class="section-title">其他设置</text>
+    <view class="settings-list">
+      <view class="setting-item">
+        <text>关于冷链守护</text>
+        <text class="arrow">›</text>
+      </view>
+      <view class="setting-item">
+        <text>帮助与反馈</text>
+        <text class="arrow">›</text>
+      </view>
+      <view class="setting-item">
+        <text>退出登录</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+  </view>
+</view>

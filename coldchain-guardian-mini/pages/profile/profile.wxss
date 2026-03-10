@@ -1,0 +1,215 @@
+/* pages/profile/profile.wxss */
+
+.container {
+  padding: 20rpx;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+.profile-section {
+  background: white;
+  border-radius: 20rpx;
+  padding: 40rpx;
+  margin-bottom: 30rpx;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+}
+
+.avatar-container {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  margin-right: 30rpx;
+  background-color: #e1e4e8;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 10rpx;
+}
+
+.user-department {
+  font-size: 28rpx;
+  color: #909399;
+}
+
+/* 绩效区 */
+.performance-section {
+  background: white;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 30rpx;
+  display: block;
+}
+
+.performance-grid {
+  display: flex;
+  justify-content: space-around;
+}
+
+.performance-item {
+  text-align: center;
+}
+
+.metric-value {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #409EFF;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.metric-label {
+  font-size: 26rpx;
+  color: #909399;
+}
+
+/* 消息设置区 */
+.notification-section {
+  background: white;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+}
+
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 30rpx;
+}
+
+.notification-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15rpx 0;
+}
+
+.notification-name {
+  font-size: 28rpx;
+  color: #303133;
+}
+
+/* 离线数据中心 */
+.offline-section {
+  background: white;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+}
+
+.offline-content {
+  background-color: #f8f9fa;
+  border-radius: 15rpx;
+  padding: 25rpx;
+}
+
+.offline-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.status-text {
+  font-size: 28rpx;
+  color: #303133;
+}
+
+.status-indicator {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-indicator.connected {
+  background-color: #67C23A;
+}
+
+.status-indicator.disconnected {
+  background-color: #F56C6C;
+}
+
+.offline-data {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.data-text {
+  font-size: 28rpx;
+  color: #303133;
+}
+
+.sync-btn {
+  height: 60rpx;
+  padding: 0 30rpx;
+  border-radius: 30rpx;
+  font-size: 24rpx;
+  font-weight: bold;
+  color: white;
+  background-color: #409EFF;
+}
+
+.sync-btn.disabled {
+  background-color: #c0c4cc;
+}
+
+/* 其他设置区 */
+.other-settings-section {
+  background: white;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx 0;
+  border-bottom: 1rpx solid #e4e7ed;
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-item text:first-child {
+  font-size: 28rpx;
+  color: #303133;
+}
+
+.arrow {
+  font-size: 36rpx;
+  color: #c0c4cc;
+}
