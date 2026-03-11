@@ -169,8 +169,20 @@ const handleLogin = async (event) => {
 
     const { data } = response.data
 
+    // 🌟 修复前后端数据格式不一致的问题：将平铺的数据包装成 store 需要的格式
+    const authData = {
+      token: data.token,
+      user: {
+        id: data.userId,
+        username: data.username,
+        role: data.role,          // 从后端读取角色
+        realName: data.realName   // 从后端读取姓名
+      },
+      permissions: [] // 如果你后续加了权限列表，可以在这里传入
+    }
+
     // Store authentication data
-    authStore.setAuthData(data, loginForm.rememberMe)
+    authStore.setAuthData(authData, loginForm.rememberMe)
 
     // Show success message
     ElMessage.success('登录成功')

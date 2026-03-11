@@ -5,6 +5,8 @@ public class LoginResponseDto {
     private String token;
     private Long userId;
     private String username;
+    private String role;
+    private String realName;
 
     // getters and setters
     public String getToken() {
@@ -29,5 +31,21 @@ public class LoginResponseDto {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public String getRealName() {
+        return realName;
+    }
+
+    public void setRealName(String realName) {
+        this.realName = realName;
     }
 }

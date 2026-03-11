@@ -78,6 +78,8 @@ public class AuthService {
             response.setToken(token);
             response.setUserId(user.getId());
             response.setUsername(user.getUsername());
+            response.setRole(user.getRole());      // 设置角色信息
+            response.setRealName(user.getRealName()); // 设置真实姓名
 
             return response;
         } catch (BusinessException e) {
