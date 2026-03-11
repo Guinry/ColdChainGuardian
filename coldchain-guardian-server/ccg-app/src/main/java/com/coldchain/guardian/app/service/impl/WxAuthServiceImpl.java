@@ -10,6 +10,7 @@ import com.coldchain.guardian.common.exception.ErrorCode;
 import com.coldchain.guardian.contract.dto.auth.*;
 import com.coldchain.guardian.infra.persistence.entity.UserEntity;
 import com.coldchain.guardian.infra.persistence.mapper.UserMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -280,7 +281,24 @@ public class WxAuthServiceImpl implements WxAuthService {
         params.put("code", code);
 
         try {
-            return restTemplate.getForObject(url, WxLoginResult.class, params);
+            // 🌟 核心修复：将返回值指定为 String.class，强制接收无论何种格式的数据
+            String responseString = restTemplate.getForObject(url, String.class, params);
+
+            if (!StringUtils.hasText(responseString)) {
+                return null;
+            }
+
+            // 🌟 手动利用 Jackson 将 JSON 字符串解析为对象
+            ObjectMapper objectMapper = new ObjectMapper();
+            WxLoginResult result = objectMapper.readValue(responseString, WxLoginResult.class);
+
+            // 顺便打印一下，方便排查微信返回了什么错误码（如 40029 code 无效等）
+            if (result.getErrcode() != null && result.getErrcode() != 0) {
+                log.error("微信接口返回错误: errcode={}, errmsg={}", result.getErrcode(), result.getErrmsg());
+            }
+
+            return result;
+
         } catch (Exception e) {
             log.error("调用微信接口失败", e);
             return null;

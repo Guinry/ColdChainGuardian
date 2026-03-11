@@ -1,5 +1,5 @@
 // utils/request.js
-const BASE_URL = 'http://localhost:8080'; 
+const BASE_URL = 'http://192.168.1.3:8080'; 
 
 const request = (options) => {
   return new Promise((resolve, reject) => {

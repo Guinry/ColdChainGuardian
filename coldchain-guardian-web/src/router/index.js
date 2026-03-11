@@ -77,6 +77,12 @@ const routes = [
     name: 'EmployeeManagement',
     component: () => import('@/views/employees/EmployeeManagement.vue'),
     meta: { requiresAuth: true, roles: ['ADMIN'] }
+  },
+  {
+    path: '/managers',
+    name: 'ManagerManagement',
+    component: () => import('@/views/managers/ManagerManagement.vue'),
+    meta: { requiresAuth: true, roles: ['ADMIN'] }
   }
 ]
 
