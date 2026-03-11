@@ -1,10 +1,10 @@
 {
   "pages": [
+    "pages/login/login", 
     "pages/workbench/workbench",
     "pages/alert/alert",
     "pages/workorder/workorder",
-    "pages/profile/profile",
-    "pages/index/index"
+    "pages/profile/profile"
   ],
   "window": {
     "navigationBarTextStyle": "black",
@@ -18,18 +18,26 @@
     "list": [
       {
         "pagePath": "pages/workbench/workbench",
+        "iconPath": "images/workbench.png",
+        "selectedIconPath": "images/workbench_selected.png",
         "text": "工作台"
       },
       {
         "pagePath": "pages/alert/alert",
+        "iconPath": "images/alert.png",
+        "selectedIconPath": "images/alert_selected.png",
         "text": "告警"
       },
       {
         "pagePath": "pages/workorder/workorder",
+        "iconPath": "images/workorder.png",
+        "selectedIconPath": "images/workorder_selected.png",
         "text": "工单"
       },
       {
         "pagePath": "pages/profile/profile",
+        "iconPath": "images/profile.png",
+        "selectedIconPath": "images/profile_selected.png",
         "text": "我的"
       }
     ]

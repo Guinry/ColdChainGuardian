@@ -40,12 +40,13 @@
         <el-menu-item index="/ai-assistant">AI 智能助手</el-menu-item>
       </el-sub-menu>
 
-      <!-- System Management menu only visible for SUPER_ADMIN -->
-      <el-sub-menu v-if="isSuperAdmin" index="system">
+      <!-- System Management menu visible for users with admin permissions -->
+      <el-sub-menu v-if="showSystemManagement" index="system">
         <template #title>
           <el-icon><Setting /></el-icon>
-          <span>系统管理（超管）</span>
+          <span>系统管理</span>
         </template>
+        <el-menu-item index="/admin/employees">员工管理</el-menu-item>
         <el-menu-item index="/admin/users">管理员管理</el-menu-item>
         <el-menu-item index="/admin/permissions">权限分配</el-menu-item>
       </el-sub-menu>
@@ -58,6 +59,8 @@ import {
   House, Monitor, Warning, DataAnalysis, Setting,
   DataLine
 } from '@element-plus/icons-vue';
+import { computed } from 'vue';
+import { useAuthStore } from '@/store/auth';
 
 // Props
 const props = defineProps({
@@ -69,6 +72,12 @@ const props = defineProps({
     type: Boolean,
     default: false
   }
+});
+
+// 检查是否有系统管理权限
+const authStore = useAuthStore();
+const showSystemManagement = computed(() => {
+  return props.isSuperAdmin || authStore.hasPermission('admin:manage');
 });
 </script>
 

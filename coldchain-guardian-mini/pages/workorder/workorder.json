@@ -1,3 +1,4 @@
 {
-  "navigationBarTitleText": "工单处理"
+  "navigationStyle": "custom",
+  "backgroundColor": "#F5F7FA"
 }

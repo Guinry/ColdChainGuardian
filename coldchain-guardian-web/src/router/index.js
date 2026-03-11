@@ -71,6 +71,12 @@ const routes = [
     name: 'AIAssistant',
     component: () => import('../views/ai-assistant/AIAssistantView.vue'),
     meta: { requiresAuth: true, permissions: ['ai:assistant'] }
+  },
+  {
+    path: '/admin/employees',
+    name: 'EmployeeManagement',
+    component: () => import('../views/admin/EmployeeManagement.vue'),
+    meta: { requiresAuth: true, permissions: ['admin:employee'] }
   }
 ]
 

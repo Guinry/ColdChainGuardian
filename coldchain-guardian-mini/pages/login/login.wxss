@@ -1,0 +1,109 @@
+/* pages/login/login.wxss */
+page {
+  background-color: #F5F7FA;
+  height: 100vh;
+}
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0 60rpx;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 80rpx;
+}
+
+.logo-placeholder {
+  font-size: 100rpx;
+  margin-bottom: 30rpx;
+  background: #fff;
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 40rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.05);
+}
+
+.title {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 16rpx;
+}
+
+.subtitle {
+  font-size: 28rpx;
+  color: #909399;
+}
+
+.form-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 40rpx;
+}
+
+.input-box {
+  display: flex;
+  align-items: center;
+  background: #FFFFFF;
+  height: 100rpx;
+  border-radius: 20rpx;
+  padding: 0 30rpx;
+  margin-bottom: 40rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.02);
+}
+
+.icon {
+  font-size: 40rpx;
+  margin-right: 20rpx;
+  color: #909399;
+}
+
+.phone-input {
+  flex: 1;
+  height: 100%;
+  font-size: 32rpx;
+  color: #303133;
+}
+
+.submit-btn {
+  width: 100%;
+  background: #3A7AFE;
+  color: #fff;
+  font-size: 34rpx;
+  font-weight: bold;
+  border-radius: 50rpx;
+  height: 96rpx;
+  line-height: 96rpx;
+  box-shadow: 0 8rpx 24rpx rgba(58, 122, 254, 0.3);
+}
+
+.submit-btn::after {
+  border: none;
+}
+
+.submit-btn:active {
+  opacity: 0.8;
+}
+
+.tips-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.tips {
+  font-size: 24rpx;
+  color: #C0C4CC;
+}

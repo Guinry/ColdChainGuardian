@@ -26,11 +26,27 @@ public class UserEntity extends BaseEntity {
     @TableField("phone")
     private String phone;
 
+    @TableField("real_name")
+    private String realName;
+
     @TableField("role")
     private String role; // 管理员(admin)、员工(employee)、管理层(manager)
 
     @TableField("status")
     private Integer status; // 0-禁用, 1-启用
+
+    // 微信相关字段
+    @TableField("open_id")
+    private String openId;  // 微信用户的openId
+
+    @TableField(value = "union_id", exist = false)  // 由于当前只使用一个小程序，暂时不需要union_id
+    private String unionId;  // 微信用户的unionId
+
+    @TableField("wx_nickname")
+    private String wxNickname;  // 微信昵称
+
+    @TableField("wx_avatar")
+    private String wxAvatar;    // 微信头像URL
 
     // constructors
     public UserEntity() {}
@@ -73,6 +89,14 @@ public class UserEntity extends BaseEntity {
         this.phone = phone;
     }
 
+    public String getRealName() {
+        return realName;
+    }
+
+    public void setRealName(String realName) {
+        this.realName = realName;
+    }
+
     public String getRole() {
         return role;
     }
@@ -87,5 +111,37 @@ public class UserEntity extends BaseEntity {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public String getOpenId() {
+        return openId;
+    }
+
+    public void setOpenId(String openId) {
+        this.openId = openId;
+    }
+
+    public String getUnionId() {
+        return unionId;
+    }
+
+    public void setUnionId(String unionId) {
+        this.unionId = unionId;
+    }
+
+    public String getWxNickname() {
+        return wxNickname;
+    }
+
+    public void setWxNickname(String wxNickname) {
+        this.wxNickname = wxNickname;
+    }
+
+    public String getWxAvatar() {
+        return wxAvatar;
+    }
+
+    public void setWxAvatar(String wxAvatar) {
+        this.wxAvatar = wxAvatar;
     }
 }

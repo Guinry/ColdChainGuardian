@@ -86,4 +86,33 @@ export const warehouseAreaApi = {
   })
 };
 
+// 员工管理API接口
+export const employeeApi = {
+  // 分页查询员工列表
+  getEmployeeList: (params, pageNum = 1, pageSize = 10) =>
+    apiClient.get('/admin/employees', {
+      params: {
+        ...params,
+        pageNum,
+        pageSize
+      }
+    }),
+
+  // 创建员工
+  createEmployee: (data) => apiClient.post('/admin/employees', data),
+
+  // 更新员工信息
+  updateEmployee: (data) => apiClient.put('/admin/employees', data),
+
+  // 更新员工状态
+  updateEmployeeStatus: (userId, status) =>
+    apiClient.patch(`/admin/employees/${userId}/status`, null, {
+      params: { status }
+    }),
+
+  // 解绑员工微信账号
+  unbindEmployeeWechat: (userId) =>
+    apiClient.delete(`/admin/employees/${userId}/wechat-binding`)
+};
+
 export default apiClient

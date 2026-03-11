@@ -11,7 +11,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { computed } from 'vue'; // 引入 computed
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/store/auth';
 import NavBar from './NavBar.vue';
@@ -25,20 +25,28 @@ const hasPermission = (permission) => {
   return authStore.hasPermission(permission);
 };
 
-// 当前活跃菜单项，从路由中动态获取
-const activeMenu = ref(router.currentRoute.value.path.split('/')[1] || 'dashboard');
-
-// 模拟用户信息
-const userInfo = reactive({
-  realName: '管理员'
+// 🌟 修复 1：使用 computed 监听路由变化，解决刷新或跳转后菜单不高亮的问题
+const activeMenu = computed(() => {
+  return router.currentRoute.value.path;
 });
 
-// 检查是否为超级管理员
-const isSuperAdmin = ref(false); // 可以从store或API获取实际值
+// 🌟 修复 2：使用 computed 监听用户信息，防止登录后没刷新拿不到名字
+const userInfo = computed(() => {
+  return {
+    realName: authStore.user?.realName || authStore.user?.username || '访客'
+  };
+});
+
+// 🌟 修复 3：使用 computed 实时监听角色变化，替代 onMounted
+const isSuperAdmin = computed(() => {
+  const role = authStore.user?.role;
+  // 注意：如果你的后端角色前缀带 ROLE_，请在这里加上，例如 'ROLE_ADMIN'
+  return role ? ['ADMIN', 'SUPER_ADMIN'].includes(role.toUpperCase()) : false;
+});
 
 // 退出登录
 const logout = () => {
-  localStorage.removeItem('token');
+  authStore.clearAuthData();
   router.push('/login');
 };
 

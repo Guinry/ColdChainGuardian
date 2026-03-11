@@ -1,54 +1,100 @@
-<!-- pages/workbench/workbench.wxml -->
-<view class="container">
-  <!-- 顶部欢迎区 -->
-  <view class="welcome-section">
-    <text class="greeting">{{userInfo.name}}，早安</text>
-    <text class="shift">班次：{{userInfo.shift}}</text>
-    <view class="weather">
-      <text>{{weather}}</text>
-    </view>
-  </view>
+<view class="page-container">
+  
+  <view class="fixed-nav" style="height: {{navHeight}}px;"></view>
 
-  <!-- 核心操作区 -->
-  <view class="hero-section">
-    <button class="hero-btn scan-btn" bindtap="scanQRCode">
-      <text class="btn-icon">📷</text>
-      <text class="btn-text">扫一扫</text>
-    </button>
-    <button class="hero-btn voice-btn" bindlongpress="voiceRepair">
-      <text class="btn-icon">🎤</text>
-      <text class="btn-text">语音报修</text>
-    </button>
-  </view>
-
-  <!-- 高频数据看板 -->
-  <view class="dashboard-section">
-    <view class="dashboard-item">
-      <text class="item-title">待我处理</text>
-      <text class="item-value">{{pendingTasks}}</text>
-    </view>
-    <view class="divider"></view>
-    <view class="dashboard-item">
-      <text class="item-title">今日已办</text>
-      <text class="item-value">{{completedToday}}</text>
-    </view>
-  </view>
-
-  <!-- 紧急插队任务列表 -->
-  <view class="urgent-tasks-section">
-    <text class="section-title">紧急任务</text>
-    <view class="task-list">
-      <view class="task-card" wx:for="{{urgentTasks}}" wx:key="id"
-            style="border-left: 6rpx solid {{item.priority === 'urgent' ? '#F56C6C' : '#E6A23C'}};">
-        <view class="task-header">
-          <text class="task-title">{{item.title}}</text>
-          <text class="task-location">{{item.location}}</text>
+  <scroll-view class="scroll-area" 
+               scroll-y="true" 
+               type="list"
+               refresher-enabled="true"
+               refresher-triggered="{{isRefreshing}}"
+               bindrefresherrefresh="onRefresh"
+               refresher-background="#3A7AFE"
+               refresher-default-style="white">
+    
+    <view class="header-bg">
+      <view class="header-content">
+        <view class="user-profile">
+          <view class="text-avatar">{{userInfo.avatarText}}</view>
+          <view class="user-info">
+            <text class="greeting">早安，{{userInfo.name}}</text>
+            <text class="shift-tag">当前排班：{{userInfo.shift}}</text>
+          </view>
         </view>
-        <view class="task-meta">
-          <text class="task-time">{{item.time}}</text>
-          <button class="action-btn primary-btn">立即前往</button>
+        <view class="weather-box">
+          <text class="weather-icon">⛅</text>
+          <text class="weather-text">{{weather}}</text>
         </view>
       </view>
     </view>
-  </view>
+
+    <view class="hero-grid">
+      <view class="hero-btn" bindtap="scanQRCode" hover-class="btn-hover">
+        <view class="icon-circle scan-bg">
+          <text class="emoji">📷</text>
+        </view>
+        <text class="hero-title">设备扫码</text>
+        <text class="hero-desc">现场设备核验</text>
+      </view>
+
+      <view class="hero-btn" bindlongpress="voiceRepair" hover-class="btn-hover">
+        <view class="icon-circle voice-bg">
+          <text class="emoji">🎤</text>
+        </view>
+        <text class="hero-title">语音报修</text>
+        <text class="hero-desc">长按快速上报</text>
+      </view>
+    </view>
+
+    <view class="stats-grid">
+      <view class="stat-card">
+        <text class="stat-title">待我处理</text>
+        <view class="stat-value blue-text">
+          {{pendingTasks}}<text class="stat-unit">单</text>
+        </view>
+      </view>
+      <view class="stat-card">
+        <text class="stat-title">今日已办</text>
+        <view class="stat-value green-text">
+          {{completedToday}}<text class="stat-unit">单</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="task-section">
+      <view class="section-header">
+        <text class="section-title">紧急任务</text>
+        <text class="more-text">查看全部 ></text>
+      </view>
+      
+      <view class="task-list">
+        <view class="task-card {{item.priority}}" wx:for="{{urgentTasks}}" wx:key="id" hover-class="card-hover">
+          <view class="card-main">
+            <view class="card-head">
+              <text class="task-title">{{item.title}}</text>
+              <view class="task-time-box">
+                <text class="time-icon">🕒</text>
+                <text class="task-time">{{item.time}}</text>
+              </view>
+            </view>
+            <view class="card-body">
+              <view class="info-row">
+                <text class="info-icon">📍</text>
+                <text class="info-text">{{item.location}}</text>
+              </view>
+            </view>
+          </view>
+          <view class="card-action">
+            <button class="go-btn" catchtap="goToTask" data-id="{{item.id}}">处理</button>
+          </view>
+        </view>
+        
+        <view wx:if="{{urgentTasks.length === 0}}" class="empty-state">
+          <text class="empty-text">✅ 当前无紧急任务</text>
+        </view>
+      </view>
+    </view>
+
+    <view style="height: 60rpx;"></view>
+  </scroll-view>
+
 </view>

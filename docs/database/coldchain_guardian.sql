@@ -11,7 +11,7 @@
  Target Server Version : 80042 (8.0.42)
  File Encoding         : 65001
 
- Date: 04/03/2026 20:13:59
+ Date: 10/03/2026 19:05:37
 */
 
 SET NAMES utf8mb4;
@@ -30,10 +30,11 @@ CREATE TABLE `ai_chat_messages`  (
   `attachment_id` bigint NULL DEFAULT NULL COMMENT '关联附件的业务ID',
   `tokens_used` int NULL DEFAULT 0 COMMENT '消耗的Token数量(可选，用于后续统计大模型API成本)',
   `created_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '消息发送时间',
+  `updated_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_session_time`(`session_id` ASC, `created_time` ASC) USING BTREE COMMENT '用于按时间顺序拉取某个会话的所有聊天记录',
   CONSTRAINT `fk_msg_session` FOREIGN KEY (`session_id`) REFERENCES `ai_chat_sessions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI助手-消息明细表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 44 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI助手-消息明细表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for ai_chat_sessions
@@ -48,7 +49,7 @@ CREATE TABLE `ai_chat_sessions`  (
   `updated_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后对话时间(用于列表排序)',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_user_time`(`user_id` ASC, `updated_time` DESC) USING BTREE COMMENT '用于快速拉取某用户的历史会话列表'
-) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI助手-会话表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI助手-会话表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for alert_configs
@@ -73,7 +74,7 @@ CREATE TABLE `alert_configs`  (
   INDEX `fk_cfg_warehouse_area`(`warehouse_id` ASC) USING BTREE,
   CONSTRAINT `fk_cfg_device` FOREIGN KEY (`device_id`) REFERENCES `devices` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_cfg_warehouse_area` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouse_areas` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '告警配置' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '告警配置' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for alerts
@@ -108,7 +109,7 @@ CREATE TABLE `alerts`  (
   INDEX `idx_status_level_time`(`status` ASC, `alert_level` ASC, `created_time` DESC) USING BTREE,
   CONSTRAINT `fk_alerts_device` FOREIGN KEY (`device_id`) REFERENCES `devices` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_alerts_work_order` FOREIGN KEY (`work_order_id`) REFERENCES `work_orders` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '告警记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '告警记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for devices
@@ -151,7 +152,7 @@ CREATE TABLE `devices`  (
   INDEX `idx_online`(`online_status` ASC) USING BTREE,
   INDEX `idx_last_seen`(`last_seen_time` ASC) USING BTREE,
   CONSTRAINT `fk_device_area` FOREIGN KEY (`area_id`) REFERENCES `warehouse_areas` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 15 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '设备表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '设备表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for sensor_data
@@ -167,13 +168,13 @@ CREATE TABLE `sensor_data`  (
   `signal_strength` int NULL DEFAULT NULL COMMENT '信号强度',
   `raw_data` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '原始数据',
   `created_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `recv_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '服务端接收时间',
+  `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_device_time`(`device_id` ASC, `data_time` ASC) USING BTREE,
   INDEX `idx_time`(`data_time` ASC) USING BTREE,
   INDEX `idx_device_time_desc`(`device_id` ASC, `data_time` DESC) USING BTREE,
   CONSTRAINT `fk_sensor_device` FOREIGN KEY (`device_id`) REFERENCES `devices` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '温湿度原始上报数据' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 13 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '温湿度原始上报数据' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for users
@@ -227,7 +228,7 @@ CREATE TABLE `warehouse_areas`  (
   INDEX `idx_level`(`area_level` ASC) USING BTREE,
   INDEX `idx_status`(`status` ASC) USING BTREE,
   CONSTRAINT `fk_area_parent` FOREIGN KEY (`parent_id`) REFERENCES `warehouse_areas` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 12 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for work_order_logs
@@ -244,7 +245,7 @@ CREATE TABLE `work_order_logs`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_wo_id`(`work_order_id` ASC) USING BTREE,
   CONSTRAINT `fk_log_wo` FOREIGN KEY (`work_order_id`) REFERENCES `work_orders` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '工单流转日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '工单流转日志表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for work_orders
@@ -276,6 +277,6 @@ CREATE TABLE `work_orders`  (
   INDEX `idx_assigned`(`assigned_to` ASC) USING BTREE,
   INDEX `fk_wo_warehouse`(`warehouse_id` ASC) USING BTREE,
   CONSTRAINT `fk_wo_warehouse` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouse_areas` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '设备运维工单表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '设备运维工单表' ROW_FORMAT = Dynamic;
 
 SET FOREIGN_KEY_CHECKS = 1;

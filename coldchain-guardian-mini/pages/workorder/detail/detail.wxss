@@ -1,194 +1,312 @@
 /* pages/workorder/detail/detail.wxss */
-
-.container {
-  padding: 20rpx;
-  background-color: #f5f5f5;
-  padding-bottom: 140rpx; /* 为底部固定栏留出空间 */
+page {
+  background-color: #F5F7FA;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-/* 工单信息区 */
-.info-section {
-  background: white;
-  border-radius: 20rpx;
-  padding: 30rpx;
+.page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+}
+
+/* 自定义导航栏 */
+.fixed-header {
+  background-color: #FFFFFF;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32rpx;
+  margin-bottom: 12rpx;
+}
+
+.back-btn {
+  width: 60rpx;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.back-icon {
+  font-size: 50rpx;
+  color: #303133;
+  margin-top: -10rpx;
+}
+
+.nav-title {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #303133;
+}
+
+.right-placeholder {
+  width: 60rpx;
+}
+
+/* 保证标题居中 */
+
+/* 滚动区 */
+.scroll-area {
+  flex: 1;
+  overflow: hidden;
+  padding: 24rpx 32rpx;
+}
+
+/* 基础信息卡片 */
+.info-card {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.03);
+}
+
+.card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 30rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+  padding-bottom: 24rpx;
+  border-bottom: 1px solid #F0F2F5;
 }
 
-.info-item {
-  margin-bottom: 25rpx;
+.main-title {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #303133;
+  flex: 1;
+  padding-right: 20rpx;
+  line-height: 1.4;
 }
 
-.info-item:last-child {
-  margin-bottom: 0;
+.status-tag {
+  font-size: 24rpx;
+  font-weight: bold;
+  padding: 6rpx 16rpx;
+  border-radius: 8rpx;
+  flex-shrink: 0;
+}
+
+.processing {
+  background: #EBF2FF;
+  color: #3A7AFE;
+}
+
+.info-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.grid-item {
+  width: 45%;
+  display: flex;
+  flex-direction: column;
 }
 
 .label {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: #909399;
-  display: block;
   margin-bottom: 8rpx;
-  font-weight: bold;
 }
 
 .value {
   font-size: 28rpx;
   color: #303133;
-  display: block;
+  font-weight: 500;
+}
+
+.text-danger {
+  color: #F54A45;
+}
+
+.desc-box {
+  background: #F8FAFC;
+  padding: 20rpx;
+  border-radius: 12rpx;
+  display: flex;
+  flex-direction: column;
 }
 
 .multiline {
   line-height: 1.6;
+  font-weight: normal;
+  margin-top: 8rpx;
 }
 
-/* 操作流区 */
-.operation-section {
-  background: white;
-  border-radius: 20rpx;
-  padding: 30rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+/* 操作流卡片 */
+.operation-card {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.03);
+  margin-bottom: 40rpx;
 }
 
-.operation-item {
-  margin-bottom: 35rpx;
-}
-
-.operation-item:last-child {
-  margin-bottom: 0;
-}
-
-.operation-label {
-  font-size: 28rpx;
-  color: #303133;
-  font-weight: bold;
-  display: block;
-  margin-bottom: 20rpx;
-}
-
-/* 扫码签到按钮 */
-.checkin-btn {
-  width: 100%;
-  height: 80rpx;
-  background: linear-gradient(135deg, #409EFF, #66b1ff);
-  color: white;
-  border-radius: 15rpx;
+.section-title {
   font-size: 32rpx;
   font-weight: bold;
+  color: #303133;
+  margin-bottom: 24rpx;
+}
+
+.checkin-btn {
+  background: #EBF2FF;
+  color: #3A7AFE;
+  font-size: 30rpx;
+  font-weight: bold;
+  border-radius: 16rpx;
+  height: 88rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 40rpx;
 }
 
-/* 照片区 */
+.checkin-btn::after {
+  border: none;
+}
+
+.btn-icon {
+  margin-right: 12rpx;
+  font-size: 34rpx;
+}
+
+.operation-item {
+  margin-bottom: 36rpx;
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 16rpx;
+}
+
+.sub-label {
+  font-size: 22rpx;
+  color: #C0C4CC;
+}
+
+/* 照片墙 */
 .photo-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 20rpx;
 }
 
+.photo-item,
 .photo-add {
-  width: 200rpx;
-  height: 200rpx;
-  border: 2rpx dashed #dcdfe6;
-  border-radius: 15rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background-color: #fafafa;
-}
-
-.photo-add-icon {
-  font-size: 60rpx;
-  color: #c0c4cc;
-  margin-bottom: 10rpx;
-}
-
-.photo-add-text {
-  font-size: 24rpx;
-  color: #909399;
-}
-
-.photo-item {
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 16rpx;
   position: relative;
-  width: 200rpx;
-  height: 200rpx;
 }
 
 .photo-image {
   width: 100%;
   height: 100%;
-  border-radius: 15rpx;
+  border-radius: 16rpx;
 }
 
 .photo-delete {
   position: absolute;
-  top: -10rpx;
-  right: -10rpx;
-  width: 40rpx;
-  height: 40rpx;
-  background-color: #F56C6C;
+  top: -12rpx;
+  right: -12rpx;
+  width: 36rpx;
+  height: 36rpx;
+  background: #F54A45;
+  color: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 24rpx;
-  font-weight: bold;
+  font-size: 28rpx;
+  border: 4rpx solid #fff;
 }
 
-/* 处理记录输入 */
-.record-input-container {
-  position: relative;
+.photo-add {
+  background: #F4F5F7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx dashed #DCDFE6;
 }
 
-.record-textarea {
+.add-icon {
+  font-size: 40rpx;
+  color: #909399;
+  margin-bottom: 4rpx;
+}
+
+.add-text {
+  font-size: 22rpx;
+  color: #909399;
+}
+
+/* 文本域 */
+.record-box {
+  border: 2rpx solid #E4E7ED;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.record-input {
   width: 100%;
-  min-height: 200rpx;
-  border: 2rpx solid #e4e7ed;
-  border-radius: 15rpx;
+  height: 200rpx;
   padding: 20rpx;
   font-size: 28rpx;
-  color: #303133;
   box-sizing: border-box;
 }
 
-.voice-input-btn {
-  position: absolute;
-  right: 20rpx;
-  bottom: 20rpx;
-  width: 60rpx;
-  height: 60rpx;
-  background-color: #409EFF;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24rpx;
+.voice-btn {
+  background: #FAFAFA;
+  border-top: 2rpx solid #E4E7ED;
+  padding: 20rpx;
+  text-align: center;
+  color: #3A7AFE;
+  font-size: 26rpx;
+  font-weight: bold;
 }
 
-/* 底部固定栏 */
+/* 底部固定区 */
+.bottom-spacer {
+  height: 140rpx;
+}
+
+/* 为吸底按钮留出空间 */
 .fixed-bottom-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 20rpx;
-  background: white;
-  box-shadow: 0 -4rpx 12rpx rgba(0,0,0,0.1);
-  z-index: 100;
+  background: #FFFFFF;
+  padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.05);
+  z-index: 200;
 }
 
 .submit-btn {
-  width: 100%;
-  height: 100rpx;
-  background: linear-gradient(135deg, #67C23A, #85ce61);
-  color: white;
-  border-radius: 15rpx;
-  font-size: 36rpx;
+  background: linear-gradient(135deg, #3A7AFE 0%, #5E94FF 100%);
+  color: #FFF;
+  font-size: 32rpx;
   font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 50rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+}
+
+.submit-btn::after {
+  border: none;
 }

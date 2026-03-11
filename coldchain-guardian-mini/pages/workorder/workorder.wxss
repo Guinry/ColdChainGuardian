@@ -1,92 +1,202 @@
 /* pages/workorder/workorder.wxss */
-
-.container {
-  padding: 20rpx;
-  background-color: #f5f5f5;
-  min-height: 100vh;
-}
-
-/* 顶部过滤器 */
-.filter-section {
-  margin-bottom: 30rpx;
-}
-
-.tab-container {
-  display: flex;
-  background: white;
-  border-radius: 50rpx;
-  overflow: hidden;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
-}
-
-.tab {
-  flex: 1;
-  text-align: center;
-  padding: 20rpx 0;
-  font-size: 28rpx;
-  color: #909399;
-  transition: all 0.3s ease;
-}
-
-.tab.active {
-  color: #409EFF;
-  background-color: #ecf5ff;
-  font-weight: bold;
-}
-
-/* 工单列表 */
-.workorder-list {
+page {
+  background-color: #F5F7FA;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  height: 100vh; 
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
 }
 
-.workorder-card {
-  background: white;
-  border-radius: 20rpx;
-  padding: 30rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
-}
-
-.workorder-header {
+.page-container {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 20rpx;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
 }
 
-.workorder-title {
-  font-size: 30rpx;
+/* 固定头部 */
+.fixed-header {
+  background-color: #FFFFFF;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.03);
+  flex-shrink: 0; 
+  z-index: 100;
+}
+
+.nav-title {
+  text-align: center;
+  font-size: 34rpx;
   font-weight: bold;
   color: #303133;
-  flex: 1;
 }
 
-.workorder-type {
-  font-size: 24rpx;
-  color: #909399;
-  margin-left: 10rpx;
-  padding: 4rpx 12rpx;
-  background-color: #ecf5ff;
-  border-radius: 20rpx;
+.segment-wrap { 
+  padding: 24rpx 32rpx 20rpx; 
 }
 
-.workorder-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.segment-control { 
+  display: flex; 
+  background-color: #F0F2F5; 
+  border-radius: 16rpx; 
+  padding: 6rpx; 
 }
 
-.workorder-location {
-  font-size: 26rpx;
-  color: #606266;
+.segment-item { 
+  flex: 1; 
+  text-align: center; 
+  padding: 16rpx 0; 
+  font-size: 26rpx; 
+  color: #606266; 
+  border-radius: 12rpx; 
+  transition: all 0.3s ease; 
 }
 
-.workorder-deadline {
-  font-size: 24rpx;
-  color: #909399;
+.segment-item.active { 
+  background-color: #FFFFFF; 
+  color: #3A7AFE; 
+  font-weight: bold; 
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04); 
 }
 
-.workorder-deadline.overdue {
-  color: #F56C6C;
-  font-weight: bold;
+/* 滚动区 */
+.scroll-area { 
+  flex: 1; 
+  overflow: hidden; 
+}
+
+/* 工单卡片 */
+.workorder-list { 
+  padding: 24rpx 32rpx; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 24rpx; 
+}
+
+.workorder-card { 
+  background: #FFFFFF; 
+  border-radius: 20rpx; 
+  padding: 32rpx 32rpx 24rpx; 
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.03); 
+  position: relative; overflow: hidden; 
+}
+
+.card-hover { 
+  background-color: #FAFAFA; 
+}
+
+.workorder-card::before { 
+  content: ''; 
+  position: absolute; 
+  left: 0; 
+  top: 0; 
+  bottom: 0; 
+  width: 8rpx; 
+}
+
+.urgent::before { 
+  background-color: #F54A45; 
+}
+
+.high::before { 
+  background-color: #FF8F1F; 
+}
+
+.normal::before { 
+  background-color: #3A7AFE; 
+}
+
+.card-header { 
+  margin-bottom: 24rpx; 
+}
+
+.title-wrap { 
+  display: flex; 
+  align-items: flex-start; 
+}
+
+.type-tag { 
+  font-size: 20rpx; 
+  font-weight: bold; 
+  padding: 6rpx 12rpx; 
+  border-radius: 6rpx; 
+  margin-right: 16rpx; 
+  flex-shrink: 0; 
+  background: #F0F2F5; 
+  color: #606266; 
+  margin-top: 4rpx;
+}
+
+.workorder-title { 
+  font-size: 32rpx; 
+  font-weight: bold; 
+  color: #303133; 
+  line-height: 1.4;
+}
+
+.card-body { 
+  background-color: #F8FAFC; 
+  border-radius: 12rpx; 
+  padding: 20rpx; 
+  margin-bottom: 20rpx; 
+}
+
+.info-row { 
+  display: flex; 
+  align-items: center; 
+}
+
+.mt-10 { 
+  margin-top: 12rpx; 
+}
+
+.info-icon { 
+  font-size: 26rpx; 
+  margin-right: 12rpx; 
+}
+
+.info-text { 
+  font-size: 26rpx; 
+  color: #606266; 
+}
+
+.text-danger { 
+  color: #F54A45; 
+  font-weight: bold; 
+}
+
+.card-footer { 
+  display: flex; 
+  justify-content: flex-end; 
+  align-items: center; 
+  border-top: 1px dashed #E4E7ED; 
+  padding-top: 20rpx; 
+}
+
+.footer-text { 
+  font-size: 24rpx; 
+  color: #3A7AFE; 
+  margin-right: 4rpx; 
+}
+
+.footer-icon { 
+  font-size: 24rpx; 
+  color: #3A7AFE; 
+}
+
+/* 空状态 */
+.empty-state { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center; 
+  padding-top: 160rpx; 
+}
+
+.empty-emoji { 
+  font-size: 90rpx; 
+  margin-bottom: 20rpx; 
+}
+
+.empty-text { 
+  font-size: 28rpx; 
+  color: #909399; 
 }

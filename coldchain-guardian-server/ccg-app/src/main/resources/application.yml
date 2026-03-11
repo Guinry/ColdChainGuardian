@@ -40,6 +40,13 @@ spring:
       # 设置异步请求超时时间为 5 分钟 (300000 毫秒)，或者直接设为 -1 (永不超时)
       request-timeout: 300000
 
+# 微信小程序配置
+wx:
+  miniprogram:
+    appid: ${WX_APP_ID:your-wx-app-id}  # 微信小程序AppID
+    secret: ${WX_APP_SECRET:your-wx-app-secret}  # 微信小程序AppSecret
+    request-timeout: 5000  # 请求超时时间（毫秒）
+
 # JWT配置
 jwt:
   secret: ${JWT_SECRET:coldChainGuardianSecretKeyForJwtToken_ChangeMe_32bytes}

@@ -1,81 +1,83 @@
-<!-- pages/profile/profile.wxml -->
-<view class="container">
-  <!-- 个人信息区 -->
-  <view class="profile-section">
-    <view class="avatar-container">
-      <image class="avatar" src="{{userInfo.avatar}}" mode="aspectFill"></image>
+<view class="page-container">
+
+  <view class="fixed-nav" style="height: {{navHeight}}px;">
+    <view class="nav-title"
+      style="padding-top: {{paddingTop}}px; height: {{capsuleHeight}}px; line-height: {{capsuleHeight}}px;">
+      我的
+    </view>
+  </view>
+
+  <scroll-view class="scroll-area" scroll-y="true" type="list">
+
+    <view class="header-bg"></view>
+
+    <view class="profile-card">
+      <view class="avatar-wrap">
+        <image wx:if="{{userInfo.avatar}}" class="avatar-img" src="{{userInfo.avatar}}" mode="aspectFill"></image>
+        <view wx:else class="avatar-text">{{userInfo.avatarText}}</view>
+      </view>
       <view class="user-info">
         <text class="user-name">{{userInfo.name}}</text>
-        <text class="user-department">{{userInfo.department}}</text>
+        <view class="tag-wrap">
+          <text class="user-dept">{{userInfo.department}}</text>
+        </view>
       </view>
     </view>
-  </view>
 
-  <!-- 我的绩效区 -->
-  <view class="performance-section">
-    <text class="section-title">我的绩效</text>
-    <view class="performance-grid">
-      <view class="performance-item">
-        <text class="metric-value">{{performance.completionRate}}</text>
-        <text class="metric-label">按时完成率</text>
+    <view class="section-title">我的绩效</view>
+    <view class="performance-card">
+      <view class="perf-item">
+        <text class="perf-val">{{performance.completionRate}}</text>
+        <text class="perf-label">按时完成率</text>
       </view>
-      <view class="performance-item">
-        <text class="metric-value">{{performance.processedCount}}</text>
-        <text class="metric-label">处理单数</text>
+      <view class="perf-divider"></view>
+      <view class="perf-item">
+        <text class="perf-val">{{performance.processedCount}}</text>
+        <text class="perf-label">本月处理 (单)</text>
       </view>
     </view>
-  </view>
 
-  <!-- 消息设置区 -->
-  <view class="notification-section">
-    <text class="section-title">消息设置</text>
-    <view class="notification-list">
-      <view class="notification-item" wx:for="{{notificationSettings}}" wx:key="id">
-        <text class="notification-name">{{item.name}}</text>
-        <switch class="notification-switch"
-                checked="{{item.enabled}}"
-                data-id="{{item.id}}"
-                bindchange="toggleNotification" />
-      </view>
-    </view>
-  </view>
-
-  <!-- 离线数据中心 -->
-  <view class="offline-section">
-    <text class="section-title">离线数据中心</text>
-    <view class="offline-content">
-      <view class="offline-status">
-        <text class="status-text">同步状态: {{offlineData.syncStatus}}</text>
-        <text class="status-indicator {{offlineData.syncStatus === '已连接' ? 'connected' : 'disconnected'}}"></text>
-      </view>
-      <view class="offline-data">
-        <text class="data-text">待同步工单: {{offlineData.pendingWorkOrders}} 条</text>
-        <button class="sync-btn" bindtap="manualSync" wx:if="{{offlineData.pendingWorkOrders > 0}}">
-          立即同步
-        </button>
-        <button class="sync-btn disabled" wx:else>
-          无需同步
+    <view class="section-title">离线数据中心</view>
+    <view class="offline-card">
+      <view class="offline-header">
+        <view class="status-wrap">
+          <text class="status-dot {{offlineData.syncStatus === '已连接' ? 'green' : 'red'}}"></text>
+          <text class="status-text">网络{{offlineData.syncStatus}}</text>
+        </view>
+        <button class="sync-btn {{offlineData.pendingWorkOrders > 0 ? 'active' : ''}}" bindtap="manualSync">
+          {{offlineData.pendingWorkOrders > 0 ? '立即同步' : '已是最新'}}
         </button>
       </view>
+      <view class="offline-body">
+        <text class="offline-label">本地暂存工单</text>
+        <view class="offline-value">
+          <text
+            class="num {{offlineData.pendingWorkOrders > 0 ? 'text-warning' : ''}}">{{offlineData.pendingWorkOrders}}</text>
+          <text class="unit">条</text>
+        </view>
+      </view>
     </view>
-  </view>
 
-  <!-- 其他设置 -->
-  <view class="other-settings-section">
-    <text class="section-title">其他设置</text>
-    <view class="settings-list">
-      <view class="setting-item">
-        <text>关于冷链守护</text>
-        <text class="arrow">›</text>
-      </view>
-      <view class="setting-item">
-        <text>帮助与反馈</text>
-        <text class="arrow">›</text>
-      </view>
-      <view class="setting-item">
-        <text>退出登录</text>
-        <text class="arrow">›</text>
+    <view class="section-title">消息设置</view>
+    <view class="settings-card">
+      <view class="setting-item" wx:for="{{notificationSettings}}" wx:key="id">
+        <text class="setting-name">{{item.name}}</text>
+        <switch class="setting-switch" color="#3A7AFE" checked="{{item.enabled}}" data-id="{{item.id}}"
+          bindchange="toggleNotification" />
       </view>
     </view>
-  </view>
+
+    <view class="settings-card mt-24">
+      <view class="setting-item arrow-item">
+        <text class="setting-name">关于冷链守护</text>
+        <text class="arrow-icon">›</text>
+      </view>
+      <view class="setting-item arrow-item" bindtap="handleLogout">
+        <text class="setting-name text-danger">退出登录</text>
+      </view>
+    </view>
+
+    <view style="height: 60rpx;"></view>
+  </scroll-view>
+
 </view>

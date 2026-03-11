@@ -1,9 +1,12 @@
 // pages/workbench/workbench.js
 Page({
   data: {
+    navHeight: 80, // 固定导航栏高度
+    isRefreshing: false, // 下拉刷新状态控制
     userInfo: {
       name: '张工',
-      shift: '白班'
+      shift: '白班',
+      avatarText: '张'
     },
     weather: '晴 -2℃',
     pendingTasks: 3,
@@ -11,66 +14,64 @@ Page({
     urgentTasks: [
       {
         id: 1,
-        title: '冷冻A区温度异常',
-        location: 'A-01',
+        title: '冷冻A区温度严重异常',
+        location: '库区 A-01',
         time: '10分钟前',
-        priority: 'high'
+        priority: 'urgent'
       },
       {
         id: 2,
-        title: '制冷设备报警',
-        location: 'B-05',
+        title: '制冷压缩机离线报警',
+        location: '机房 B-05',
         time: '15分钟前',
-        priority: 'urgent'
+        priority: 'high'
       }
     ]
   },
 
   onLoad() {
+    // 1. 动态头像
+    if (this.data.userInfo && this.data.userInfo.name) {
+      this.setData({
+        'userInfo.avatarText': this.data.userInfo.name.charAt(0)
+      });
+    }
 
+    // 2. 获取胶囊底部位置，作为固定导航蓝条的高度
+    const menuInfo = wx.getMenuButtonBoundingClientRect();
+    this.setData({
+      navHeight: menuInfo.bottom + 10 
+    });
+  },
+
+  // 🌟 新增：处理下拉刷新
+  onRefresh() {
+    this.setData({ isRefreshing: true });
+    
+    // 模拟网络请求
+    setTimeout(() => {
+      this.setData({ isRefreshing: false });
+      wx.showToast({ title: '数据已最新', icon: 'success' });
+    }, 1000);
   },
 
   scanQRCode() {
     wx.scanCode({
       success: (res) => {
-        console.log('扫描结果:', res.result);
-        // 扫码后的逻辑处理
-        wx.navigateTo({
-          url: `/pages/device-detail/device-detail?id=${res.result}`
-        });
-      },
-      fail: (err) => {
-        console.error('扫码失败:', err);
-        wx.showToast({
-          title: '扫码失败',
-          icon: 'none'
-        });
+        wx.navigateTo({ url: `/pages/device-detail/device-detail?id=${res.result}` });
       }
     });
   },
 
   voiceRepair() {
-    // 语音报修功能
+    wx.vibrateShort(); 
     wx.startRecord({
-      success: (res) => {
-        const tempFilePath = res.tempFilePath;
-        console.log('录音成功:', tempFilePath);
-        // 语音转文字并生成工单的逻辑
-        wx.navigateTo({
-          url: `/pages/workorder/create?voice=${tempFilePath}`
-        });
-      },
-      fail: (err) => {
-        console.error('录音失败:', err);
-        wx.showToast({
-          title: '录音失败',
-          icon: 'none'
-        });
-      }
+      success: () => wx.showToast({ title: '语音记录成功', icon: 'success' })
     });
+  },
 
-    setTimeout(() => {
-      wx.stopRecord();
-    }, 10000); // 最多录制10秒
+  goToTask(e) {
+    const taskId = e.currentTarget.dataset.id;
+    wx.navigateTo({ url: `/pages/workorder/detail/detail?id=${taskId}` });
   }
 })

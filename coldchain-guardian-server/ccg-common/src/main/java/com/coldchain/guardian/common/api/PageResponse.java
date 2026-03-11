@@ -1,7 +1,12 @@
 package com.coldchain.guardian.common.api;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.List;
 
+@Getter
+@Setter
 public class PageResponse<T> {
 
     private List<T> data;
@@ -18,44 +23,8 @@ public class PageResponse<T> {
         this.totalPages = (int) Math.ceil((double) total / size);
     }
 
-    // getters and setters
-    public List<T> getData() {
-        return data;
-    }
-
-    public void setData(List<T> data) {
-        this.data = data;
-    }
-
-    public long getTotal() {
-        return total;
-    }
-
-    public void setTotal(long total) {
-        this.total = total;
-    }
-
-    public int getPage() {
-        return page;
-    }
-
-    public void setPage(int page) {
-        this.page = page;
-    }
-
-    public int getSize() {
-        return size;
-    }
-
-    public void setSize(int size) {
-        this.size = size;
-    }
-
-    public int getTotalPages() {
-        return totalPages;
-    }
-
-    public void setTotalPages(int totalPages) {
-        this.totalPages = totalPages;
+    // 静态方法，用于创建PageResponse实例
+    public static <T> PageResponse<T> of(List<T> records, long total, int page, int size) {
+        return new PageResponse<>(records, total, page, size);
     }
 }

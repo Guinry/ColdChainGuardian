@@ -1,130 +1,233 @@
 /* pages/alert/alert.wxss */
-
-.container {
-  padding: 20rpx;
-  background-color: #f5f5f5;
-  min-height: 100vh;
-}
-
-/* 顶部过滤器 */
-.filter-section {
-  margin-bottom: 30rpx;
-}
-
-.tab-container {
+page {
+  background-color: #F5F7FA;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', sans-serif;
+  /* 🌟 修复关键：让页面强制撑满100%高度，并开启flex纵向布局 */
+  height: 100vh; 
   display: flex;
-  background: white;
-  border-radius: 50rpx;
-  overflow: hidden;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+  flex-direction: column;
 }
 
-.tab {
+.page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+}
+
+/* --- 1. 固定头部 (不再需要 sticky) --- */
+.fixed-header {
+  background-color: #FFFFFF;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.03);
+  flex-shrink: 0; /* 🌟 修复关键：保证头部不会被下方的列表挤压变形 */
+  z-index: 100;
+}
+
+/* --- 2. 滚动区域 (占据剩余全部空间) --- */
+.scroll-area {
+  flex: 1; /* 🌟 修复关键：自动占满头部以外的所有空间 */
+  overflow: hidden; 
+}
+
+/* 页面标题 */
+.nav-title {
+  text-align: center;
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #303133;
+  width: 100%;
+}
+
+.segment-wrap {
+  padding: 24rpx 32rpx 20rpx;
+}
+
+.segment-control {
+  display: flex;
+  background-color: #F0F2F5;
+  border-radius: 16rpx;
+  padding: 6rpx;
+}
+
+.segment-item {
   flex: 1;
   text-align: center;
-  padding: 20rpx 0;
+  padding: 16rpx 0;
   font-size: 28rpx;
-  color: #909399;
+  color: #606266;
+  border-radius: 12rpx;
   transition: all 0.3s ease;
 }
 
-.tab.active {
-  color: #409EFF;
-  background-color: #ecf5ff;
+.segment-item.active {
+  background-color: #FFFFFF;
+  color: #3A7AFE;
   font-weight: bold;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
 }
 
-/* 告警卡片列表 */
+/* --- 2. 告警卡片列表 --- */
 .alert-list {
+  padding: 24rpx 32rpx;
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  gap: 24rpx;
 }
 
 .alert-card {
-  background: white;
-  border-radius: 20rpx;
-  padding: 30rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.03);
+  position: relative;
+  overflow: hidden;
 }
 
-.alert-header {
+.card-hover {
+  background-color: #FAFAFA;
+}
+
+.alert-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8rpx;
+}
+
+/* 色彩语义 */
+.urgent::before { background-color: #F54A45; }
+.urgent .priority-tag { background: #FFF0F0; color: #F54A45; }
+.urgent .current-color { color: #F54A45; }
+
+.high::before { background-color: #FF8F1F; }
+.high .priority-tag { background: #FFF5EB; color: #FF8F1F; }
+.high .current-color { color: #FF8F1F; }
+
+.normal::before { background-color: #3A7AFE; }
+.normal .priority-tag { background: #EBF2FF; color: #3A7AFE; }
+.normal .current-color { color: #3A7AFE; }
+
+/* 头部 */
+.card-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 20rpx;
+  align-items: flex-start;
+  margin-bottom: 24rpx;
+}
+
+.title-wrap {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  padding-right: 20rpx;
+}
+
+.priority-tag {
+  font-size: 20rpx;
+  font-weight: bold;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  margin-right: 12rpx;
+  flex-shrink: 0;
 }
 
 .alert-title {
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: bold;
   color: #303133;
-  flex: 1;
-}
-
-.alert-location {
-  font-size: 26rpx;
-  color: #909399;
-  margin-left: 10rpx;
-}
-
-.alert-data {
-  display: flex;
-  align-items: baseline;
-  margin-bottom: 20rpx;
-}
-
-.current-value {
-  font-size: 48rpx;
-  font-weight: bold;
-  margin-right: 20rpx;
-}
-
-.current-value.urgent {
-  color: #F56C6C;
-}
-
-.current-value.high {
-  color: #E6A23C;
-}
-
-.current-value.normal {
-  color: #409EFF;
-}
-
-.threshold-value {
-  font-size: 24rpx;
-  color: #909399;
-}
-
-.alert-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
 .alert-time {
   font-size: 24rpx;
   color: #909399;
+  flex-shrink: 0;
+  margin-top: 6rpx;
 }
 
-.action-buttons {
+/* 数据面板 */
+.card-body {
+  margin-bottom: 30rpx;
+}
+
+.data-panel {
+  background-color: #F8FAFC;
+  border-radius: 16rpx;
+  padding: 24rpx;
   display: flex;
-  gap: 15rpx;
+  align-items: center;
+  margin-bottom: 20rpx;
 }
 
-.action-btn {
-  height: 60rpx;
-  padding: 0 25rpx;
-  border-radius: 30rpx;
+.data-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.data-label {
   font-size: 24rpx;
+  color: #909399;
+  margin-bottom: 8rpx;
+}
+
+.data-value {
+  font-size: 40rpx;
   font-weight: bold;
-  color: white;
+  font-family: 'DIN Alternate', Arial, sans-serif;
 }
 
-.dismiss-btn {
-  background-color: #909399;
+.limit-color {
+  color: #303133;
 }
 
-.create-btn {
-  background-color: #67C23A;
+.data-divider {
+  width: 2rpx;
+  height: 60rpx;
+  background-color: #E4E7ED;
+  margin: 0 40rpx;
 }
+
+.location-row {
+  display: flex;
+  align-items: center;
+}
+
+.loc-icon { font-size: 28rpx; margin-right: 8rpx; }
+.loc-text { font-size: 26rpx; color: #606266; }
+
+/* 底部操作区 */
+.card-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 20rpx;
+  border-top: 1px dashed #F0F2F5;
+  padding-top: 24rpx;
+}
+
+.btn-ghost, .btn-primary {
+  margin: 0;
+  font-size: 26rpx;
+  font-weight: 500;
+  border-radius: 12rpx;
+  height: 60rpx;
+  line-height: 60rpx;
+  padding: 0 32rpx;
+}
+
+.btn-ghost::after, .btn-primary::after { border: none; }
+.btn-ghost { background-color: #F4F4F5; color: #606266; }
+.btn-primary { background-color: #EBF2FF; color: #3A7AFE; font-weight: bold; }
+
+/* --- 3. 空状态 --- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 200rpx;
+}
+
+.empty-emoji { font-size: 100rpx; margin-bottom: 20rpx; }
+.empty-text { font-size: 28rpx; color: #909399; }

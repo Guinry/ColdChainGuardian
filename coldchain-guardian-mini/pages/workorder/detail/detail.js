@@ -1,6 +1,8 @@
 // pages/workorder/detail/detail.js
 Page({
   data: {
+    paddingTop: 44,
+    capsuleHeight: 32,
     workOrder: {
       id: 1,
       title: '冷冻A区温度异常处理',
@@ -11,53 +13,45 @@ Page({
       deadline: '2小时后到期',
       status: 'processing'
     },
-    photos: [], // 现场照片数组
-    recordText: '' // 处理记录文本
+    photos: [],
+    recordText: ''
   },
 
   onLoad(options) {
-    const id = options.id;
-    // 根据ID加载工单详情
-    console.log('加载工单详情，ID:', id);
+    const menuInfo = wx.getMenuButtonBoundingClientRect();
+    this.setData({
+      paddingTop: menuInfo.top,
+      capsuleHeight: menuInfo.height
+    });
+    console.log('加载工单详情，ID:', options.id);
+  },
+
+  // 🌟 自定义返回上一页逻辑
+  goBack() {
+    wx.navigateBack();
   },
 
   scanCheckIn() {
-    // 扫码签到功能
     wx.scanCode({
-      success: (res) => {
-        console.log('签到二维码:', res.result);
-        wx.showToast({
-          title: '签到成功',
-          icon: 'success'
-        });
-      },
-      fail: (err) => {
-        console.error('签到失败:', err);
-        wx.showToast({
-          title: '签到失败',
-          icon: 'none'
-        });
-      }
+      success: (res) => wx.showToast({
+        title: '签到成功',
+        icon: 'success'
+      }),
+      fail: () => wx.showToast({
+        title: '签到取消',
+        icon: 'none'
+      })
     });
   },
 
   takePhoto() {
     const that = this;
     wx.chooseImage({
-      count: 1, // 只允许选择一张图片
-      sourceType: ['camera'], // 只允许拍照
+      count: 1,
+      sourceType: ['camera', 'album'],
       success(res) {
-        const tempFilePaths = res.tempFilePaths;
         that.setData({
-          photos: [...that.data.photos, ...tempFilePaths]
-        });
-        console.log('拍摄的照片:', tempFilePaths);
-      },
-      fail(err) {
-        console.error('拍照失败:', err);
-        wx.showToast({
-          title: '拍照失败',
-          icon: 'none'
+          photos: [...that.data.photos, ...res.tempFilePaths]
         });
       }
     });
@@ -79,47 +73,29 @@ Page({
   },
 
   voiceInput() {
-    // 语音输入功能
+    wx.vibrateShort();
     wx.startRecord({
       success: (res) => {
-        const tempFilePath = res.tempFilePath;
-        console.log('录音成功:', tempFilePath);
-        // 这里应该是语音转文字的逻辑，暂时模拟
         this.setData({
-          recordText: this.data.recordText + ' [语音输入]'
-        });
-      },
-      fail: (err) => {
-        console.error('录音失败:', err);
-        wx.showToast({
-          title: '录音失败',
-          icon: 'none'
+          recordText: this.data.recordText + ' [语音输入记录]'
         });
       }
     });
-
-    setTimeout(() => {
-      wx.stopRecord();
-    }, 10000); // 最多录制10秒
+    setTimeout(() => wx.stopRecord(), 3000);
   },
 
   submitForReview() {
-    // 提交验收功能
     wx.showModal({
-      title: '确认提交',
-      content: '确认提交工单进行验收吗？',
-      success(res) {
+      title: '提交验收',
+      content: '确认处理完毕并提交验收吗？',
+      confirmColor: '#3A7AFE',
+      success: (res) => {
         if (res.confirm) {
-          console.log('提交工单验收');
           wx.showToast({
             title: '提交成功',
             icon: 'success'
           });
-
-          // 返回上级页面
-          setTimeout(() => {
-            wx.navigateBack();
-          }, 1500);
+          setTimeout(() => wx.navigateBack(), 1500);
         }
       }
     });

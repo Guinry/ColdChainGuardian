@@ -5,8 +5,10 @@ import com.coldchain.guardian.common.exception.BusinessException;
 import com.coldchain.guardian.common.exception.ErrorCode;
 import com.coldchain.guardian.contract.dto.auth.LoginRequestDto;
 import com.coldchain.guardian.contract.dto.auth.LoginResponseDto;
+import com.coldchain.guardian.contract.dto.user.CurrentUserInfoResponseDto;
 import com.coldchain.guardian.infra.persistence.entity.UserEntity;
-import com.coldchain.guardian.infra.persistence.repository.UserRepository;
+import com.coldchain.guardian.infra.persistence.mapper.UserMapper; // 更改为使用Mapper
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,7 +27,7 @@ public class AuthService {
     private JwtUtil jwtUtil;
 
     @Autowired
-    private UserRepository userRepository;
+    private UserMapper userMapper; // 更改为使用Mapper
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -36,7 +38,10 @@ public class AuthService {
     public LoginResponseDto login(LoginRequestDto loginRequestDto) {
         try {
             // 先从数据库获取用户信息
-            UserEntity user = userRepository.findByUsername(loginRequestDto.getUsername());
+            UserEntity user = userMapper.selectOne(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers.<UserEntity>lambdaQuery()
+                    .eq(UserEntity::getUsername, loginRequestDto.getUsername())
+            );
 
             if (user == null) {
                 throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
@@ -78,14 +83,34 @@ public class AuthService {
         } catch (BusinessException e) {
             // 重新抛出业务异常
             throw e;
+        } catch (RuntimeException e) {
+            // 处理运行时异常
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "系统错误: " + e.getMessage());
         } catch (Exception e) {
             // JWT生成失败或其他系统错误
-            if (e instanceof BusinessException) {
-                throw e;
-            } else {
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR);
-            }
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "系统错误: " + e.getMessage());
         }
+    }
+
+    /**
+     * 获取当前用户信息
+     */
+    public CurrentUserInfoResponseDto getCurrentUserInfo(Long userId) {
+        UserEntity user = userMapper.selectById(userId);
+
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 检查用户状态
+        if (user.getStatus() != 1) {
+            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED, "账号已被禁用");
+        }
+
+        CurrentUserInfoResponseDto response = new CurrentUserInfoResponseDto();
+        BeanUtils.copyProperties(user, response);
+
+        return response;
     }
 
     /**
@@ -93,7 +118,11 @@ public class AuthService {
      */
     public UserEntity register(UserEntity user) {
         // 检查用户名是否已存在
-        UserEntity existingUser = userRepository.findByUsername(user.getUsername());
+        UserEntity existingUser = userMapper.selectOne(
+            com.baomidou.mybatisplus.core.toolkit.Wrappers.<UserEntity>lambdaQuery()
+                .eq(UserEntity::getUsername, user.getUsername())
+        );
+
         if (existingUser != null) {
             throw new BusinessException(ErrorCode.USERNAME_EXISTS);
         }
@@ -111,7 +140,7 @@ public class AuthService {
         }
 
         // 保存用户
-        userRepository.save(user);
+        userMapper.insert(user);
 
         // 返回时不包含密码
         user.setPassword(null);
@@ -122,6 +151,10 @@ public class AuthService {
      * 检查用户是否存在
      */
     public boolean userExists(String username) {
-        return userRepository.findByUsername(username) != null;
+        UserEntity user = userMapper.selectOne(
+            com.baomidou.mybatisplus.core.toolkit.Wrappers.<UserEntity>lambdaQuery()
+                .eq(UserEntity::getUsername, username)
+        );
+        return user != null;
     }
 }

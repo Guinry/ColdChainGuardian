@@ -1,0 +1,22 @@
+<view class="login-container">
+  <view class="header">
+    <view class="logo-placeholder">🧊</view>
+    <text class="title">冷链守护</text>
+    <text class="subtitle">内部员工专属运维工作台</text>
+  </view>
+
+  <view class="form-area">
+    <view class="input-box">
+      <text class="icon">📱</text>
+      <input class="phone-input" type="number" maxlength="11" placeholder="请输入管理员预留的手机号" bindinput="onPhoneInput"
+        value="{{phone}}" />
+    </view>
+
+    <button class="submit-btn" bindtap="handleManualLogin">绑定微信并登录</button>
+  </view>
+
+  <view class="tips-area">
+    <text class="tips">首次登录将自动与当前微信账号绑定</text>
+    <text class="tips">非内部员工请勿尝试</text>
+  </view>
+</view>

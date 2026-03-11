@@ -1,75 +1,86 @@
-<!-- pages/workorder/detail/detail.wxml -->
-<view class="container">
-  <!-- 工单信息区 -->
-  <view class="info-section">
-    <view class="info-item">
-      <text class="label">工单标题:</text>
-      <text class="value">{{workOrder.title}}</text>
-    </view>
-    <view class="info-item">
-      <text class="label">故障描述:</text>
-      <text class="value multiline">{{workOrder.description}}</text>
-    </view>
-    <view class="info-item">
-      <text class="label">位置:</text>
-      <text class="value">{{workOrder.location}}</text>
-    </view>
-    <view class="info-item">
-      <text class="label">任务类型:</text>
-      <text class="value">{{workOrder.type}}</text>
-    </view>
-    <view class="info-item">
-      <text class="label">截止时间:</text>
-      <text class="value">{{workOrder.deadline}}</text>
+<view class="page-container">
+
+  <view class="fixed-header" style="padding-top: {{paddingTop}}px;">
+    <view class="nav-bar" style="height: {{capsuleHeight}}px;">
+      <view class="back-btn" bindtap="goBack">
+        <text class="back-icon">‹</text>
+      </view>
+      <text class="nav-title">工单详情</text>
+      <view class="right-placeholder"></view>
     </view>
   </view>
 
-  <!-- 操作流区 -->
-  <view class="operation-section">
-    <!-- 扫码签到按钮 -->
-    <view class="operation-item">
-      <button class="checkin-btn" bindtap="scanCheckIn">
-        📍 扫码签到
-      </button>
+  <scroll-view class="scroll-area" scroll-y="true">
+
+    <view class="info-card">
+      <view class="card-title-row">
+        <text class="main-title">{{workOrder.title}}</text>
+        <view class="status-tag processing">处理中</view>
+      </view>
+
+      <view class="info-grid">
+        <view class="grid-item">
+          <text class="label">任务类型</text>
+          <text class="value">{{workOrder.type}}</text>
+        </view>
+        <view class="grid-item">
+          <text class="label">发生位置</text>
+          <text class="value">{{workOrder.location}}</text>
+        </view>
+        <view class="grid-item">
+          <text class="label">截止时间</text>
+          <text class="value text-danger">{{workOrder.deadline}}</text>
+        </view>
+      </view>
+
+      <view class="desc-box">
+        <text class="label">故障描述</text>
+        <text class="value multiline">{{workOrder.description}}</text>
+      </view>
     </view>
 
-    <!-- 现场照片区域 -->
-    <view class="operation-item">
-      <text class="operation-label">现场照片</text>
-      <view class="photo-grid">
-        <view class="photo-add" bindtap="takePhoto">
-          <text class="photo-add-icon">+</text>
-          <text class="photo-add-text">拍照</text>
+    <view class="operation-card">
+      <view class="section-title">现场执行</view>
+
+      <button class="checkin-btn" bindtap="scanCheckIn">
+        <text class="btn-icon">📍</text> 扫码到场签到
+      </button>
+
+      <view class="operation-item">
+        <view class="item-header">
+          <text class="label">现场照片</text>
+          <text class="sub-label">最多9张</text>
         </view>
-        <view class="photo-item" wx:for="{{photos}}" wx:key="index">
-          <image class="photo-image" src="{{item}}" mode="aspectFill"></image>
-          <view class="photo-delete" bindtap="deletePhoto" data-index="{{index}}">
-            <text class="delete-icon">×</text>
+        <view class="photo-grid">
+          <view class="photo-item" wx:for="{{photos}}" wx:key="index">
+            <image class="photo-image" src="{{item}}" mode="aspectFill"></image>
+            <view class="photo-delete" bindtap="deletePhoto" data-index="{{index}}">×</view>
+          </view>
+          <view class="photo-add" bindtap="takePhoto" wx:if="{{photos.length < 9}}">
+            <text class="add-icon">📷</text>
+            <text class="add-text">添加</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="operation-item">
+        <view class="item-header">
+          <text class="label">处理记录</text>
+        </view>
+        <view class="record-box">
+          <textarea class="record-input" placeholder="请详细描述处理过程及更换备件..." value="{{recordText}}" bindinput="inputRecord" maxlength="500"></textarea>
+          <view class="voice-btn" bindlongpress="voiceInput">
+            <text>🎤 按住语音输入</text>
           </view>
         </view>
       </view>
     </view>
 
-    <!-- 处理记录 -->
-    <view class="operation-item">
-      <text class="operation-label">处理记录</text>
-      <view class="record-input-container">
-        <textarea class="record-textarea"
-                  placeholder="请输入处理记录..."
-                  value="{{recordText}}"
-                  bindinput="inputRecord"
-                  maxlength="500" />
-        <view class="voice-input-btn" bindtap="voiceInput">
-          🎤
-        </view>
-      </view>
-    </view>
-  </view>
-</view>
+    <view class="bottom-spacer"></view>
+  </scroll-view>
 
-<!-- 底部固定栏 -->
-<view class="fixed-bottom-bar">
-  <button class="submit-btn" bindtap="submitForReview">
-    提交验收
-  </button>
+  <view class="fixed-bottom-bar">
+    <button class="submit-btn" bindtap="submitForReview">提交验收</button>
+  </view>
+
 </view>

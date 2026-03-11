@@ -14,6 +14,10 @@ CREATE TABLE IF NOT EXISTS users (
     real_name VARCHAR(50),
     role VARCHAR(20) DEFAULT 'USER',
     status TINYINT DEFAULT 1 COMMENT '1-启用，0-禁用',
+    open_id VARCHAR(100) COMMENT '微信用户openId',
+    union_id VARCHAR(100) COMMENT '微信用户unionId',
+    wx_nickname VARCHAR(100) COMMENT '微信昵称',
+    wx_avatar VARCHAR(255) COMMENT '微信头像URL',
     created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     creator_id BIGINT,
@@ -88,6 +92,95 @@ CREATE TABLE IF NOT EXISTS work_orders (
     warehouse_id BIGINT NULL COMMENT '库区ID',
     device_id BIGINT NULL COMMENT '设备ID',
     ref_alert_id BIGINT NULL COMMENT '关联的告警ID'
+);
+
+-- 添加微信会话记录表
+CREATE TABLE IF NOT EXISTS wx_login_sessions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    open_id VARCHAR(100) NOT NULL COMMENT '微信用户openId',
+    session_key VARCHAR(255) NOT NULL COMMENT '微信会话密钥',
+    expires_at TIMESTAMP NOT NULL COMMENT '会话过期时间',
+    created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_openid (open_id),
+    INDEX idx_expires (expires_at)
+);
+
+-- 添加微信用户授权记录表
+CREATE TABLE IF NOT EXISTS wx_user_authorizations (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    open_id VARCHAR(100) NOT NULL UNIQUE COMMENT '微信用户openId',
+    union_id VARCHAR(100) COMMENT '微信用户unionId',
+    nickname VARCHAR(100) COMMENT '微信昵称',
+    avatar_url VARCHAR(255) COMMENT '微信头像URL',
+    gender TINYINT DEFAULT 0 COMMENT '性别：0-未知，1-男，2-女',
+    country VARCHAR(50) COMMENT '国家',
+    province VARCHAR(50) COMMENT '省份',
+    city VARCHAR(50) COMMENT '城市',
+    language VARCHAR(20) DEFAULT 'zh_CN' COMMENT '语言',
+    phone_info_encrypted TEXT COMMENT '加密的手机号信息',
+    phone_info_decrypted JSON COMMENT '解密后的手机号信息',
+    last_login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后登录时间',
+    created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_openid (open_id)
+);
+
+-- 添加微信小程序登录日志表
+CREATE TABLE IF NOT EXISTS wx_login_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    open_id VARCHAR(100) COMMENT '微信用户openId',
+    ip_address VARCHAR(45) COMMENT '登录IP地址',
+    user_agent TEXT COMMENT '用户代理信息',
+    login_type VARCHAR(20) DEFAULT 'MINIPROGRAM' COMMENT '登录类型：MINIPROGRAM-小程序，JSAPI-网页',
+    login_result TINYINT DEFAULT 1 COMMENT '登录结果：1-成功，0-失败',
+    error_message VARCHAR(500) COMMENT '错误信息',
+    created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_openid_time (open_id, created_time),
+    INDEX idx_ip_time (ip_address, created_time)
+);
+
+-- 添加用户与微信授权关联关系表
+CREATE TABLE IF NOT EXISTS user_wx_bindings (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    open_id VARCHAR(100) NOT NULL UNIQUE COMMENT '微信用户openId',
+    union_id VARCHAR(100) COMMENT '微信用户unionId',
+    binding_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '绑定时间',
+    unbinding_time TIMESTAMP NULL COMMENT '解绑时间',
+    status TINYINT DEFAULT 1 COMMENT '状态：1-已绑定，0-已解绑',
+    created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_userid (user_id),
+    INDEX idx_openid (open_id)
+);
+
+-- 添加微信消息推送记录表（用于推送工单、告警等通知）
+CREATE TABLE IF NOT EXISTS wx_message_templates (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    template_id VARCHAR(100) NOT NULL COMMENT '微信模板消息ID',
+    title VARCHAR(200) COMMENT '模板标题',
+    content TEXT COMMENT '模板内容',
+    example TEXT COMMENT '示例',
+    category VARCHAR(50) COMMENT '分类',
+    status TINYINT DEFAULT 1 COMMENT '状态：1-启用，0-禁用',
+    created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 添加微信消息推送记录表
+CREATE TABLE IF NOT EXISTS wx_push_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_open_id VARCHAR(100) NOT NULL COMMENT '用户微信openId',
+    template_id VARCHAR(100) NOT NULL COMMENT '模板ID',
+    data JSON COMMENT '推送数据',
+    form_id VARCHAR(100) COMMENT '表单ID（用于消息推送）',
+    page VARCHAR(200) COMMENT '跳转页面',
+    push_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '推送时间',
+    result_code INT COMMENT '推送结果码',
+    result_msg VARCHAR(255) COMMENT '推送结果信息',
+    INDEX idx_openid_time (user_open_id, push_time)
 );
 
 -- 添加外键约束

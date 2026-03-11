@@ -10,10 +10,11 @@ import org.springframework.stereotype.Component;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import io.jsonwebtoken.JwtException;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @Component
 public class JwtUtil {
@@ -27,6 +28,17 @@ public class JwtUtil {
     private SecretKey getSigningKey() {
         // 使用HS256算法，需要至少256位（32字节）的密钥
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * 从HTTP请求中提取JWT Token
+     */
+    public String getTokenFromRequest(HttpServletRequest request) {
+        final String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7);
+        }
+        return null;
     }
 
     /**

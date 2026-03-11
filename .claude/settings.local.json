@@ -31,7 +31,10 @@
       "Bash(temp_dashboard_api.js:*)",
       "Bash(sed:*)",
       "Bash(powershell:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(dir C:\\\\Users\\\\23869\\\\Desktop\\\\ColdChainGuardian\\\\coldchain-guardian-server:*)",
+      "Bash(findstr:*)",
+      "Bash(git:*)"
     ]
   }
 }
