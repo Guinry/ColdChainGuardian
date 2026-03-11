@@ -20,63 +20,63 @@ const routes = [
     path: '/warehouse-area',
     name: 'WarehouseArea',
     component: () => import('../views/warehouse-area/WarehouseAreaView.vue'),
-    meta: { requiresAuth: true, permissions: ['area:view'] }
+    meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] }
   },
   {
     path: '/devices',
     name: 'DeviceManagement',
     component: () => import('../views/device/DeviceManagementView.vue'),
-    meta: { requiresAuth: true, permissions: ['device:view'] }
+    meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] }
   },
   {
     path: '/devices/:deviceId/data',
     name: 'DeviceData',
     component: () => import('../views/device/components/DeviceDataView.vue'),
-    meta: { requiresAuth: true, permissions: ['device:view'] },
+    meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] },
     props: true
   },
   {
     path: '/devices/:deviceId/alerts',
     name: 'DeviceAlerts',
     component: () => import('../views/device/components/DeviceAlertView.vue'),
-    meta: { requiresAuth: true, permissions: ['device:view', 'alert:view'] },
+    meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] },
     props: true
   },
   {
     path: '/monitor',
     name: 'Monitor',
     component: () => import('../views/monitor/MonitorView.vue'),
-    meta: { requiresAuth: true, permissions: ['monitor:view'] }
+    meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] }
   },
   {
     path: '/work-orders',
     name: 'WorkOrderCenter',
     component: () => import('../views/work-order/WorkOrderCenterView.vue'),
-    meta: { requiresAuth: true, permissions: ['workorder:view'] }
+    meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] }
   },
   {
     path: '/alerts',
     name: 'AlertCenter',
     component: () => import('../views/alert/AlertCenterView.vue'),
-    meta: { requiresAuth: true, permissions: ['alert:view'] }
+    meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] }
   },
   {
     path: '/trend-analysis',
     name: 'TrendAnalysis',
     component: () => import('../views/trend-analysis/TrendAnalysisView.vue'),
-    meta: { requiresAuth: true, permissions: ['dashboard:view'] }
+    meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] }
   },
   {
     path: '/ai-assistant',
     name: 'AIAssistant',
     component: () => import('../views/ai-assistant/AIAssistantView.vue'),
-    meta: { requiresAuth: true, permissions: ['ai:assistant'] }
+    meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] }
   },
   {
-    path: '/admin/employees',
+    path: '/employees',
     name: 'EmployeeManagement',
-    component: () => import('../views/admin/EmployeeManagement.vue'),
-    meta: { requiresAuth: true, permissions: ['admin:employee'] }
+    component: () => import('@/views/employees/EmployeeManagement.vue'),
+    meta: { requiresAuth: true, roles: ['ADMIN'] }
   }
 ]
 

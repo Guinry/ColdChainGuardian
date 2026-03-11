@@ -3,7 +3,7 @@ package com.coldchain.guardian.app.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.coldchain.guardian.app.service.EmployeeService;
+import com.coldchain.guardian.app.service.ManagerService;
 import com.coldchain.guardian.common.api.PageResponse;
 import com.coldchain.guardian.common.exception.BusinessException;
 import com.coldchain.guardian.common.exception.ErrorCode;
@@ -12,36 +12,31 @@ import com.coldchain.guardian.infra.persistence.entity.UserEntity;
 import com.coldchain.guardian.infra.persistence.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
+import org.springframework.util.StringUtils;
 
 /**
- * 员工管理服务实现类
+ * 管理员管理服务实现类
  */
 @Service
 @RequiredArgsConstructor
-public class EmployeeServiceImpl implements EmployeeService {
+public class ManagerServiceImpl implements ManagerService {
 
     private final UserMapper userMapper;
 
     @Override
-    public PageResponse<UserEntity> getEmployeeList(EmployeeQueryDto queryDto, int pageNum, int pageSize) {
+    public PageResponse<UserEntity> getManagerList(EmployeeQueryDto queryDto, int pageNum, int pageSize) {
         LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
 
-        // 🌟 核心修复：强制排除超级管理员和管理员，只查普通员工
-        wrapper.ne(UserEntity::getRole, "ADMIN")
-               .ne(UserEntity::getRole, "MANAGER");
+        // 🌟 核心逻辑：只查询管理员和超级管理员角色
+        wrapper.and(w -> w.eq(UserEntity::getRole, "ADMIN")
+                         .or()
+                         .eq(UserEntity::getRole, "SUPER_ADMIN"));
 
         // 关键词查询（姓名或手机号）
-        if (queryDto.getKeyword() != null && !queryDto.getKeyword().isEmpty()) {
+        if (StringUtils.hasText(queryDto.getKeyword())) {
             wrapper.and(w -> w.like(UserEntity::getRealName, queryDto.getKeyword())
                     .or()
                     .like(UserEntity::getPhone, queryDto.getKeyword()));
-        }
-
-        // 角色筛选 - 注意：由于我们强制排除了ADMIN/SUPER_ADMIN，这里的role查询仅限于非管理员角色
-        if (queryDto.getRole() != null && !queryDto.getRole().isEmpty()) {
-            wrapper.eq(UserEntity::getRole, queryDto.getRole());
         }
 
         // 状态筛选
@@ -74,51 +69,52 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public UserEntity createEmployee(UserEntity employee) {
+    public UserEntity createManager(UserEntity manager) {
         // 检查手机号是否已存在
         UserEntity existingUser = userMapper.selectOne(
             com.baomidou.mybatisplus.core.toolkit.Wrappers.<UserEntity>lambdaQuery()
-                .eq(UserEntity::getPhone, employee.getPhone())
+                .eq(UserEntity::getPhone, manager.getPhone())
         );
 
         if (existingUser != null) {
             throw new BusinessException(ErrorCode.USERNAME_EXISTS, "该手机号已被占用");
         }
 
+        // 设置角色为管理员（强制设置）
+        manager.setRole("ADMIN");
+
         // 设置默认值
-        if (employee.getRole() == null) {
-            employee.setRole("EMPLOYEE"); // 默认为员工角色
-        }
-        if (employee.getStatus() == null) {
-            employee.setStatus(1); // 默认启用
+        if (manager.getStatus() == null) {
+            manager.setStatus(1); // 默认启用
         }
 
-        employee.setUsername(employee.getPhone());
+        // 设置默认密码
+        manager.setPassword("$2a$10$default_password_for_admin");
 
-        // 设置默认密码（虽然微信登录不需要，但系统仍需存储）
-        employee.setPassword("$2a$10$default_password_for_employee");
-        employee.setCreateTime(LocalDateTime.now());
-        employee.setUpdateTime(LocalDateTime.now());
-
-        userMapper.insert(employee);
+        userMapper.insert(manager);
 
         // 返回时不包含密码
-        employee.setPassword(null);
-        return employee;
+        manager.setPassword(null);
+        return manager;
     }
 
     @Override
-    public UserEntity updateEmployee(UserEntity employee) {
-        UserEntity existingUser = userMapper.selectById(employee.getId());
+    public UserEntity updateManager(UserEntity manager) {
+        UserEntity existingUser = userMapper.selectById(manager.getId());
         if (existingUser == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 验证该用户确实是管理员角色
+        if (!"ADMIN".equals(existingUser.getRole()) && !"SUPER_ADMIN".equals(existingUser.getRole())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权操作非管理员账户");
         }
 
         // 检查手机号是否被其他用户占用
         UserEntity phoneCheckUser = userMapper.selectOne(
             com.baomidou.mybatisplus.core.toolkit.Wrappers.<UserEntity>lambdaQuery()
-                .eq(UserEntity::getPhone, employee.getPhone())
-                .ne(UserEntity::getId, employee.getId())
+                .eq(UserEntity::getPhone, manager.getPhone())
+                .ne(UserEntity::getId, manager.getId())
         );
 
         if (phoneCheckUser != null) {
@@ -126,19 +122,24 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         // 更新用户信息
-        userMapper.updateById(employee);
+        userMapper.updateById(manager);
 
         // 返回更新后的用户信息（不含密码）
-        UserEntity updatedUser = userMapper.selectById(employee.getId());
+        UserEntity updatedUser = userMapper.selectById(manager.getId());
         updatedUser.setPassword(null);
         return updatedUser;
     }
 
     @Override
-    public boolean updateEmployeeStatus(Long userId, Integer status) {
+    public boolean updateManagerStatus(Long userId, Integer status) {
         UserEntity user = userMapper.selectById(userId);
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 验证该用户确实是管理员角色
+        if (!"ADMIN".equals(user.getRole()) && !"SUPER_ADMIN".equals(user.getRole())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权操作非管理员账户");
         }
 
         user.setStatus(status);
@@ -147,10 +148,15 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public boolean unbindEmployeeWechat(Long userId) {
+    public boolean unbindManagerWechat(Long userId) {
         UserEntity user = userMapper.selectById(userId);
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 验证该用户确实是管理员角色
+        if (!"ADMIN".equals(user.getRole()) && !"SUPER_ADMIN".equals(user.getRole())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权操作非管理员账户");
         }
 
         // 清除微信相关字段

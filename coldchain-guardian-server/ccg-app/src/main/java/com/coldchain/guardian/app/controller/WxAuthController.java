@@ -47,6 +47,19 @@ public class WxAuthController {
     }
 
     /**
+     * 微信手动登录（通过手机号绑定）- 返回标准登录响应
+     *
+     * @param request 手机号绑定登录请求
+     * @return 标准登录响应
+     */
+    @PostMapping("/login-manual-standard")
+    @Operation(summary = "微信手动登录（标准响应）", description = "通过输入手机号与微信环境绑定进行登录，返回标准登录响应格式")
+    public ApiResponse<LoginResponseDto> loginManualStandard(@Valid @RequestBody WxManualLoginRequestDto request) {
+        LoginResponseDto response = wxAuthService.loginManual(request);
+        return ApiResponse.success(response);
+    }
+
+    /**
      * 更新微信用户信息
      */
     @Operation(summary = "更新微信用户信息", description = "更新当前微信用户的个人信息")

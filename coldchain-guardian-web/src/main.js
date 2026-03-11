@@ -29,18 +29,17 @@ router.beforeEach((to, from, next) => {
   // 检查是否需要认证
   if (to.meta.requiresAuth) {
     if (authStore.isAuthenticated) {
-      // 检查权限
-      if (to.meta.permissions) {
-        const hasPermission = to.meta.permissions.some(permission =>
-          authStore.hasPermission(permission)
-        )
+      // 检查角色权限
+      if (to.meta.roles) {
+        const userRole = authStore.user?.role
+        const hasRoleAccess = to.meta.roles.includes(userRole)
 
-        if (hasPermission) {
+        if (hasRoleAccess) {
           next()
         } else {
           // 如果没有权限，重定向到首页或显示无权限页面
-          console.warn(`用户没有访问 ${to.path} 的权限`)
-          next('/')
+          console.warn(`用户角色 ${userRole} 没有访问 ${to.path} 的权限`)
+          next('/dashboard') // 重定向到仪表板而不是首页，提供更好的用户体验
         }
       } else {
         next()

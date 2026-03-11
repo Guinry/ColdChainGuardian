@@ -46,9 +46,9 @@
           <el-icon><Setting /></el-icon>
           <span>系统管理</span>
         </template>
-        <el-menu-item index="/admin/employees">员工管理</el-menu-item>
-        <el-menu-item index="/admin/users">管理员管理</el-menu-item>
-        <el-menu-item index="/admin/permissions">权限分配</el-menu-item>
+        <el-menu-item index="/employees">员工管理</el-menu-item>
+        <el-menu-item index="/managers">管理员管理</el-menu-item>
+        <el-menu-item index="/permissions">权限分配</el-menu-item>
       </el-sub-menu>
     </el-menu>
   </div>
@@ -68,16 +68,15 @@ const props = defineProps({
     type: String,
     default: 'dashboard'
   },
-  isSuperAdmin: {
+  isAdmin: {
     type: Boolean,
     default: false
   }
 });
 
-// 检查是否有系统管理权限
-const authStore = useAuthStore();
+// 简化为直接使用传入的 isAdmin 属性
 const showSystemManagement = computed(() => {
-  return props.isSuperAdmin || authStore.hasPermission('admin:manage');
+  return props.isAdmin;
 });
 </script>
 

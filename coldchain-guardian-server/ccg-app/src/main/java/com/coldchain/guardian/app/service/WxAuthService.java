@@ -1,5 +1,6 @@
 package com.coldchain.guardian.app.service;
 
+import com.coldchain.guardian.contract.dto.auth.LoginResponseDto;
 import com.coldchain.guardian.contract.dto.auth.WxLoginRequestDto;
 import com.coldchain.guardian.contract.dto.auth.WxLoginResponseDto;
 import com.coldchain.guardian.contract.dto.auth.WxManualLoginRequestDto;
@@ -24,7 +25,21 @@ public interface WxAuthService {
     WxLoginResponseDto wxManualLogin(WxManualLoginRequestDto request);
 
     /**
+     * 手动输入手机号绑定微信并登录 - 返回标准登录响应
+     * @param request 手机号绑定登录请求
+     * @return 标准登录响应
+     */
+    LoginResponseDto loginManual(WxManualLoginRequestDto request);
+
+    /**
      * 更新微信用户信息
+     * @param request 用户信息更新请求
+     * @return 更新后响应
+     */
+    WxLoginResponseDto updateUserInfo(WxUserInfoUpdateDto request);
+
+    /**
+     * 更新微信用户信息（通过openId）
      * @param openId 微信openId
      * @param userInfoUpdateDto 用户信息更新DTO
      * @return 是否成功

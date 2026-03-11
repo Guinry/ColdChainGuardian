@@ -43,8 +43,8 @@ spring:
 # 微信小程序配置
 wx:
   miniprogram:
-    appid: ${WX_APP_ID:your-wx-app-id}  # 微信小程序AppID
-    secret: ${WX_APP_SECRET:your-wx-app-secret}  # 微信小程序AppSecret
+    appid: ${WX_APP_ID:wx839593338a0174f1}  # 微信小程序AppID
+    secret: ${WX_APP_SECRET:y5fed12030ee5c4291ed735ee858dbbbd}  # 微信小程序AppSecret
     request-timeout: 5000  # 请求超时时间（毫秒）
 
 # JWT配置

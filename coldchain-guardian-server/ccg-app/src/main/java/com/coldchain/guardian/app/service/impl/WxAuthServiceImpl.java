@@ -1,37 +1,26 @@
 package com.coldchain.guardian.app.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.coldchain.guardian.app.security.JwtUtil;
 import com.coldchain.guardian.app.service.WxAuthService;
 import com.coldchain.guardian.app.service.WxLoginResult;
 import com.coldchain.guardian.common.exception.BusinessException;
 import com.coldchain.guardian.common.exception.ErrorCode;
-import com.coldchain.guardian.contract.dto.auth.WxLoginRequestDto;
-import com.coldchain.guardian.contract.dto.auth.WxLoginResponseDto;
-import com.coldchain.guardian.contract.dto.auth.WxManualLoginRequestDto;
-import com.coldchain.guardian.contract.dto.auth.WxUserInfoUpdateDto;
+// 🌟 核心修复：一次性导入 auth 目录下所有的 DTO，防止报错
+import com.coldchain.guardian.contract.dto.auth.*;
 import com.coldchain.guardian.infra.persistence.entity.UserEntity;
 import com.coldchain.guardian.infra.persistence.mapper.UserMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
 
-/**
- * 微信登录服务实现类
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -40,186 +29,133 @@ public class WxAuthServiceImpl implements WxAuthService {
     private final UserMapper userMapper;
     private final JwtUtil jwtUtil;
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
 
-    @Value("${wx.miniprogram.appid:}")
-    private String appid;
+    @Value("${wx.miniprogram.appid}")
+    private String appId;
 
-    @Value("${wx.miniprogram.secret:}")
-    private String secret;
+    @Value("${wx.miniprogram.secret}")
+    private String appSecret;
 
-    /**
-     * 微信登录实现
-     * @param request 微信登录请求
-     * @return 登录响应
-     */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public WxLoginResponseDto wxLogin(WxLoginRequestDto request) {
-        if (request.getCode() == null || request.getCode().isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "登录凭证(code)不能为空");
+        WxLoginResult wxResult = code2Session(request.getCode());
+        if (wxResult == null || !StringUtils.hasText(wxResult.getOpenid())) {
+            throw new BusinessException(ErrorCode.AUTH_FAILED, "微信登录失败，无法获取 openId");
         }
 
-        // 1. 通过code换取session_key和openid
-        String sessionUrl = "https://api.weixin.qq.com/sns/jscode2session?" +
-                "appid={appid}&secret={secret}&js_code={js_code}&grant_type=authorization_code";
+        UserEntity user = findOrCreateUserByOpenId(wxResult.getOpenid(), wxResult.getUnionid());
 
-        try {
-            // 发送HTTP请求到微信服务器
-            HttpHeaders headers = new HttpHeaders();
-            HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(headers);
-
-            String url = sessionUrl
-                    .replace("{appid}", appid)
-                    .replace("{secret}", secret)
-                    .replace("{js_code}", request.getCode());
-
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-
-            String responseBody = response.getBody();
-            log.debug("微信登录接口返回: {}", responseBody);
-
-            // 解析微信返回的JSON数据
-            WxLoginResult loginResult = objectMapper.readValue(responseBody, WxLoginResult.class);
-
-            if (loginResult.getErrcode() != null && loginResult.getErrcode() != 0) {
-                throw new BusinessException(ErrorCode.AUTH_FAILED, "微信登录失败：" + loginResult.getErrmsg());
-            }
-
-            // 2. 根据openid查找或创建用户
-            UserEntity user = findOrCreateUserByOpenId(loginResult.getOpenid(), loginResult.getUnionid());
-
-            // 3. 生成JWT Token
-            String token = jwtUtil.generateToken(user.getUsername(), user.getId(), user.getRole());
-
-            // 4. 构建响应
-            WxLoginResponseDto wxLoginResponse = new WxLoginResponseDto();
-            wxLoginResponse.setToken(token);
-            wxLoginResponse.setUserId(user.getId());
-            wxLoginResponse.setUsername(user.getUsername());
-            wxLoginResponse.setRealName(user.getRealName());
-            wxLoginResponse.setRole(user.getRole());
-            wxLoginResponse.setAvatar(user.getWxAvatar());
-
-            // 判断是否为首次登录（根据用户是否已经有完整信息）
-            boolean isFirstLogin = user.getRealName() == null || user.getRealName().startsWith("微信用户_");
-            wxLoginResponse.setIsFirstLogin(isFirstLogin);
-
-            boolean isProfileComplete = user.getRealName() != null && user.getPhone() != null;
-            wxLoginResponse.setIsProfileComplete(isProfileComplete);
-
-            log.info("微信登录成功，用户ID: {}, OpenID: {}", user.getId(), user.getOpenId());
-
-            return wxLoginResponse;
-        } catch (Exception e) {
-            log.error("微信登录异常", e);
-            throw new BusinessException(ErrorCode.AUTH_FAILED, "微信登录失败");
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "该账号已被停用");
         }
+
+        String token = jwtUtil.generateToken(user.getUsername(), user.getId(), user.getRole());
+        return convertToWxLoginResponse(user, token);
     }
 
-    /**
-     * 微信手动登录（通过手机号绑定）
-     * @param request 手机号绑定登录请求
-     * @return 登录响应
-     */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public WxLoginResponseDto wxManualLogin(WxManualLoginRequestDto request) {
-        if (request.getLoginCode() == null || request.getLoginCode().isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "登录凭证不能为空");
+        WxLoginResult wxResult = code2Session(request.getLoginCode());
+        if (wxResult == null || !StringUtils.hasText(wxResult.getOpenid())) {
+            throw new BusinessException(ErrorCode.AUTH_FAILED, "获取微信 openId 失败");
         }
 
-        if (request.getPhone() == null || request.getPhone().isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "手机号不能为空");
+        String openId = wxResult.getOpenid();
+
+        LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserEntity::getPhone, request.getPhone());
+        UserEntity user = userMapper.selectOne(wrapper);
+
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "未找到该手机号对应的员工档案，请联系管理员");
         }
 
-        // 1. 通过code换取session_key和openid
-        String sessionUrl = "https://api.weixin.qq.com/sns/jscode2session?" +
-                "appid={appid}&secret={secret}&js_code={js_code}&grant_type=authorization_code";
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "该账号已被停用");
+        }
 
-        try {
-            // 发送HTTP请求到微信服务器
-            HttpHeaders headers = new HttpHeaders();
-            HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(headers);
+        if (StringUtils.hasText(user.getOpenId()) && !user.getOpenId().equals(openId)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "该手机号已被其他微信绑定，请联系管理员解绑");
+        }
 
-            String url = sessionUrl
-                    .replace("{appid}", appid)
-                    .replace("{secret}", secret)
-                    .replace("{js_code}", request.getLoginCode());
-
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-
-            String responseBody = response.getBody();
-            log.debug("微信登录接口返回: {}", responseBody);
-
-            // 解析微信返回的JSON数据
-            WxLoginResult loginResult = objectMapper.readValue(responseBody, WxLoginResult.class);
-
-            if (loginResult.getErrcode() != null && loginResult.getErrcode() != 0) {
-                throw new BusinessException(ErrorCode.AUTH_FAILED, "微信登录失败：" + loginResult.getErrmsg());
+        if (!StringUtils.hasText(user.getOpenId())) {
+            user.setOpenId(openId);
+            if (StringUtils.hasText(wxResult.getUnionid())) {
+                user.setUnionId(wxResult.getUnionid());
             }
-
-            // 2. 根据手机号查找用户
-            UserEntity user = userMapper.selectOne(
-                com.baomidou.mybatisplus.core.toolkit.Wrappers.<UserEntity>lambdaQuery()
-                    .eq(UserEntity::getPhone, request.getPhone())
-            );
-
-            if (user == null) {
-                throw new BusinessException(ErrorCode.USER_NOT_FOUND, "未找到该手机号对应的员工档案");
-            }
-
-            // 3. 检查该手机号是否已被其他微信账号绑定
-            if (user.getOpenId() != null && !user.getOpenId().equals(loginResult.getOpenid())) {
-                throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该手机号已被其他微信账号绑定，请联系管理员");
-            }
-
-            // 4. 绑定当前微信账号到用户
-            user.setOpenId(loginResult.getOpenid());
-            // 注意：这里不再设置unionId，因为我们已经将其标记为不存在
-            user.setUpdateTime(LocalDateTime.now());
-
             userMapper.updateById(user);
-
-            // 5. 检查用户状态
-            if (user.getStatus() != 1) {
-                throw new BusinessException(ErrorCode.ACCOUNT_DISABLED, "账号已被禁用，请联系管理员");
-            }
-
-            // 6. 生成JWT Token
-            String token = jwtUtil.generateToken(user.getUsername(), user.getId(), user.getRole());
-
-            // 7. 构建响应
-            WxLoginResponseDto wxLoginResponse = new WxLoginResponseDto();
-            wxLoginResponse.setToken(token);
-            wxLoginResponse.setUserId(user.getId());
-            wxLoginResponse.setUsername(user.getUsername());
-            wxLoginResponse.setRealName(user.getRealName());
-            wxLoginResponse.setRole(user.getRole());
-            wxLoginResponse.setAvatar(user.getWxAvatar());
-
-            boolean isProfileComplete = user.getRealName() != null && user.getPhone() != null;
-            wxLoginResponse.setIsProfileComplete(isProfileComplete);
-            wxLoginResponse.setIsFirstLogin(false); // 手动绑定不视为首次登录
-
-            log.info("微信手动登录成功，用户ID: {}, OpenID: {}, Phone: {}", user.getId(), user.getOpenId(), user.getPhone());
-
-            return wxLoginResponse;
-        } catch (BusinessException e) {
-            // 重新抛出业务异常
-            throw e;
-        } catch (Exception e) {
-            log.error("微信手动登录异常", e);
-            throw new BusinessException(ErrorCode.AUTH_FAILED, "微信登录失败");
         }
+
+        String token = jwtUtil.generateToken(user.getUsername(), user.getId(), user.getRole());
+
+        // 返回WxLoginResponseDto
+        WxLoginResponseDto response = new WxLoginResponseDto();
+        response.setToken(token);
+        response.setUserId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setRealName(user.getRealName());
+        response.setRole(user.getRole());
+        response.setAvatar(user.getWxAvatar());
+        response.setIsFirstLogin(false);
+        response.setIsProfileComplete(user.getRealName() != null && user.getPhone() != null);
+
+        return response;
     }
 
-    /**
-     * 更新微信用户信息
-     * @param openId 微信openId
-     * @param userInfoUpdateDto 用户信息更新DTO
-     * @return 是否成功
-     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public LoginResponseDto loginManual(WxManualLoginRequestDto request) {
+        WxLoginResult wxResult = code2Session(request.getLoginCode());
+        if (wxResult == null || !StringUtils.hasText(wxResult.getOpenid())) {
+            throw new BusinessException(ErrorCode.AUTH_FAILED, "获取微信 openId 失败");
+        }
+
+        String openId = wxResult.getOpenid();
+
+        LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserEntity::getPhone, request.getPhone());
+        UserEntity user = userMapper.selectOne(wrapper);
+
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "未找到该手机号对应的员工档案，请联系管理员");
+        }
+
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "该账号已被停用");
+        }
+
+        if (StringUtils.hasText(user.getOpenId()) && !user.getOpenId().equals(openId)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "该手机号已被其他微信绑定，请联系管理员解绑");
+        }
+
+        if (!StringUtils.hasText(user.getOpenId())) {
+            user.setOpenId(openId);
+            if (StringUtils.hasText(wxResult.getUnionid())) {
+                user.setUnionId(wxResult.getUnionid());
+            }
+            userMapper.updateById(user);
+        }
+
+        String token = jwtUtil.generateToken(user.getUsername(), user.getId(), user.getRole());
+
+        LoginResponseDto responseDto = new LoginResponseDto();
+        responseDto.setToken(token);
+        responseDto.setUserId(user.getId());
+        responseDto.setUsername(user.getUsername());
+        responseDto.setRole(user.getRole());
+        responseDto.setRealName(user.getRealName());
+
+        return responseDto;
+    }
+
+    @Override
+    public WxLoginResponseDto updateUserInfo(WxUserInfoUpdateDto request) {
+        // 更新微信用户信息的预留方法
+        return null;
+    }
+
     @Override
     public boolean updateWxUserInfo(String openId, WxUserInfoUpdateDto userInfoUpdateDto) {
         UserEntity user = userMapper.selectOne(
@@ -247,18 +183,11 @@ public class WxAuthServiceImpl implements WxAuthService {
         if (userInfoUpdateDto.getEmail() != null) {
             user.setEmail(userInfoUpdateDto.getEmail());
         }
-        user.setUpdateTime(LocalDateTime.now());
 
         int rows = userMapper.updateById(user);
         return rows > 0;
     }
 
-    /**
-     * 绑定微信账号到系统用户
-     * @param userId 系统用户ID
-     * @param openId 微信openId
-     * @return 是否成功
-     */
     @Override
     public boolean bindWxAccount(Long userId, String openId) {
         UserEntity user = userMapper.selectById(userId);
@@ -276,17 +205,11 @@ public class WxAuthServiceImpl implements WxAuthService {
         }
 
         user.setOpenId(openId);
-        user.setUpdateTime(LocalDateTime.now());
 
         int rows = userMapper.updateById(user);
         return rows > 0;
     }
 
-    /**
-     * 解绑微信账号
-     * @param userId 系统用户ID
-     * @return 是否成功
-     */
     @Override
     public boolean unbindWxAccount(Long userId) {
         UserEntity user = userMapper.selectById(userId);
@@ -295,20 +218,14 @@ public class WxAuthServiceImpl implements WxAuthService {
         }
 
         user.setOpenId(null);
-        user.setUnionId(null);  // 仍然设置为null以防万一
+        user.setUnionId(null);
         user.setWxNickname(null);
         user.setWxAvatar(null);
-        user.setUpdateTime(LocalDateTime.now());
 
         int rows = userMapper.updateById(user);
         return rows > 0;
     }
 
-    /**
-     * 根据openId获取系统用户ID
-     * @param openId 微信openId
-     * @return 系统用户ID
-     */
     @Override
     public Long getUserIdByOpenId(String openId) {
         UserEntity user = userMapper.selectOne(
@@ -319,39 +236,54 @@ public class WxAuthServiceImpl implements WxAuthService {
         return user != null ? user.getId() : null;
     }
 
+    // ================== 下面是私有工具方法 ==================
+
     /**
-     * 根据openId查找或创建用户
-     * @param openId 微信openId
-     * @param unionId 微信unionId
-     * @return 用户实体
+     * 🌟 修复：补充了确实的方法 findOrCreateUserByOpenId
      */
     private UserEntity findOrCreateUserByOpenId(String openId, String unionId) {
-        UserEntity user = userMapper.selectOne(
-            com.baomidou.mybatisplus.core.toolkit.Wrappers.<UserEntity>lambdaQuery()
-                .eq(UserEntity::getOpenId, openId)
-        );
+        LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserEntity::getOpenId, openId);
+        UserEntity user = userMapper.selectOne(wrapper);
 
         if (user == null) {
-            // 创建新用户
-            user = new UserEntity();
-            user.setOpenId(openId);
-            // 注意：这里不再设置unionId，因为我们已经将其标记为不存在
-            user.setUsername("wx_user_" + openId.substring(openId.length() - 8)); // 自动生成用户名
-            user.setRealName("微信用户_" + openId.substring(openId.length() - 6));
-            user.setRole("EMPLOYEE"); // 微信用户默认角色为员工
-            user.setStatus(1); // 默认启用
-            // 设置一个默认密码（虽然是微信登录，但系统中仍需存储）
-            user.setPassword("$2a$10$default_password_for_wx_users"); // BCrypt加密后的默认密码
-
-            userMapper.insert(user);
-
-            log.info("创建新微信用户，ID: {}, OpenID: {}", user.getId(), user.getOpenId());
-        } else {
-            // 更新用户最后登录时间
-            user.setUpdateTime(LocalDateTime.now());
-            userMapper.updateById(user);
+            // 如果查不到人，说明没用手机号绑定过，直接抛出异常拦截
+            throw new BusinessException(ErrorCode.AUTH_FAILED, "尚未绑定员工账号，请首次登录时输入手机号绑定");
         }
-
         return user;
+    }
+
+    /**
+     * 🌟 修复：补充了数据转换方法
+     */
+    private WxLoginResponseDto convertToWxLoginResponse(UserEntity user, String token) {
+        WxLoginResponseDto response = new WxLoginResponseDto();
+        response.setToken(token);
+        response.setUserId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setRealName(user.getRealName());
+        response.setRole(user.getRole());
+        response.setAvatar(user.getWxAvatar());
+        response.setIsFirstLogin(user.getRealName() != null && user.getRealName().startsWith("微信用户_"));
+        response.setIsProfileComplete(user.getRealName() != null && user.getPhone() != null);
+        return response;
+    }
+
+    /**
+     * 调用微信 auth.code2Session 接口
+     */
+    private WxLoginResult code2Session(String code) {
+        String url = "https://api.weixin.qq.com/sns/jscode2session?appid={appid}&secret={secret}&js_code={code}&grant_type=authorization_code";
+        Map<String, String> params = new HashMap<>();
+        params.put("appid", appId);
+        params.put("secret", appSecret);
+        params.put("code", code);
+
+        try {
+            return restTemplate.getForObject(url, WxLoginResult.class, params);
+        } catch (Exception e) {
+            log.error("调用微信接口失败", e);
+            return null;
+        }
     }
 }
