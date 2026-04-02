@@ -83,7 +83,13 @@ const routes = [
     name: 'ManagerManagement',
     component: () => import('@/views/managers/ManagerManagement.vue'),
     meta: { requiresAuth: true, roles: ['ADMIN'] }
-  }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('../views/profile/ProfileView.vue'),
+    meta: { requiresAuth: true }
+  },
 ]
 
 const router = createRouter({

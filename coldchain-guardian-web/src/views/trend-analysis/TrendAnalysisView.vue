@@ -1,236 +1,238 @@
 <template>
   <Layout>
     <div class="trend-analysis-container">
-      <el-row :gutter="20">
-        <!-- 主内容区域 -->
-        <el-col :span="20">
-          <!-- 全局时空控制台 -->
-          <el-card class="control-bar" shadow="never">
-            <el-form :inline="true" :model="filterForm" class="control-form">
-              <!-- 时间范围选择器 -->
-              <el-form-item label="时间范围">
-                <el-date-picker
-                  v-model="filterForm.dateRange"
-                  type="daterange"
-                  range-separator="至"
-                  start-placeholder="开始日期"
-                  end-placeholder="结束日期"
-                  format="YYYY-MM-DD"
-                  value-format="YYYY-MM-DD"
-                  @change="onDateRangeChange">
-                </el-date-picker>
-                <el-button-group class="shortcut-buttons">
-                  <el-button size="small" @click="setQuickRange('last24h')">最近24小时</el-button>
-                  <el-button size="small" @click="setQuickRange('last7d')">最近7天</el-button>
-                  <el-button size="small" @click="setQuickRange('thisMonth')">本月</el-button>
-                  <el-button size="small" @click="setQuickRange('lastMonth')">上月</el-button>
-                </el-button-group>
-              </el-form-item>
+      <!-- 筛选控制栏 -->
+      <el-card class="control-card" shadow="hover">
+        <el-form :inline="true" :model="filterForm" class="control-form">
+          <!-- 时间范围 -->
+          <el-form-item label="时间范围">
+            <el-date-picker
+              v-model="filterForm.dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+              @change="onDateRangeChange"
+              style="width: 280px"
+            ></el-date-picker>
+          </el-form-item>
 
-              <!-- 数据聚合粒度 -->
-              <el-form-item label="聚合粒度">
-                <el-radio-group v-model="filterForm.interval" @change="loadTrendData">
-                  <el-radio-button label="hourly" :disabled="!isHourlyEnabled">按小时</el-radio-button>
-                  <el-radio-button label="daily">按天</el-radio-button>
-                  <el-radio-button label="weekly">按周</el-radio-button>
-                  <el-radio-button label="monthly">按月</el-radio-button>
-                </el-radio-group>
-              </el-form-item>
+          <!-- 快捷选择 -->
+          <el-form-item label="快捷选择">
+            <el-button-group>
+              <el-button size="small" @click="setQuickRange('last24h')">24小时</el-button>
+              <el-button size="small" @click="setQuickRange('last7d')">7天</el-button>
+              <el-button size="small" @click="setQuickRange('thisMonth')">本月</el-button>
+              <el-button size="small" @click="setQuickRange('lastMonth')">上月</el-button>
+            </el-button-group>
+          </el-form-item>
 
-              <!-- 分析维度选择 -->
-              <el-form-item label="分析维度">
-                <el-cascader
-                  v-model="filterForm.dimension"
-                  :options="dimensionOptions"
-                  :props="{ checkStrictly: true }"
-                  placeholder="选择分析维度"
-                  @change="loadTrendData"
-                  clearable>
-                </el-cascader>
-              </el-form-item>
+          <!-- 聚合粒度 -->
+          <el-form-item label="聚合粒度">
+            <el-radio-group v-model="filterForm.interval" @change="loadTrendData">
+              <el-radio-button value="hourly" :disabled="!isHourlyEnabled">小时</el-radio-button>
+              <el-radio-button value="daily">天</el-radio-button>
+              <el-radio-button value="weekly">周</el-radio-button>
+              <el-radio-button value="monthly">月</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
 
-              <!-- 操作区 -->
-              <el-form-item>
-                <el-button type="primary" @click="loadTrendData" :loading="isLoading">生成分析</el-button>
-                <el-dropdown split-button @command="exportReport">
-                  <el-button :loading="isExporting">导出报告</el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="pdf">PDF报告</el-dropdown-item>
-                      <el-dropdown-item command="excel">Excel数据</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-              </el-form-item>
-            </el-form>
-          </el-card>
+          <!-- 操作按钮 -->
+          <el-form-item class="action-buttons">
+            <el-button type="primary" @click="loadTrendData" :loading="isLoading">
+              <el-icon><Search /></el-icon>
+              生成分析
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
 
-          <!-- 骨架屏加载状态 -->
-          <template v-if="isLoading">
-            <el-skeleton class="kpi-skeleton" :rows="1" animated />
-            <el-skeleton class="chart-skeleton" :rows="1" animated />
-            <el-skeleton class="sub-chart-skeleton" :rows="1" animated />
+      <!-- 骨架屏加载状态 -->
+      <template v-if="isLoading">
+        <el-skeleton class="kpi-skeleton" :rows="1" animated />
+        <el-skeleton class="chart-skeleton" :rows="1" animated />
+        <el-skeleton class="sub-chart-skeleton" :rows="1" animated />
+      </template>
+
+      <!-- 主内容区域 -->
+      <template v-else>
+        <!-- KPI统计卡片 -->
+        <el-row :gutter="16" class="kpi-row">
+          <el-col :xs="24" :sm="12" :md="6" v-for="stat in kpiStats" :key="stat.key">
+            <KpiCard
+              :title="stat.title"
+              :value="stat.value"
+              :icon="stat.icon"
+              :icon-class="stat.iconClass"
+              :trend-text="stat.trendText"
+              :trend-icon="stat.trendIcon"
+              :trend-class="stat.trendClass"
+              :sparkline-data="stat.sparklineData"
+              :show-sparkline="true"
+              :highlight="true"
+            />
+          </el-col>
+        </el-row>
+
+        <!-- 主图表：环境温湿度趋势 -->
+        <el-card class="main-chart-card" shadow="hover">
+          <template #header>
+            <div class="chart-header">
+              <span class="chart-title">
+                <el-icon><TrendCharts /></el-icon>
+                环境温湿度趋势分析
+              </span>
+              <div class="chart-actions">
+                <el-tag size="small" type="info">{{ currentChartTypeLabel }}</el-tag>
+                <el-button size="small" @click="toggleChartType">
+                  <el-icon><RefreshLeft /></el-icon>
+                  切换图表类型
+                </el-button>
+              </div>
+            </div>
           </template>
+          <div class="chart-container">
+            <Echarts
+              :option="environmentChartOption"
+              height="420"
+              ref="environmentChartRef" />
+          </div>
+        </el-card>
 
-          <!-- 主内容区域 -->
-          <template v-else>
-            <!-- 高管微缩看板 -->
-            <el-row :gutter="20" class="kpi-cards">
-              <el-col :span="6" v-for="stat in kpiStats" :key="stat.key">
-                <KpiCard
-                  :title="stat.title"
-                  :value="stat.value"
-                  :icon="stat.icon"
-                  :icon-class="stat.iconClass"
-                  :trend-text="stat.trendText"
-                  :trend-icon="stat.trendIcon"
-                  :trend-class="stat.trendClass"
-                  :sparkline-data="stat.sparklineData"
-                  :show-sparkline="true"
-                  :highlight="true"
-                />
-              </el-col>
-            </el-row>
-
-            <!-- 核心大图：环境温湿度趋势图 -->
-            <el-card class="main-chart-card" shadow="never">
+        <!-- 副图表区域 -->
+        <el-row :gutter="16" class="sub-charts-row">
+          <!-- 左侧：告警趋势 -->
+          <el-col :span="24" :md="12">
+            <el-card class="sub-chart-card" shadow="hover">
               <template #header>
                 <div class="chart-header">
-                  <span class="chart-title">环境温湿度趋势分析</span>
-                  <div class="chart-actions">
-                    <el-button size="small" @click="toggleChartType">切换图表</el-button>
-                  </div>
+                  <span class="chart-title">
+                    <el-icon><WarningFilled /></el-icon>
+                    告警趋势统计
+                  </span>
                 </div>
               </template>
-              <Echarts
-                :option="environmentChartOption"
-                height="500px"
-                ref="environmentChartRef" />
+              <div class="chart-container">
+                <Echarts
+                  :option="alertTrendChartOption"
+                  height="320"
+                  ref="alertTrendChartRef" />
+              </div>
             </el-card>
+          </el-col>
 
-            <!-- 业务联动副图 -->
-            <el-row :gutter="20" class="sub-charts">
-              <!-- 左侧：告警趋势图 -->
-              <el-col :span="12">
-                <el-card class="sub-chart-card" shadow="never">
-                  <template #header>
-                    <div class="chart-header">
-                      <span class="chart-title">告警趋势与严重度分布</span>
-                    </div>
-                  </template>
-                  <Echarts
-                    :option="alertTrendChartOption"
-                    height="350px"
-                    ref="alertTrendChartRef" />
-                </el-card>
-              </el-col>
-
-              <!-- 右侧：工单趋势图 -->
-              <el-col :span="12">
-                <el-card class="sub-chart-card" shadow="never">
-                  <template #header>
-                    <div class="chart-header">
-                      <span class="chart-title">工单生命周期趋势</span>
-                    </div>
-                  </template>
-                  <Echarts
-                    :option="workOrderTrendChartOption"
-                    height="350px"
-                    ref="workOrderTrendChartRef" />
-                </el-card>
-              </el-col>
-            </el-row>
-
-            <!-- 聚合数据表格 -->
-            <el-card class="data-table-card" shadow="never">
+          <!-- 右侧：工单趋势 -->
+          <el-col :span="24" :md="12">
+            <el-card class="sub-chart-card" shadow="hover">
               <template #header>
                 <div class="chart-header">
-                  <span class="chart-title">详细数据汇总</span>
-                  <div class="chart-actions">
-                    <el-tabs v-model="activeTab" @tab-change="handleTabChange">
-                      <el-tab-pane label="温湿度汇总" name="tempHumidity"></el-tab-pane>
-                      <el-tab-pane label="告警汇总" name="alerts"></el-tab-pane>
-                      <el-tab-pane label="工单汇总" name="workOrders"></el-tab-pane>
-                    </el-tabs>
-                  </div>
+                  <span class="chart-title">
+                    <el-icon><Document /></el-icon>
+                    工单生命周期趋势
+                  </span>
                 </div>
               </template>
-
-              <!-- 表格 -->
-              <DataTable
-                v-if="currentTableData.length > 0"
-                :table-data="currentTableData"
-                :loading="tableLoading"
-                :columns="tableColumns"
-                :current-page="currentPage"
-                :page-size="pageSize"
-                :total="total"
-                @current-change="handleCurrentPageChange"
-                @size-change="handlePageSizeChange"
-                height="400px"
-                show-pagination
-                show-actions>
-                <template #actions="{ row }">
-                  <el-button size="small" @click="viewDetails(row)" type="primary">查看详情</el-button>
-                </template>
-              </DataTable>
-
-              <!-- 空状态处理 -->
-              <el-empty v-else description="暂无趋势数据" />
+              <div class="chart-container">
+                <Echarts
+                  :option="workOrderTrendChartOption"
+                  height="320"
+                  ref="workOrderTrendChartRef" />
+              </div>
             </el-card>
-          </template>
-        </el-col>
+          </el-col>
+        </el-row>
 
-        <!-- 分析侧边栏 -->
-        <el-col :span="4">
-          <AnalysisSidebar
-            :real-stats="realStatsForSidebar"
-            @filter-applied="handleFilterApplied"
-            @comparison-applied="handleComparisonApplied"
-            @export-requested="handleExportRequested"
-            @ai-analysis-requested="handleAiAnalysisRequested" />
-        </el-col>
-      </el-row>
+        <!-- 详细数据表格 -->
+        <el-card class="data-table-card" shadow="hover">
+          <template #header>
+            <div class="chart-header">
+              <span class="chart-title">
+                <el-icon><Grid /></el-icon>
+                详细数据汇总
+              </span>
+              <div class="chart-actions">
+                <el-tabs v-model="activeTab" @tab-change="handleTabChange" class="header-tabs">
+                  <el-tab-pane label="温湿度汇总" name="tempHumidity"></el-tab-pane>
+                  <el-tab-pane label="告警汇总" name="alerts"></el-tab-pane>
+                  <el-tab-pane label="工单汇总" name="workOrders"></el-tab-pane>
+                </el-tabs>
+              </div>
+            </div>
+          </template>
+
+          <!-- 表格 -->
+          <DataTable
+            v-if="currentTableData.length > 0"
+            :table-data="paginatedTableData"
+            :loading="tableLoading"
+            :columns="tableColumns"
+            :current-page="currentPage"
+            :page-size="pageSize"
+            :total="total"
+            @current-change="handleCurrentPageChange"
+            @size-change="handlePageSizeChange"
+            height="380"
+            show-pagination
+            show-actions
+          >
+            <template #actions="{ row }">
+              <el-button size="small" @click="viewDetails(row)" type="primary" link>
+                查看详情
+              </el-button>
+            </template>
+          </DataTable>
+
+          <!-- 空状态 -->
+          <el-empty v-else description="暂无趋势数据" :image-size="80" />
+        </el-card>
+      </template>
     </div>
   </Layout>
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, computed, watch, onUnmounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import {
   getDashboardStatsApi,
   getEnvironmentTrendApi,
   getAlertTrendApi,
-  getWorkOrderTrendApi,
-  getDeviceStatusTrendApi
+  getWorkOrderTrendApi
 } from '@/api/dashboard'
 import { debounce } from 'lodash-es'
 import { ElMessage } from 'element-plus'
-// 正确的组件导入路径
+import {
+  Search, TrendCharts, WarningFilled, Document, Grid, RefreshLeft
+} from '@element-plus/icons-vue'
+import * as echarts from 'echarts'
 import KpiCard from './components/KpiCard.vue'
-import AnalysisSidebar from './components/AnalysisSidebar.vue'
 import Echarts from './components/Echarts.vue'
 import DataTable from './components/DataTable.vue'
 import Layout from '@/components/Layout.vue'
 
-// 🌟 1. 增加一个 ref 来存储侧边栏传过来的高级筛选条件
+// 高级筛选条件（由侧边栏传入）
 const advancedFilters = ref({})
 
-// 🌟 2. 增加一个 ref 用于向侧边栏传递真实统计信息
-const realStatsForSidebar = ref({})
-
+// 统计信息
 const isLoading = ref(false)
 const isExporting = ref(false)
 const filterForm = ref({
-  dateRange: [new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], new Date().toISOString().split('T')[0]], // 格式化为 YYYY-MM-DD
+  dateRange: [
+    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    new Date().toISOString().split('T')[0]
+  ],
   interval: 'daily',
   dimension: []
 })
 
-const kpiStats = ref([])
-// ...保留你的 dimensionOptions, activeTab, currentTableData 等变量...
+// 图表类型切换
+const currentChartType = ref('line') // line / bar
+const currentChartTypeLabel = computed(() => {
+  return currentChartType.value === 'line' ? '折线图' : '柱状图'
+})
 
-// 示例变量，实际项目中应根据实际需求定义
+const kpiStats = ref([])
 const dimensionOptions = ref([])
 const activeTab = ref('tempHumidity')
 const currentTableData = ref([])
@@ -243,107 +245,132 @@ const environmentChartOption = ref({})
 const alertTrendChartOption = ref({})
 const workOrderTrendChartOption = ref({})
 
-// 根据你的具体需要，定义一些辅助变量
+// 计算：是否启用小时粒度
 const isHourlyEnabled = computed(() => {
   if (!filterForm.value.dateRange || filterForm.value.dateRange.length < 2) return false
   const [startDateStr, endDateStr] = filterForm.value.dateRange
   const startDate = new Date(startDateStr)
   const endDate = new Date(endDateStr)
   const diffDays = (endDate - startDate) / (1000 * 60 * 60 * 24)
-  return diffDays <= 1 // 如果时间跨度小于等于1天，则启用小时粒度
+  return diffDays <= 1 // 时间跨度≤1天才启用小时粒度
 })
 
-// 加载统计信息 (修复数据路径映射)
+// 分页后的数据
+const paginatedTableData = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return currentTableData.value.slice(start, end)
+})
+
+// 加载KPI统计信息
 const loadStats = async () => {
   try {
     const response = await getDashboardStatsApi()
-    const data = response.data.data || response.data // 兼容后端结构
+    const data = response.data.data || response.data
 
-    // 修复数据映射，对接后端扁平结构
-    const totalDevices = data.totalDevices || 1;
-    const onlineDevices = data.onlineDevices || 0;
-    const onlineRate = ((onlineDevices / totalDevices) * 100).toFixed(1);
+    const totalDevices = data.totalDevices || 0
+    const onlineDevices = data.onlineDevices || 0
+    const onlineRate = totalDevices > 0 ? ((onlineDevices / totalDevices) * 100).toFixed(1) : '0.0'
 
     kpiStats.value = [
       {
-        key: 'avgTemp',
-        title: '设备总数/在线',
+        key: 'devices',
+        title: '设备在线',
         value: `${onlineDevices} / ${totalDevices}`,
         trendText: `在线率 ${onlineRate}%`,
         trendIcon: 'Monitor',
-        trendClass: onlineRate > 90 ? 'trend-up' : 'trend-down',
+        trendClass: Number(onlineRate) > 90 ? 'trend-up' : 'trend-down',
         icon: 'Monitor',
         iconClass: 'device-icon',
-        sparklineData: [] // 如果后端没有微缩图数据，传空数组即可
+        sparklineData: []
       },
       {
-        key: 'totalAlerts',
-        title: '今日告警/未处理',
+        key: 'alerts',
+        title: '今日告警',
         value: `${data.todayAlerts || 0} / ${data.unhandledAlerts || 0}`,
-        trendText: '实时监控中',
+        trendText: '未处理告警',
         trendIcon: 'Warning',
-        trendClass: data.unhandledAlerts > 0 ? 'trend-down danger' : 'trend-up',
+        trendClass: (data.unhandledAlerts || 0) > 0 ? 'trend-down danger' : 'trend-up',
         icon: 'Warning',
         iconClass: 'alert-icon',
         sparklineData: []
       },
       {
         key: 'workOrders',
-        title: '本周已闭环工单',
-        value: data.todayClosedWorkOrders || 0,
+        title: '本周闭环',
+        value: data.weekClosedWorkOrders || 0,
         trendText: '工单处理效率',
         trendIcon: 'Check',
         trendClass: 'trend-up',
         icon: 'DocumentChecked',
         iconClass: 'work-icon',
         sparklineData: []
+      },
+      {
+        key: 'avgTemp',
+        title: '平均温度',
+        value: `${data.avgTemperature || '--'}°C`,
+        trendText: '整体环境',
+        trendIcon: 'Temperature',
+        trendClass: 'trend-neutral',
+        icon: 'Temperature',
+        iconClass: 'temp-icon',
+        sparklineData: []
       }
     ]
-
-    // 同步更新侧边栏所需的真实统计信息
-    realStatsForSidebar.value = {
-      totalAlerts: data.totalAlerts || data.todayAlerts || 0,
-      totalWorkOrders: data.totalWorkOrders || data.todayClosedWorkOrders || 0,
-      totalDevices: data.totalDevices || 0,
-      avgTemperature: data.avgTemperature || 0,
-      deviceOnlineRate: onlineRate
-    }
   } catch (error) {
     console.error('加载统计信息失败:', error)
+    ElMessage.error('加载统计信息失败')
   }
 }
 
-// 加载趋势数据 (🌟 修复：合并侧边栏参数)
+// 加载所有趋势数据
 const loadTrendData = async () => {
   try {
     isLoading.value = true
+    currentPage.value = 1
 
     const [startDate, endDate] = filterForm.value.dateRange
 
-    // 🌟 将顶部时间组件与侧边栏的高级筛选合并
     const params = {
       startDate,
       endDate,
       interval: filterForm.value.interval,
-      ...advancedFilters.value // 注入侧边栏的过滤参数（region, deviceType等）
+      ...advancedFilters.value
     }
 
-    const [envData, alertData, workOrderData, deviceData] = await Promise.allSettled([
+    const [envResult, alertResult, workOrderResult] = await Promise.allSettled([
       getEnvironmentTrendApi(params),
       getAlertTrendApi(params),
-      getWorkOrderTrendApi(params),
-      getDeviceStatusTrendApi(params)
+      getWorkOrderTrendApi(params)
     ])
 
-    const envResult = envData.status === 'fulfilled' ? envData.value.data : { data: [] }
-    const alertResult = alertData.status === 'fulfilled' ? alertData.value.data : { data: {} }
-    const workOrderResult = workOrderData.status === 'fulfilled' ? workOrderData.value.data : { data: {} }
+    // 正确处理后端返回的数据结构：response -> data -> data
+    const getResponseData = (result) => {
+      if (result.status !== 'fulfilled') return null
+      const response = result.value
+      // 标准后端返回结构: { code: xxx, data: xxx }
+      return response.data
+    }
 
-    renderEnvironmentChart(envResult)
-    renderAlertTrendChart(alertResult)
-    renderWorkOrderTrendChart(workOrderResult)
-    prepareTableData(envResult, alertResult, workOrderResult)
+    const envResponse = getResponseData(envResult)
+    const envData = Array.isArray(envResponse) ? envResponse :
+                 Array.isArray(envResponse?.data) ? envResponse.data : []
 
+    const alertResponse = getResponseData(alertResult)
+    const alertData = alertResponse?.data && Array.isArray(alertResponse.data) ? alertResponse :
+                 Array.isArray(alertResponse) ? { data: alertResponse } :
+                 alertResponse || { data: [] }
+
+    const workOrderResponse = getResponseData(workOrderResult)
+    const workOrderData = workOrderResponse?.data && Array.isArray(workOrderResponse.data) ? workOrderResponse :
+                   Array.isArray(workOrderResponse) ? { data: workOrderResponse } :
+                   workOrderResponse || { data: [] }
+
+    renderEnvironmentChart(envData)
+    renderAlertTrendChart(alertData)
+    renderWorkOrderTrendChart(workOrderData)
+    prepareTableData(envData, alertData.data || [], workOrderData.data || [])
   } catch (error) {
     console.error('加载趋势数据失败:', error)
     ElMessage.error('加载图表数据失败')
@@ -352,38 +379,26 @@ const loadTrendData = async () => {
   }
 }
 
-// 侧边栏事件处理 (🌟 修复：保存参数并重新发请求)
-const handleFilterApplied = (filter) => {
-  advancedFilters.value = filter // 保存侧边栏筛选条件
-  loadTrendData() // 重新请求
+// 切换图表类型
+const toggleChartType = () => {
+  currentChartType.value = currentChartType.value === 'line' ? 'bar' : 'line'
+  renderEnvironmentChart(currentEnvData.value)
 }
 
-const handleComparisonApplied = (comparison) => {
-  // 对比分析逻辑...
-  ElMessage.info('对比分析功能请求已发送')
-}
+// 保存当前环境数据供切换使用
+const currentEnvData = ref([])
 
-const handleExportRequested = (type) => {
-  console.log('Export requested:', type)
-  exportReport(type)
-}
-
-const handleAiAnalysisRequested = () => {
-  console.log('AI Analysis requested')
-  // 模拟AI分析请求
-  ElMessage.info('正在请求AI分析...')
-}
-
-// 辅助函数（这些函数需要根据实际情况实现）
+// 日期范围改变
 const onDateRangeChange = () => {
   loadTrendData()
 }
 
+// 快捷选择时间范围
 const setQuickRange = (range) => {
   const now = new Date()
   let startDate
 
-  switch(range) {
+  switch (range) {
     case 'last24h':
       startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
       break
@@ -412,66 +427,331 @@ const setQuickRange = (range) => {
   loadTrendData()
 }
 
-const toggleChartType = () => {
-  // 切换图表类型的逻辑
-  console.log('Toggle chart type')
-}
-
-const exportReport = (type) => {
-  // 导出报告的逻辑
-  console.log(`Exporting ${type} report`)
-}
-
+// 渲染环境温湿度图表
 const renderEnvironmentChart = (data) => {
-  // 实现环境图表渲染
-  console.log('Rendering environment chart:', data)
+  currentEnvData.value = data || []
+
+  if (!data || data.length === 0) {
+    environmentChartOption.value = {
+      title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#999' } },
+      tooltip: { trigger: 'axis' }
+    }
+    return
+  }
+
+  const categories = data.map(item => item.time || item.date || '')
+  const tempData = data.map(item => item.temperature ?? item.avgTemp ?? null)
+  const humidityData = data.map(item => item.humidity ?? item.avgHumidity ?? null)
+
+  const series = [
+    {
+      name: '温度 (°C)',
+      type: currentChartType.value,
+      smooth: currentChartType.value === 'line',
+      data: tempData,
+      itemStyle: { color: '#FF6B6B' },
+      ...(currentChartType.value === 'line' && {
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(255, 107, 107, 0.3)' },
+            { offset: 1, color: 'rgba(255, 107, 107, 0.05)' }
+          ])
+        }
+      })
+    },
+    {
+      name: '湿度 (%)',
+      type: currentChartType.value,
+      yAxisIndex: 1,
+      smooth: currentChartType.value === 'line',
+      data: humidityData,
+      itemStyle: { color: '#4ECDC4' },
+      ...(currentChartType.value === 'line' && {
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(78, 205, 196, 0.3)' },
+            { offset: 1, color: 'rgba(78, 205, 196, 0.05)' }
+          ])
+        }
+      })
+    }
+  ]
+
+  environmentChartOption.value = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' }
+    },
+    legend: {
+      data: ['温度 (°C)', '湿度 (%)'],
+      top: 10,
+      textStyle: { fontSize: 13 }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '12%',
+      top: '15%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: categories,
+      axisLabel: {
+        rotate: categories.length > 15 ? 45 : 0,
+        interval: 'auto',
+        fontSize: 11
+      }
+    },
+    yAxis: [
+      {
+        type: 'value',
+        name: '温度 (°C)',
+        position: 'left',
+        nameTextStyle: { fontSize: 12 },
+        axisLabel: { formatter: '{value} °C', fontSize: 11 }
+      },
+      {
+        type: 'value',
+        name: '湿度 (%)',
+        position: 'right',
+        nameTextStyle: { fontSize: 12 },
+        axisLabel: { formatter: '{value} %', fontSize: 11 }
+      }
+    ],
+    series
+  }
 }
 
+// 渲染告警趋势图表
 const renderAlertTrendChart = (data) => {
-  // 实现告警趋势图表渲染
-  console.log('Rendering alert chart:', data)
+  let chartData = []
+  if (Array.isArray(data)) {
+    chartData = data
+  } else if (data && Array.isArray(data.data)) {
+    chartData = data.data
+  } else if (data && Array.isArray(data.result)) {
+    chartData = data.result
+  }
+
+  if (!chartData || chartData.length === 0) {
+    alertTrendChartOption.value = {
+      title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#999' } },
+      tooltip: { trigger: 'axis' }
+    }
+    return
+  }
+
+  const categories = chartData.map(item => item.time || item.date || '')
+  const alertCounts = chartData.map(item => item.count ?? item.alertCount ?? 0)
+
+  alertTrendChartOption.value = {
+    tooltip: { trigger: 'axis' },
+    legend: {
+      data: ['告警数量'],
+      top: 10,
+      textStyle: { fontSize: 13 }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '10%',
+      top: '18%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: categories,
+      axisLabel: {
+        rotate: categories.length > 10 ? 45 : 0,
+        fontSize: 11
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: '告警数',
+      nameTextStyle: { fontSize: 12 },
+      axisLabel: { fontSize: 11 }
+    },
+    series: [
+      {
+        name: '告警数量',
+        type: 'bar',
+        data: alertCounts,
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#FF6B6B' },
+            { offset: 1, color: '#FF8E8E' }
+          ])
+        },
+        showBackground: true,
+        backgroundStyle: { color: 'rgba(255, 107, 107, 0.1)' },
+        barWidth: '60%'
+      }
+    ]
+  }
 }
 
+// 渲染工单趋势图表
 const renderWorkOrderTrendChart = (data) => {
-  // 实现工单趋势图表渲染
-  console.log('Rendering work order chart:', data)
+  let chartData = []
+  if (Array.isArray(data)) {
+    chartData = data
+  } else if (data && Array.isArray(data.data)) {
+    chartData = data.data
+  } else if (data && Array.isArray(data.result)) {
+    chartData = data.result
+  }
+
+  if (!chartData || chartData.length === 0) {
+    workOrderTrendChartOption.value = {
+      title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#999' } },
+      tooltip: { trigger: 'axis' }
+    }
+    return
+  }
+
+  const categories = chartData.map(item => item.time || item.date || '')
+  const createdData = chartData.map(item => item.created ?? item.createdCount ?? 0)
+  const completedData = chartData.map(item => item.completed ?? item.completedCount ?? 0)
+  const pendingData = chartData.map(item => item.pending ?? item.pendingCount ?? 0)
+
+  workOrderTrendChartOption.value = {
+    tooltip: { trigger: 'axis' },
+    legend: {
+      data: ['新建', '已完成', '待处理'],
+      top: 10,
+      textStyle: { fontSize: 13 }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '10%',
+      top: '18%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: categories,
+      axisLabel: {
+        rotate: categories.length > 10 ? 45 : 0,
+        fontSize: 11
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: '工单数',
+      nameTextStyle: { fontSize: 12 },
+      axisLabel: { fontSize: 11 }
+    },
+    series: [
+      {
+        name: '新建',
+        type: 'line',
+        smooth: true,
+        data: createdData,
+        itemStyle: { color: '#4ECDC4' }
+      },
+      {
+        name: '已完成',
+        type: 'line',
+        smooth: true,
+        data: completedData,
+        itemStyle: { color: '#95E1A3' }
+      },
+      {
+        name: '待处理',
+        type: 'line',
+        smooth: true,
+        data: pendingData,
+        itemStyle: { color: '#F38181' }
+      }
+    ]
+  }
 }
 
+// 准备表格数据
 const prepareTableData = (envData, alertData, workOrderData) => {
-  // 准备表格数据
-  console.log('Preparing table data:', envData, alertData, workOrderData)
+  const envChartData = envData || []
+  const alertChartData = alertData || []
+  const workOrderChartData = workOrderData || []
+
+  if (activeTab.value === 'tempHumidity') {
+    currentTableData.value = envChartData.map(item => ({
+      time: item.time || item.date || '',
+      temperature: item.temperature ?? item.avgTemp ?? '-',
+      humidity: item.humidity ?? item.avgHumidity ?? '-',
+      deviceCount: item.deviceCount ?? '-'
+    }))
+    tableColumns.value = [
+      { prop: 'time', label: '时间', width: 180 },
+      { prop: 'temperature', label: '温度 (°C)', width: 120 },
+      { prop: 'humidity', label: '湿度 (%)', width: 120 },
+      { prop: 'deviceCount', label: '设备数', width: 100 }
+    ]
+  } else if (activeTab.value === 'alerts') {
+    currentTableData.value = alertChartData.map(item => ({
+      time: item.time || item.date || '',
+      count: item.count ?? item.alertCount ?? 0,
+      level: item.level ?? '未知',
+      handled: item.handled ?? '未处理'
+    }))
+    tableColumns.value = [
+      { prop: 'time', label: '时间', width: 180 },
+      { prop: 'count', label: '告警数', width: 100 },
+      { prop: 'level', label: '等级', width: 100 },
+      { prop: 'handled', label: '处理状态', width: 120 }
+    ]
+  } else if (activeTab.value === 'workOrders') {
+    currentTableData.value = workOrderChartData.map(item => ({
+      time: item.time || item.date || '',
+      created: item.created ?? item.createdCount ?? 0,
+      completed: item.completed ?? item.completedCount ?? 0,
+      pending: item.pending ?? item.pendingCount ?? 0
+    }))
+    tableColumns.value = [
+      { prop: 'time', label: '时间', width: 180 },
+      { prop: 'created', label: '新建', width: 100 },
+      { prop: 'completed', label: '已完成', width: 100 },
+      { prop: 'pending', label: '待处理', width: 100 }
+    ]
+  }
+
+  total.value = currentTableData.value.length
+  tableLoading.value = false
 }
 
+// 标签页切换
 const handleTabChange = (tabName) => {
-  // 处理标签页切换
-  console.log('Tab changed to:', tabName)
+  activeTab.value = tabName
+  currentPage.value = 1
 }
 
+// 分页改变
 const handleCurrentPageChange = (page) => {
   currentPage.value = page
-  // 重新加载数据
 }
 
+// 每页条数改变
 const handlePageSizeChange = (size) => {
   pageSize.value = size
   currentPage.value = 1
-  // 重新加载数据
 }
 
+// 查看详情
 const viewDetails = (row) => {
-  // 查看详情
-  console.log('Viewing details:', row)
+  console.log('查看详情:', row)
+  ElMessage.info(`查看 ${row.time} 详情`)
 }
 
-// 页面加载时初始化
+// 页面加载初始化
 onMounted(async () => {
-  // 加载初始数据
   await loadStats()
   await loadTrendData()
 
   // 监听窗口大小变化，确保图表响应式
   window.addEventListener('resize', debounce(() => {
-    // 图表会自动响应大小变化
+    // 图表会自动响应
   }, 200))
 })
 </script>
@@ -480,55 +760,68 @@ onMounted(async () => {
 .trend-analysis-container {
   padding: 20px;
   background-color: #f5f7fa;
-  min-height: 100vh;
+  min-height: calc(100vh - 84px);
 }
 
-/* 全局控制台样式 */
-.control-bar {
+/* 控制卡片样式 */
+.control-card {
   margin-bottom: 20px;
-  background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
 }
 
 .control-form {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: 12px;
 }
 
-.shortcut-buttons {
-  margin-left: 10px;
+.control-form .el-form-item {
+  margin-bottom: 0;
 }
 
-.shortcut-buttons .el-button {
-  padding: 5px 10px;
-  font-size: 12px;
+.action-buttons {
+  margin-left: auto;
 }
 
-/* KPI卡片样式 */
-.kpi-cards {
+/* KPI行样式 */
+.kpi-row {
   margin-bottom: 20px;
 }
 
-/* 图表样式 */
+/* 主图表样式 */
 .main-chart-card {
   margin-bottom: 20px;
-  background: white;
   border-radius: 8px;
   overflow: hidden;
+  transition: all 0.3s ease;
 }
 
-.sub-charts {
+.chart-container {
+  width: 100%;
+}
+
+/* 副图表区域 */
+.sub-charts-row {
   margin-bottom: 20px;
 }
 
 .sub-chart-card {
-  background: white;
+  margin-bottom: 0;
   border-radius: 8px;
   overflow: hidden;
+  transition: all 0.3s ease;
 }
 
+/* 数据表格卡片 */
+.data-table-card {
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+/* 图表头部 */
 .chart-header {
   display: flex;
   justify-content: space-between;
@@ -539,77 +832,92 @@ onMounted(async () => {
   font-size: 16px;
   font-weight: 600;
   color: #303133;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chart-title .el-icon {
+  color: #409eff;
 }
 
 .chart-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-/* 数据表格样式 */
-.data-table-card {
-  background: white;
+.header-tabs {
+  margin: 0;
+}
+
+.header-tabs :deep(.el-tabs__header) {
+  margin: 0;
+}
+
+/* 骨架屏 */
+.kpi-skeleton {
+  margin-bottom: 20px;
   border-radius: 8px;
   overflow: hidden;
 }
 
-/* 骨架屏样式 */
-.kpi-skeleton {
-  margin-bottom: 20px;
-}
-
 .chart-skeleton {
   margin-bottom: 20px;
-  height: 500px;
+  height: 420px;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .sub-chart-skeleton {
   margin-bottom: 20px;
-  height: 350px;
+  height: 320px;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
-  .kpi-card {
-    height: auto;
-    min-height: 140px;
+@media (max-width: 1440px) {
+  .control-form {
+    gap: 8px;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
   .control-form {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .action-buttons {
+    margin-left: 0;
+    width: 100%;
   }
 
   .el-form-item {
     width: 100%;
   }
+}
 
-  .el-col.el-col-6 {
-    width: 100%;
-    margin-bottom: 15px;
+@media (max-width: 768px) {
+  .trend-analysis-container {
+    padding: 12px;
   }
 
-  .el-col.el-col-12 {
-    width: 100%;
-    margin-bottom: 20px;
+  .el-col {
+    margin-bottom: 16px;
   }
 
-  .main-chart {
+  .main-chart-card {
+    height: auto;
+  }
+
+  .chart-container {
     height: 300px !important;
   }
 
-  .sub-chart {
-    height: 250px !important;
-  }
-
-  .el-col.el-col-20 {
-    width: 100%;
-  }
-
-  .el-col.el-col-4 {
-    display: none;
+  .sub-chart-card {
+    height: 280px !important;
   }
 }
 </style>

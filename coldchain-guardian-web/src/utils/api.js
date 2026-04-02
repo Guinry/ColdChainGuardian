@@ -115,4 +115,15 @@ export const employeeApi = {
     apiClient.delete(`/admin/employees/${userId}/wechat-binding`)
 };
 
+export const userApi = {
+  // 获取当前用户详细信息 (如果有的话)
+  getCurrentUser: () => apiClient.get('/user/me'),
+
+  // 修改个人基本资料
+  updateProfile: (data) => apiClient.put('/user/profile', data),
+
+  // 修改密码
+  updatePassword: (data) => apiClient.put('/user/password', data)
+};
+
 export default apiClient

@@ -4,6 +4,8 @@ import com.coldchain.guardian.app.security.JwtUtil;
 import com.coldchain.guardian.app.service.AuthService;
 import com.coldchain.guardian.common.api.ApiResponse;
 import com.coldchain.guardian.contract.dto.user.CurrentUserInfoResponseDto;
+import com.coldchain.guardian.contract.dto.user.UpdatePasswordRequestDto;
+import com.coldchain.guardian.contract.dto.user.UpdateProfileRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +48,58 @@ public class UserController {
             return ApiResponse.success(userInfo);
         } catch (Exception e) {
             return ApiResponse.error("获取用户信息失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 更新用户资料
+     */
+    @Operation(summary = "更新用户资料", description = "更新当前登录用户的基本资料信息")
+    @PutMapping("/profile")
+    public ApiResponse<String> updateProfile(@RequestBody UpdateProfileRequestDto profileDto, HttpServletRequest request) {
+        // 从请求头中提取JWT token
+        String token = jwtUtil.getTokenFromRequest(request);
+
+        if (token == null || token.isEmpty()) {
+            return ApiResponse.error("未提供认证令牌");
+        }
+
+        try {
+            // 解析token获取用户ID
+            Long userId = jwtUtil.getUserIdFromToken(token);
+
+            // 更新用户资料
+            authService.updateProfile(userId, profileDto);
+
+            return ApiResponse.success("用户资料更新成功");
+        } catch (Exception e) {
+            return ApiResponse.error("更新用户资料失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 更新用户密码
+     */
+    @Operation(summary = "更新用户密码", description = "更新当前登录用户的登录密码")
+    @PutMapping("/password")
+    public ApiResponse<String> updatePassword(@RequestBody UpdatePasswordRequestDto passwordDto, HttpServletRequest request) {
+        // 从请求头中提取JWT token
+        String token = jwtUtil.getTokenFromRequest(request);
+
+        if (token == null || token.isEmpty()) {
+            return ApiResponse.error("未提供认证令牌");
+        }
+
+        try {
+            // 解析token获取用户ID
+            Long userId = jwtUtil.getUserIdFromToken(token);
+
+            // 更新用户密码
+            authService.updatePassword(userId, passwordDto);
+
+            return ApiResponse.success("密码更新成功");
+        } catch (Exception e) {
+            return ApiResponse.error("更新密码失败: " + e.getMessage());
         }
     }
 }

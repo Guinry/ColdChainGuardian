@@ -40,7 +40,12 @@ public class AlertScheduler {
 
         for (AlertEntity alert : urgentAlerts) {
             // 检查是否超过10分钟未处理
-            if (alert.getFirstTime().isBefore(LocalDateTime.now().minusMinutes(10))) {
+            LocalDateTime firstTime = alert.getFirstTime();
+            // 如果firstTime为null，使用createTime代替
+            if (firstTime == null) {
+                firstTime = alert.getCreateTime();
+            }
+            if (firstTime != null && firstTime.isBefore(LocalDateTime.now().minusMinutes(10))) {
                 logger.warn("紧急告警超过10分钟未处理，告警ID: {}, 设备: {}, 类型: {}",
                            alert.getId(), alert.getDeviceName(), alert.getAlertType());
                 // 这里可以添加发送通知的逻辑，如邮件、短信、钉钉等

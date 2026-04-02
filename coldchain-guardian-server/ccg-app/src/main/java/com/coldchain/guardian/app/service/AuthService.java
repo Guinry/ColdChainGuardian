@@ -6,6 +6,8 @@ import com.coldchain.guardian.common.exception.ErrorCode;
 import com.coldchain.guardian.contract.dto.auth.LoginRequestDto;
 import com.coldchain.guardian.contract.dto.auth.LoginResponseDto;
 import com.coldchain.guardian.contract.dto.user.CurrentUserInfoResponseDto;
+import com.coldchain.guardian.contract.dto.user.UpdatePasswordRequestDto;
+import com.coldchain.guardian.contract.dto.user.UpdateProfileRequestDto;
 import com.coldchain.guardian.infra.persistence.entity.UserEntity;
 import com.coldchain.guardian.infra.persistence.mapper.UserMapper; // 更改为使用Mapper
 import org.springframework.beans.BeanUtils;
@@ -113,6 +115,55 @@ public class AuthService {
         BeanUtils.copyProperties(user, response);
 
         return response;
+    }
+
+    /**
+     * 更新用户资料
+     */
+    public void updateProfile(Long userId, UpdateProfileRequestDto profileDto) {
+        UserEntity user = userMapper.selectById(userId);
+
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 检查用户状态
+        if (user.getStatus() != 1) {
+            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED, "账号已被禁用");
+        }
+
+        // 更新用户资料
+        user.setRealName(profileDto.getRealName());
+        user.setPhone(profileDto.getPhone());
+
+        userMapper.updateById(user);
+    }
+
+    /**
+     * 更新用户密码
+     */
+    public void updatePassword(Long userId, UpdatePasswordRequestDto passwordDto) {
+        UserEntity user = userMapper.selectById(userId);
+
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 检查用户状态
+        if (user.getStatus() != 1) {
+            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED, "账号已被禁用");
+        }
+
+        // 验证旧密码
+        if (!passwordEncoder.matches(passwordDto.getOldPassword(), user.getPassword())) {
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS, "原密码错误");
+        }
+
+        // 设置新密码
+        String encodedNewPassword = passwordEncoder.encode(passwordDto.getNewPassword());
+        user.setPassword(encodedNewPassword);
+
+        userMapper.updateById(user);
     }
 
     /**

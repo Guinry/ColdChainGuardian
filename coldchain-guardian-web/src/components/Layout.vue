@@ -35,7 +35,10 @@ const logout = () => {
   authStore.clearAuthData();
   router.push('/login');
 };
-const viewProfile = () => console.log('View profile clicked');
+
+const viewProfile = () => {
+  router.push('/profile'); // 🌟 跳向刚写的个人资料页
+};
 const settings = () => console.log('Settings clicked');
 </script>
 

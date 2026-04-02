@@ -7,12 +7,16 @@ import com.coldchain.guardian.common.api.PageResponse;
 import com.coldchain.guardian.contract.dto.device.DeviceDto;
 import com.coldchain.guardian.contract.dto.device.CreateDeviceRequestDto;
 import com.coldchain.guardian.contract.dto.telemetry.TelemetryDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
 
+@Tag(name = "设备管理", description = "处理设备注册、配置、状态管理等操作")
 @RestController
 @RequestMapping("/api/devices")
 public class DeviceController {
@@ -26,6 +30,7 @@ public class DeviceController {
     /**
      * 获取设备列表（分页和筛选）
      */
+    @Operation(summary = "获取设备列表", description = "分页查询设备列表，支持多条件筛选")
     @GetMapping
     public ApiResponse<PageResponse<DeviceDto>> getDevices(
             @RequestParam(defaultValue = "1") Integer page,
@@ -37,11 +42,9 @@ public class DeviceController {
             @RequestParam(required = false) Boolean alarmEnabled,
             @RequestParam(required = false) Long areaId) {
 
-        // 获取符合条件的设备列表
         List<DeviceDto> filteredDevices = deviceService.getDevicesWithFilters(page, size, keyword, deviceType,
                 onlineStatus, enabled, alarmEnabled, areaId);
 
-        // 获取符合条件的设备总数
         int total = deviceService.getDeviceCountWithFilters(keyword, deviceType,
                 onlineStatus, enabled, alarmEnabled, areaId);
 
@@ -53,6 +56,7 @@ public class DeviceController {
     /**
      * 根据ID获取设备
      */
+    @Operation(summary = "根据ID获取设备详情")
     @GetMapping("/{id}")
     public ApiResponse<DeviceDto> getDeviceById(@PathVariable Long id) {
         DeviceDto device = deviceService.getDeviceById(id);
@@ -65,6 +69,7 @@ public class DeviceController {
     /**
      * 根据设备编码获取设备
      */
+    @Operation(summary = "根据设备编码获取设备详情")
     @GetMapping("/code/{deviceCode}")
     public ApiResponse<DeviceDto> getDeviceByDeviceCode(@PathVariable String deviceCode) {
         DeviceDto device = deviceService.getDeviceByDeviceCode(deviceCode);
@@ -77,6 +82,7 @@ public class DeviceController {
     /**
      * 根据库区ID获取设备列表
      */
+    @Operation(summary = "根据库区ID获取设备列表")
     @GetMapping("/area/{areaId}")
     public ApiResponse<List<DeviceDto>> getDevicesByAreaId(@PathVariable Long areaId) {
         List<DeviceDto> devices = deviceService.getDevicesByAreaId(areaId);
@@ -86,6 +92,7 @@ public class DeviceController {
     /**
      * 根据设备类型获取设备列表
      */
+    @Operation(summary = "根据设备类型获取设备列表")
     @GetMapping("/type/{deviceType}")
     public ApiResponse<List<DeviceDto>> getDevicesByDeviceType(@PathVariable String deviceType) {
         List<DeviceDto> devices = deviceService.getDevicesByDeviceType(deviceType);
@@ -95,6 +102,7 @@ public class DeviceController {
     /**
      * 根据启用状态获取设备列表
      */
+    @Operation(summary = "根据启用状态获取设备列表")
     @GetMapping("/status/{enabled}")
     public ApiResponse<List<DeviceDto>> getDevicesByEnabled(@PathVariable Boolean enabled) {
         List<DeviceDto> devices = deviceService.getDevicesByEnabled(enabled);
@@ -104,6 +112,7 @@ public class DeviceController {
     /**
      * 创建新设备
      */
+    @Operation(summary = "创建新设备")
     @PostMapping
     public ApiResponse<DeviceDto> createDevice(@Valid @RequestBody CreateDeviceRequestDto requestDto) {
         DeviceDto device = deviceService.createDevice(requestDto);
@@ -113,6 +122,7 @@ public class DeviceController {
     /**
      * 更新设备信息
      */
+    @Operation(summary = "更新设备信息")
     @PutMapping("/{id}")
     public ApiResponse<DeviceDto> updateDevice(@PathVariable Long id,
                                             @Valid @RequestBody CreateDeviceRequestDto requestDto) {
@@ -126,6 +136,7 @@ public class DeviceController {
     /**
      * 删除设备
      */
+    @Operation(summary = "删除设备")
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteDevice(@PathVariable Long id) {
         deviceService.deleteDevice(id);
@@ -133,8 +144,9 @@ public class DeviceController {
     }
 
     /**
-     * 启用/禁用设备 - 匹配前端期望的API路径
+     * 启用/禁用设备
      */
+    @Operation(summary = "启用/禁用设备")
     @PutMapping("/{id}/status")
     public ApiResponse<DeviceDto> updateDeviceStatus(@PathVariable Long id, @RequestBody UpdateStatusRequest request) {
         DeviceDto device = deviceService.toggleDeviceStatus(id, request.getEnabled());
@@ -145,8 +157,9 @@ public class DeviceController {
     }
 
     /**
-     * 更新设备告警开关状态 - 匹配前端期望的API路径
+     * 更新设备告警开关状态
      */
+    @Operation(summary = "更新设备告警开关状态")
     @PutMapping("/{id}/alarm-status")
     public ApiResponse<DeviceDto> updateAlarmStatus(@PathVariable Long id, @RequestBody UpdateAlarmStatusRequest request) {
         DeviceDto device = deviceService.updateDeviceAlarmStatus(id, request.getAlarmEnabled());
@@ -159,6 +172,7 @@ public class DeviceController {
     /**
      * 更新设备阈值
      */
+    @Operation(summary = "更新设备阈值配置")
     @PutMapping("/{id}/threshold")
     public ApiResponse<DeviceDto> updateThreshold(@PathVariable Long id, @RequestBody CreateDeviceRequestDto thresholdData) {
         DeviceDto device = deviceService.getDeviceById(id);
@@ -166,7 +180,6 @@ public class DeviceController {
             return ApiResponse.error(404, "设备不存在");
         }
 
-        // 更新阈值 - 需要创建一个请求对象
         CreateDeviceRequestDto requestDto = new CreateDeviceRequestDto();
         requestDto.setDeviceCode(device.getDeviceCode());
         requestDto.setDeviceName(device.getDeviceName());
@@ -192,6 +205,7 @@ public class DeviceController {
     /**
      * 批量更新设备状态
      */
+    @Operation(summary = "批量更新设备启用状态")
     @PutMapping("/batch-status")
     public ApiResponse<Void> batchUpdateStatus(@RequestBody BatchUpdateStatusRequest request) {
         for (Long id : request.getIds()) {
@@ -203,6 +217,7 @@ public class DeviceController {
     /**
      * 解绑设备与库区关联
      */
+    @Operation(summary = "解绑设备与库区的关联")
     @PutMapping("/{id}/unbind-area")
     public ApiResponse<DeviceDto> unbindArea(@PathVariable Long id) {
         DeviceDto device = deviceService.getDeviceById(id);
@@ -210,12 +225,11 @@ public class DeviceController {
             return ApiResponse.error(404, "设备不存在");
         }
 
-        // 解绑设备与库区的关联
         CreateDeviceRequestDto requestDto = new CreateDeviceRequestDto();
         requestDto.setDeviceCode(device.getDeviceCode());
         requestDto.setDeviceName(device.getDeviceName());
         requestDto.setDeviceType(device.getDeviceType());
-        requestDto.setAreaId(null); // 解除关联
+        requestDto.setAreaId(null);
         requestDto.setModel(device.getModel());
         requestDto.setManufacturer(device.getManufacturer());
         requestDto.setSn(device.getSn());
@@ -234,8 +248,9 @@ public class DeviceController {
     }
 
     /**
-     * 获取设备最新数据 - 适配前端API需求
+     * 获取设备最新数据
      */
+    @Operation(summary = "获取设备最新遥测数据")
     @GetMapping("/{id}/latest")
     public ApiResponse<TelemetryDto> getLatestTelemetry(@PathVariable Long id) {
         TelemetryDto latestTelemetry = telemetryService.getLatestTelemetryByDeviceId(id);
@@ -246,8 +261,9 @@ public class DeviceController {
     }
 
     /**
-     * 获取设备历史数据 - 适配前端API需求
+     * 获取设备历史数据
      */
+    @Operation(summary = "获取设备历史遥测数据（分页）")
     @GetMapping("/{id}/data")
     public ApiResponse<PageResponse<TelemetryDto>> getHistoricalTelemetry(
             @PathVariable Long id,
@@ -263,51 +279,28 @@ public class DeviceController {
         return ApiResponse.success(pageResponse);
     }
 
-    // 用于接收状态更新请求的内部类
+    /**
+     * 用于接收状态更新请求的内部类
+     */
+    @Data
     public static class UpdateStatusRequest {
         private Boolean enabled;
-
-        public Boolean getEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(Boolean enabled) {
-            this.enabled = enabled;
-        }
     }
 
-    // 用于接收告警状态更新请求的内部类
+    /**
+     * 用于接收告警状态更新请求的内部类
+     */
+    @Data
     public static class UpdateAlarmStatusRequest {
         private Boolean alarmEnabled;
-
-        public Boolean getAlarmEnabled() {
-            return alarmEnabled;
-        }
-
-        public void setAlarmEnabled(Boolean alarmEnabled) {
-            this.alarmEnabled = alarmEnabled;
-        }
     }
 
-    // 用于接收批量更新状态请求的内部类
+    /**
+     * 用于接收批量更新状态请求的内部类
+     */
+    @Data
     public static class BatchUpdateStatusRequest {
         private List<Long> ids;
         private Boolean enabled;
-
-        public List<Long> getIds() {
-            return ids;
-        }
-
-        public void setIds(List<Long> ids) {
-            this.ids = ids;
-        }
-
-        public Boolean getEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(Boolean enabled) {
-            this.enabled = enabled;
-        }
     }
 }
