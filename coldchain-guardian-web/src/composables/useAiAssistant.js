@@ -68,8 +68,9 @@ export function useAiAssistant() {
   const getChatHistory = async (userId = 1) => {
     try {
       const response = await api.getChatHistory(userId)
-      chatSessions.value = response.data
-      return response.data
+      // 适配统一返回结构 ApiResponse<List<ChatSessionVo>>
+      chatSessions.value = response.data && response.data.data ? response.data.data : response.data
+      return chatSessions.value
     } catch (error) {
       console.error('获取聊天历史失败:', error)
       ElMessage.error('获取聊天历史失败')
@@ -84,7 +85,8 @@ export function useAiAssistant() {
         return []
       }
       const response = await api.getChatMessages(sessionId)
-      return response.data
+      // 适配统一返回结构 ApiResponse<List<ChatMessageVo>>
+      return response.data && response.data.data ? response.data.data : response.data
     } catch (error) {
       console.error('获取消息失败:', error)
       ElMessage.error('获取消息失败')
@@ -96,9 +98,11 @@ export function useAiAssistant() {
   const createChatSession = async (sessionData) => {
     try {
       const response = await api.createChatSession(sessionData)
-      chatSessions.value.unshift(response.data)
-      currentSession.value = response.data
-      return response.data
+      // 适配统一返回结构 ApiResponse<ChatSessionVo>
+      const newSession = response.data && response.data.data ? response.data.data : response.data
+      chatSessions.value.unshift(newSession)
+      currentSession.value = newSession
+      return newSession
     } catch (error) {
       console.error('创建会话失败:', error)
       ElMessage.error('创建会话失败')
