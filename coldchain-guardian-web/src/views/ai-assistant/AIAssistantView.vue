@@ -359,6 +359,10 @@ const switchSession = async (sessionId) => {
   if (isThinking.value) return
   currentSessionId.value = sessionId
   try {
+    if (!sessionId) {
+      currentMessages.value = []
+      return
+    }
     const messages = await getChatMessages(sessionId)
     currentMessages.value = messages.map(msg => ({
       role: msg.role.toLowerCase(),
@@ -385,6 +389,9 @@ const renameSession = (sessionId) => {
 
 const deleteSession = async (sessionId) => {
   try {
+    if (!sessionId) {
+      return
+    }
     await deleteChatSession(sessionId)
     if (currentSessionId.value === sessionId) {
       currentSessionId.value = null

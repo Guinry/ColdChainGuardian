@@ -80,6 +80,9 @@ export function useAiAssistant() {
   // 根据会话ID获取消息
   const getChatMessages = async (sessionId) => {
     try {
+      if (!sessionId) {
+        return []
+      }
       const response = await api.getChatMessages(sessionId)
       return response.data
     } catch (error) {
@@ -106,6 +109,9 @@ export function useAiAssistant() {
   // 删除会话
   const deleteChatSession = async (sessionId) => {
     try {
+      if (!sessionId) {
+        return
+      }
       await api.deleteChatSession(sessionId)
       const index = chatSessions.value.findIndex(s => s.id === sessionId)
       if (index !== -1) {
