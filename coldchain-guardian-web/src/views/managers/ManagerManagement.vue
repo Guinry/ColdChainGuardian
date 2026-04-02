@@ -358,10 +358,14 @@ const handleUnbindWechat = async (row: Manager) => {
 
     await employeeApi.unbindEmployeeWechat(row.id)
     ElMessage.success('解绑微信成功')
-    row.openId = undefined
-    row.wxNickname = undefined
-  } catch {
-    // 用户取消操作
+    // 刷新列表确保数据同步
+    await getList()
+  } catch (error) {
+    // 如果不是用户取消，显示错误
+    if (error !== 'cancel' && error !== 'Escape') {
+      console.error('解绑失败:', error)
+      ElMessage.error('解绑微信失败，请重试')
+    }
   }
 }
 
