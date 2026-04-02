@@ -1,5 +1,6 @@
 server:
   port: 8080
+  address: 0.0.0.0
   servlet:
     encoding:
       charset: UTF-8
@@ -29,13 +30,13 @@ spring:
 
   ai:
     openai:
-      api-key: "sk-sp-88d22e2a8a694bcc8ea3f28dcb1d1922"
+      api-key: "4d152e0e-f8b0-4d5c-82d4-c6460aeb06da"
       # 通义千问兼容OpenAI格式的API配置
-      base-url: "https://coding.dashscope.aliyuncs.com"
+      base-url: "https://ark.cn-beijing.volces.com/api/coding"
       chat:
         options:
           # 通义千问模型名称
-          model: "qwen3.5-plus"
+          model: "ark-code-latest"
 
   main:
     allow-bean-definition-overriding: true
