@@ -207,7 +207,7 @@ public class DashboardService {
         return result;
     }
 
-    public Map<String, Object> getDashboardStats() {
+    public Map<String, Object> getDashboardStats(Long assigneeId) {
         List<AlertEntity> alerts = alertRepository.findAll();
 
         // This is the line that was broken. Fixed by adding a clean null check before mapping to date.
@@ -228,6 +228,13 @@ public class DashboardService {
                         WorkOrderStatus.CLOSED.getCode().equals(wo.getStatus())))
                 .count();
 
+        // 计算待处理工单数量，如果传递了assigneeId，则只统计分配给该用户的
+        long pendingWorkOrders = workOrders.stream()
+                .filter(wo -> WorkOrderStatus.PENDING.getCode().equals(wo.getStatus()) ||
+                             WorkOrderStatus.PROCESSING.getCode().equals(wo.getStatus()))
+                .filter(wo -> assigneeId == null || assigneeId.equals(wo.getAssigneeId()))
+                .count();
+
         List<DeviceEntity> devices = deviceRepository.findAll();
         long totalDevices = devices.size();
         long onlineDevices = devices.stream()
@@ -240,6 +247,7 @@ public class DashboardService {
         result.put("todayAlerts", todayAlerts);
         result.put("unhandledAlerts", unhandledAlerts);
         result.put("todayClosedWorkOrders", todayClosedWorkOrders);
+        result.put("pendingWorkOrders", pendingWorkOrders);
 
         return result;
     }

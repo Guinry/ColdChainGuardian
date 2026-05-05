@@ -4,7 +4,7 @@
       <!-- 顶部：标题 + 操作区 -->
       <div class="page-header">
         <div class="header-left">
-          <h2>实时监测</h2>
+          <h1>实时监测</h1>
         </div>
         <div class="header-right">
           <el-button @click="refreshAllData" :icon="Refresh" size="default">
@@ -72,7 +72,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Refresh } from '@element-plus/icons-vue'
 import { monitorApi } from '@/api/monitor'
 import { areaApi } from '@/api/area'
@@ -83,6 +84,8 @@ import MonitorKpiCards from './components/MonitorKpiCards.vue'
 import AreaTreePanel from './components/AreaTreePanel.vue'
 import RealtimeDeviceTable from './components/RealtimeDeviceTable.vue'
 import DeviceRealtimeDrawer from './components/DeviceRealtimeDrawer.vue'
+
+const route = useRoute()
 
 // 页面状态
 const autoRefreshEnabled = ref(true)
@@ -121,6 +124,24 @@ const filters = reactive({
   lastSeenRange: [],
   deviceType: ''
 })
+
+const getQueryValue = (value) => Array.isArray(value) ? value[0] : value
+
+const parseBooleanQuery = (value) => {
+  const normalized = String(getQueryValue(value) ?? '').toLowerCase()
+  if (['true', '1', 'online', 'yes'].includes(normalized)) return true
+  if (['false', '0', 'offline', 'no'].includes(normalized)) return false
+  return null
+}
+
+const applyRouteQuery = () => {
+  const query = route.query
+  filters.areaId = getQueryValue(query.areaId) ? Number(getQueryValue(query.areaId)) : null
+  filters.online = query.online !== undefined ? parseBooleanQuery(query.online) : filters.online
+  filters.alarming = query.alarming !== undefined ? parseBooleanQuery(query.alarming) : filters.alarming
+  filters.keyword = getQueryValue(query.keyword) ? String(getQueryValue(query.keyword)) : ''
+  filters.deviceType = getQueryValue(query.deviceType) ? String(getQueryValue(query.deviceType)) : ''
+}
 
 // 抽屉状态
 const drawerVisible = ref(false)
@@ -258,10 +279,7 @@ const handleAreaNodeClick = (node) => {
 }
 
 // 库区搜索
-const handleAreaSearch = (keyword) => {
-  // 通过 AreaTreePanel 子组件处理搜索
-  console.log('Area search:', keyword)
-}
+const handleAreaSearch = () => {}
 
 // 分页和筛选事件
 const handlePageChange = (page) => {
@@ -275,7 +293,8 @@ const handleSizeChange = (size) => {
   refreshDeviceList()
 }
 
-const handleFilterChange = () => {
+const handleFilterChange = (nextFilters = {}) => {
+  Object.assign(filters, nextFilters)
   pagination.currentPage = 1
   refreshDeviceList()
 }
@@ -307,8 +326,15 @@ const handleCloseDrawer = () => {
 
 // 组件挂载
 onMounted(async () => {
+  applyRouteQuery()
   await refreshAllData()
   startAutoRefresh()
+})
+
+watch(() => route.query, () => {
+  applyRouteQuery()
+  pagination.currentPage = 1
+  refreshDeviceList()
 })
 
 // 组件卸载前清理
@@ -320,56 +346,75 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .monitor-page {
-  padding: 20px;
-  height: 100%;
+  padding: 20px 24px 28px;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
+  background: var(--ccg-bg);
+  color: var(--ccg-text);
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #ebeef5;
-  margin-bottom: 20px;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
-.header-left h2 {
+.header-left h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 750;
 }
 
 .header-right {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .last-update-time {
-  font-size: 14px;
-  color: #909399;
+  font-size: 13px;
+  color: var(--ccg-muted);
 }
 
 .main-content {
-  display: flex;
-  gap: 20px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
 }
 
 .device-list-panel {
-  flex: 1;
-  min-width: 600px;
+  min-width: 0;
   background: #fff;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
+  border: 1px solid var(--ccg-border);
+  border-radius: 8px;
   padding: 16px;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
+  box-shadow: var(--ccg-shadow-sm);
+}
+
+@media (max-width: 1160px) {
+  .page-header {
+    flex-direction: column;
+  }
+
+  .header-right {
+    justify-content: flex-start;
+  }
+
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .monitor-page {
+    padding: 16px;
+  }
 }
 </style>

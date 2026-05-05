@@ -24,16 +24,18 @@
         <template #default="{ node, data }">
           <div class="tree-node-content">
             <span class="node-label">{{ data.areaName }}</span>
-            <span class="node-code">[{{ data.areaCode }}]</span>
-            <el-tag
-              size="small"
-              :type="getLevelTagType(data.areaLevel)"
-              class="level-tag"
-            >
-              {{ getLevelLabel(data.areaLevel) }}
-            </el-tag>
-            <span class="device-count" v-if="data.deviceCount !== undefined">
-              设备:{{ data.deviceCount }}/告警:{{ data.alarmingCount || 0 }}
+            <span class="node-meta">
+              <span class="node-code">[{{ data.areaCode }}]</span>
+              <el-tag
+                size="small"
+                :type="getLevelTagType(data.areaLevel)"
+                class="level-tag"
+              >
+                {{ getLevelLabel(data.areaLevel) }}
+              </el-tag>
+              <span class="device-count" v-if="data.deviceCount !== undefined">
+                设备:{{ data.deviceCount }}/告警:{{ data.alarmingCount || 0 }}
+              </span>
             </span>
           </div>
         </template>
@@ -133,51 +135,85 @@ const handleIncludeChildrenChange = () => {
 
 <style scoped>
 .area-tree-panel {
-  height: 100%;
   display: flex;
   flex-direction: column;
+  width: 300px;
+  min-width: 300px;
+  min-height: 440px;
+  max-height: calc(100vh - var(--ccg-header-height) - 176px);
+  position: sticky;
+  top: 16px;
+  padding: 14px;
+  border: 1px solid var(--ccg-border);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: var(--ccg-shadow-sm);
 }
 
 .tree-header {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .tree-content {
   flex: 1;
+  min-height: 0;
   overflow: auto;
 }
 
 .area-tree {
-  height: 100%;
+  padding: 4px 0;
+}
+
+.area-tree :deep(.el-tree-node__content) {
+  height: auto;
+  min-height: 52px;
+  align-items: stretch;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.area-tree :deep(.el-tree-node__expand-icon) {
+  align-self: flex-start;
+  margin-top: 10px;
 }
 
 .tree-node-content {
   flex: 1;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
   font-size: 14px;
   padding-right: 8px;
+  min-width: 0;
 }
 
 .node-label {
-  margin-right: 8px;
-  font-weight: 500;
-  flex-shrink: 0;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: block;
+  min-width: 0;
+  color: #1f2937;
+  font-weight: 650;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.node-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .node-code {
-  color: #909399;
+  color: var(--ccg-muted);
   font-size: 12px;
-  margin-right: 8px;
-  flex-shrink: 0;
+  line-height: 1.2;
 }
 
 .level-tag {
-  margin-right: 8px;
   font-size: 10px;
   height: 18px;
   padding: 0 6px;
@@ -195,6 +231,16 @@ const handleIncludeChildrenChange = () => {
 
 .tree-footer {
   padding-top: 10px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--ccg-border);
+}
+
+@media (max-width: 1160px) {
+  .area-tree-panel {
+    width: 100%;
+    min-width: 0;
+    min-height: 320px;
+    max-height: none;
+    position: static;
+  }
 }
 </style>

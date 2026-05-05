@@ -3,6 +3,8 @@ package com.coldchain.guardian.app.service;
 import com.coldchain.guardian.contract.dto.workorder.WorkOrderDto;
 import com.coldchain.guardian.contract.dto.workorder.CreateWorkOrderRequestDto;
 import com.coldchain.guardian.contract.enums.WorkOrderStatus;
+import com.coldchain.guardian.common.exception.BusinessException;
+import com.coldchain.guardian.common.exception.ErrorCode;
 import com.coldchain.guardian.infra.persistence.entity.WorkOrderEntity;
 import com.coldchain.guardian.infra.persistence.entity.WorkOrderLogEntity;
 import com.coldchain.guardian.infra.persistence.mapper.WorkOrderMapper;
@@ -17,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -39,11 +40,21 @@ public class WorkOrderService {
      */
     @Transactional
     public WorkOrderDto createWorkOrder(CreateWorkOrderRequestDto requestDto) {
+        validateCreateRequest(requestDto);
+
         WorkOrderEntity entity = new WorkOrderEntity();
         BeanUtils.copyProperties(requestDto, entity);
 
-        // Set initial status to PENDING
+        entity.setOrderNo(generateOrderNo());
         entity.setStatus(WorkOrderStatus.PENDING.getCode());
+        entity.setPriority(defaultIfBlank(requestDto.getPriority(), "MEDIUM"));
+        entity.setWorkType(defaultIfBlank(requestDto.getWorkType(), "MAINTENANCE"));
+        entity.setAssigneeId(requestDto.getAssigneeId());
+        entity.setReporterId(requestDto.getReporterId());
+        entity.setWarehouseId(requestDto.getWarehouseId());
+        entity.setDeviceId(requestDto.getDeviceId());
+        entity.setLocationDetail(requestDto.getLocationDetail());
+        entity.setDueDate(requestDto.getDueDate() != null ? requestDto.getDueDate() : LocalDateTime.now().plusDays(1));
 
         // If associated with an alert, get the alert details
         if (requestDto.getAlertId() != null) {
@@ -53,7 +64,7 @@ public class WorkOrderService {
                 // Set location and device info from alert
                 entity.setWarehouseId(alert.getWarehouseId());
                 entity.setDeviceId(alert.getDeviceId());
-                entity.setLocationDetail(alert.getAreaName() + " - " + alert.getDeviceName());
+                entity.setLocationDetail(defaultIfBlank(requestDto.getLocationDetail(), buildAlertLocation(alert)));
 
                 // Update alert status to HANDLING
                 alert.setStatus("HANDLING");
@@ -66,9 +77,54 @@ public class WorkOrderService {
 
         // Log the creation
         logWorkOrderAction(entity.getId(), "CREATED", null, WorkOrderStatus.PENDING.getCode(),
-                          requestDto.getReporterId(), "System", "工单创建");
+                          requestDto.getReporterId(), "移动端", "工单创建");
 
         return convertToWorkOrderDto(entity);
+    }
+
+    private void validateCreateRequest(CreateWorkOrderRequestDto requestDto) {
+        if (requestDto == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "工单参数不能为空");
+        }
+        if (isBlank(requestDto.getTitle())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请输入工单标题");
+        }
+        if (isBlank(requestDto.getDescription())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请输入工单描述");
+        }
+        if (requestDto.getReporterId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "缺少创建人");
+        }
+        if (requestDto.getAlertId() == null && requestDto.getWarehouseId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择发生库区");
+        }
+    }
+
+    private String generateOrderNo() {
+        return "WO-MP-" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS").format(LocalDateTime.now());
+    }
+
+    private String buildAlertLocation(AlertEntity alert) {
+        String areaName = alert.getAreaName();
+        String deviceName = alert.getDeviceName();
+        if (!isBlank(areaName) && !isBlank(deviceName)) {
+            return areaName + " - " + deviceName;
+        }
+        if (!isBlank(areaName)) {
+            return areaName;
+        }
+        if (!isBlank(deviceName)) {
+            return deviceName;
+        }
+        return "告警 #" + alert.getId();
+    }
+
+    private String defaultIfBlank(String value, String fallback) {
+        return isBlank(value) ? fallback : value;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     /**
@@ -155,7 +211,7 @@ public class WorkOrderService {
     private String determineActionFromStatusTransition(String previousStatus, String currentStatus, String remark) {
         // Check the remark to distinguish between accept and start operations
         if ("PENDING".equals(previousStatus) && "PROCESSING".equals(currentStatus)) {
-            if (remark != null && remark.contains("接受")) {
+            if (remark != null && (remark.contains("接受") || remark.contains("接收"))) {
                 return "ACCEPTED"; // 工单被接受
             } else {
                 return "STARTED"; // 工单开始处理

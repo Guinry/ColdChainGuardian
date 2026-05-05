@@ -20,6 +20,7 @@
         <el-menu-item index="/warehouse-area">库区管理</el-menu-item>
         <el-menu-item index="/devices">设备管理</el-menu-item>
         <el-menu-item index="/monitor">实时监测</el-menu-item>
+        <el-menu-item index="/settings/thresholds">阈值规则</el-menu-item>
       </el-sub-menu>
 
       <el-sub-menu index="alerts-orders">
@@ -49,6 +50,7 @@
         <el-menu-item index="/employees">员工管理</el-menu-item>
         <el-menu-item index="/managers">管理员管理</el-menu-item>
         <el-menu-item index="/permissions">权限分配</el-menu-item>
+        <el-menu-item index="/audit-logs">审计日志</el-menu-item>
       </el-sub-menu>
     </el-menu>
   </div>
@@ -56,11 +58,9 @@
 
 <script setup>
 import {
-  House, Monitor, Warning, DataAnalysis, Setting,
-  DataLine
+  House, Monitor, Warning, DataAnalysis, Setting
 } from '@element-plus/icons-vue';
 import { computed } from 'vue';
-import { useAuthStore } from '@/store/auth';
 
 // Props
 const props = defineProps({
@@ -82,18 +82,46 @@ const showSystemManagement = computed(() => {
 
 <style scoped>
 .side-menu {
-  width: 220px;
-  background-color: white;
-  box-shadow: 2px 0 6px rgba(0, 21, 41, 0.35);
+  width: var(--ccg-sidebar-width);
+  background-color: #fff;
+  border-right: 1px solid var(--ccg-border);
+  box-shadow: 4px 0 18px rgba(15, 23, 42, 0.04);
   overflow-y: auto;
   flex-shrink: 0;
-  height: calc(100vh - 60px);
+  height: calc(100vh - var(--ccg-header-height));
   position: sticky;
-  top: 60px;
+  top: var(--ccg-header-height);
 }
 
 .menu {
   border-right: none;
+  padding: 12px 10px;
+}
+
+.menu :deep(.el-menu-item),
+.menu :deep(.el-sub-menu__title) {
+  height: 42px;
+  margin: 3px 0;
+  border-radius: 8px;
+  color: #334155;
+}
+
+.menu :deep(.el-menu-item.is-active) {
+  background: var(--ccg-primary-soft);
+  color: var(--ccg-primary);
+  font-weight: 700;
+}
+
+.menu :deep(.el-sub-menu .el-menu-item) {
+  height: 38px;
+  min-width: 0;
+  margin-left: 8px;
+  padding-left: 32px !important;
+}
+
+.menu :deep(.el-sub-menu__title:hover),
+.menu :deep(.el-menu-item:hover) {
+  background: #f8fafc;
 }
 
 @keyframes glow {

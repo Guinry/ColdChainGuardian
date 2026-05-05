@@ -1,795 +1,1059 @@
 <template>
   <Layout>
-    <div class="dashboard-content" v-loading="loading" element-loading-text="正在加载大盘数据...">
-      <!-- KPI Cards Section -->
-      <div class="kpi-section">
-        <div class="kpi-card" @click="goToOnlineDevices">
-          <div class="kpi-icon">
-            <el-icon><Link /></el-icon>
-          </div>
-          <div class="kpi-content">
-            <div class="kpi-value">{{ kpi.onlineDevices }}/{{ kpi.totalDevices }}</div>
-            <div class="kpi-label">在线设备数</div>
-          </div>
+    <div class="dashboard-page" v-loading="loading" element-loading-text="正在加载运行数据...">
+      <div class="dashboard-header">
+        <div>
+          <h1>运行总览</h1>
+          <p>最后更新 {{ lastUpdated || '-' }}</p>
         </div>
-
-        <div class="kpi-card" @click="goToTodayAlerts">
-          <div class="kpi-icon">
-            <el-icon><WarningFilled /></el-icon>
-          </div>
-          <div class="kpi-content">
-            <div class="kpi-value">{{ kpi.todayAlerts }}</div>
-            <div class="kpi-label">今日告警数</div>
-          </div>
-        </div>
-
-        <div class="kpi-card" @click="goToUnhandledAlerts">
-          <div class="kpi-icon">
-            <el-icon><CircleCloseFilled /></el-icon>
-          </div>
-          <div class="kpi-content">
-            <div class="kpi-value">{{ kpi.unhandledAlerts }}</div>
-            <div class="kpi-label">未处理告警</div>
-          </div>
-        </div>
-
-        <div class="kpi-card" @click="goToTodayClosedOrders">
-          <div class="kpi-icon">
-            <el-icon><Finished /></el-icon>
-          </div>
-          <div class="kpi-content">
-            <div class="kpi-value">{{ kpi.todayClosedWorkOrders }}</div>
-            <div class="kpi-label">今日闭环工单</div>
-          </div>
+        <div class="header-actions">
+          <el-button :icon="Refresh" @click="fetchAllData">刷新</el-button>
+          <el-button type="primary" :icon="Warning" @click="goToUnhandledAlerts">处理告警</el-button>
         </div>
       </div>
 
-      <div class="overview-section">
-        <div class="section-header">
-          <h2>实时监测概览</h2>
-          <div class="filters">
-            <el-select v-model="selectedArea" placeholder="全部库区" class="area-filter" clearable>
+      <div class="kpi-strip">
+        <button
+          v-for="card in kpiCards"
+          :key="card.label"
+          type="button"
+          class="kpi-card"
+          :class="`tone-${card.tone}`"
+          @click="go(card.path, card.query)"
+        >
+          <span class="kpi-icon">
+            <el-icon><component :is="card.icon" /></el-icon>
+          </span>
+          <span class="kpi-copy">
+            <span class="kpi-label">{{ card.label }}</span>
+            <span class="kpi-value">{{ card.value }}</span>
+            <span class="kpi-note">{{ card.note }}</span>
+          </span>
+        </button>
+      </div>
+
+      <div class="operations-grid">
+        <section class="panel area-panel">
+          <div class="panel-header">
+            <div>
+              <h2>库区运行状态</h2>
+              <p>按实时设备数据汇总在线、告警和环境指标</p>
+            </div>
+            <el-select v-model="selectedArea" class="compact-select" placeholder="全部库区" clearable>
               <el-option label="全部库区" value="" />
               <el-option v-for="area in areas" :key="area.id" :label="area.name" :value="area.id" />
             </el-select>
-            <el-select v-model="timeWindow" placeholder="实时" class="time-filter" @change="fetchAreaOverview">
-              <el-option label="实时" value="realtime" />
-              <el-option label="近1小时" value="1h" />
-              <el-option label="近12小时" value="12h" />
-              <el-option label="近24小时" value="24h" />
-            </el-select>
           </div>
-        </div>
 
-        <div class="overview-grid">
-          <el-empty v-if="!filteredAreas.length" description="暂无库区数据" />
-          <div
-            v-else
-            v-for="area in filteredAreas"
-            :key="area.id"
-            class="area-card"
-            :class="{ 'area-error': area.status === 'error' }"
-            @click="goToAreaDetail(area.id)"
-          >
-            <div class="area-header">
-              <h3>{{ area.name }}</h3>
-              <div class="area-status" :class="area.status">{{ area.statusText }}</div>
-            </div>
-            <div class="area-stats">
-              <div class="stat">
-                <span class="label">温度</span>
-                <span class="value">{{ area.temperature }}°C</span>
-              </div>
-              <div class="stat">
-                <span class="label">湿度</span>
-                <span class="value">{{ area.humidity }}%</span>
-              </div>
-            </div>
-            <div class="area-devices">
-              <span class="device-count">设备: {{ area.onlineDevices }}/{{ area.totalDevices }}</span>
-            </div>
+          <div class="area-list">
+            <el-empty v-if="!filteredAreas.length" description="暂无库区数据" :image-size="72" />
+            <button
+              v-for="area in filteredAreas"
+              :key="area.id"
+              type="button"
+              class="area-row"
+              @click="goToAreaDetail(area)"
+            >
+              <span class="area-main">
+                <span class="area-title">
+                  <strong>{{ area.name }}</strong>
+                  <el-tag size="small" :type="area.tagType">{{ area.statusText }}</el-tag>
+                </span>
+                <span class="area-subtitle">{{ area.total }} 台设备 · 在线 {{ area.online }} · 告警 {{ area.alarming }}</span>
+              </span>
+              <span class="area-metrics">
+                <span>{{ formatMetric(area.avgTemp, '°C') }}</span>
+                <span>{{ formatMetric(area.avgHumi, '%') }}</span>
+              </span>
+              <span class="online-bar">
+                <span :style="{ width: `${area.onlineRate}%` }"></span>
+              </span>
+            </button>
           </div>
-        </div>
-      </div>
+        </section>
 
-      <div class="chart-section" v-loading="chartLoading">
-        <div class="section-header">
-          <h2>趋势图</h2>
-          <div class="chart-filters">
-            <el-select v-model="selectedChartArea" placeholder="选择库区" class="chart-filter" clearable>
-              <el-option v-for="area in areas" :key="area.id" :label="area.name" :value="area.id" />
-            </el-select>
-            <el-select v-model="selectedDevice" placeholder="选择设备" class="chart-filter" clearable>
-              <el-option v-for="device in availableDevicesForChart" :key="device.id" :label="device.name" :value="device.id" />
-            </el-select>
-            <el-select v-model="chartMetric" placeholder="指标" class="chart-filter">
+        <section class="panel trend-panel" v-loading="chartLoading">
+          <div class="panel-header">
+            <div>
+              <h2>环境趋势</h2>
+              <p>{{ chartMetricText }} · 近 30 天</p>
+            </div>
+            <el-select v-model="chartMetric" class="compact-select" placeholder="指标">
               <el-option label="温度" value="temperature" />
               <el-option label="湿度" value="humidity" />
             </el-select>
           </div>
-        </div>
-        <div class="chart-container">
-          <el-empty v-if="!chartData.length" description="暂无数据" />
-          <div v-else class="chart-placeholder">
-            <div class="chart-title">温湿度趋势图</div>
-            <div class="chart-subtitle">{{ selectedAreaName }} - {{ chartMetricText }}</div>
-            <div class="chart-description">时间 x {{ chartMetricText }}，阈值线已标记 (共 {{ chartData.length }} 条数据)</div>
+          <div class="chart-wrap">
+            <div v-show="chartData.length" ref="chartRef" class="trend-chart"></div>
+            <el-empty v-if="!chartData.length" description="暂无趋势数据" :image-size="80" />
           </div>
-        </div>
+        </section>
+
+        <section class="panel queue-panel">
+          <div class="panel-header">
+            <div>
+              <h2>待处理队列</h2>
+              <p>优先查看未处理告警和待处理工单</p>
+            </div>
+          </div>
+
+          <div class="queue-group">
+            <div class="queue-title">
+              <span>未处理告警</span>
+              <el-button link type="primary" @click="goToUnhandledAlerts">全部</el-button>
+            </div>
+            <button
+              v-for="alert in visibleUnhandledAlerts"
+              :key="`alert-${alert.id}`"
+              type="button"
+              class="queue-item"
+              @click="viewAlert(alert)"
+            >
+              <span class="queue-dot danger"></span>
+              <span class="queue-copy">
+                <strong>{{ alert.title }}</strong>
+                <em>{{ alert.location }} · {{ alert.timeText }}</em>
+              </span>
+              <el-tag size="small" :type="alert.levelTag">{{ alert.levelText }}</el-tag>
+            </button>
+            <el-empty v-if="!unhandledAlerts.length" description="暂无未处理告警" :image-size="56" />
+          </div>
+
+          <div class="queue-group">
+            <div class="queue-title">
+              <span>待处理工单</span>
+              <el-button link type="primary" @click="goToPendingOrders">全部</el-button>
+            </div>
+            <button
+              v-for="order in visiblePendingOrders"
+              :key="`order-${order.id}`"
+              type="button"
+              class="queue-item"
+              @click="viewOrder(order)"
+            >
+              <span class="queue-dot warning"></span>
+              <span class="queue-copy">
+                <strong>{{ order.title }}</strong>
+                <em>{{ order.assignee }} · {{ order.timeText }}</em>
+              </span>
+              <el-tag size="small" :type="getOrderStatusTag(order.status)">{{ getOrderStatusText(order.status) }}</el-tag>
+            </button>
+            <el-empty v-if="!pendingOrders.length" description="暂无待处理工单" :image-size="56" />
+          </div>
+        </section>
       </div>
 
-      <div class="alerts-section">
-        <div class="section-header">
-          <h2>最近告警</h2>
-          <el-button type="primary" link @click="goToAllAlerts" class="view-all-btn">全部告警 →</el-button>
-        </div>
-        <div class="table-container">
-          <el-table :data="recentAlerts" stripe style="width: 100%" height="300" empty-text="当前无告警">
-            <el-table-column prop="timestamp" label="时间" min-width="140" align="center" header-align="center" />
-            <el-table-column prop="area" label="库区" min-width="100" align="center" header-align="center" />
-            <el-table-column prop="device" label="设备" min-width="130" align="center" header-align="center" />
-            <el-table-column prop="type" label="类型" min-width="100" align="center" header-align="center">
+      <div class="detail-grid">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>最近告警</h2>
+              <p>用于快速追踪最新异常</p>
+            </div>
+            <el-button link type="primary" @click="goToAllAlerts">全部告警</el-button>
+          </div>
+          <el-table :data="recentAlerts" height="286" stripe empty-text="当前无告警">
+            <el-table-column prop="timeText" label="时间" min-width="130" />
+            <el-table-column prop="location" label="位置" min-width="150" show-overflow-tooltip />
+            <el-table-column prop="title" label="内容" min-width="190" show-overflow-tooltip />
+            <el-table-column prop="levelText" label="级别" width="82" align="center">
               <template #default="{ row }">
-                <el-tag :type="getAlertTypeTag(row.type)">{{ row.type }}</el-tag>
+                <el-tag size="small" :type="row.levelTag">{{ row.levelText }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="level" label="级别" min-width="90" align="center" header-align="center">
+            <el-table-column prop="statusText" label="状态" width="92" align="center">
               <template #default="{ row }">
-                <el-tag :type="getAlertLevelTag(row.level)">{{ row.level }}</el-tag>
+                <el-tag size="small" :type="getAlertStatusTag(row.status)">{{ row.statusText }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="status" label="状态" min-width="90" align="center" header-align="center">
+            <el-table-column label="操作" width="84" align="center">
               <template #default="{ row }">
-                <el-tag :type="getAlertStatusTag(row.status)">{{ row.status }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" min-width="150" align="center" header-align="center">
-              <template #default="{ row }">
-                <el-button size="small" @click="viewAlert(row)">查看</el-button>
-                <el-button size="small" type="primary" @click="createOrder(row)" :disabled="row.status !== '未处理'">派单</el-button>
+                <el-button size="small" link type="primary" @click="viewAlert(row)">查看</el-button>
               </template>
             </el-table-column>
           </el-table>
-        </div>
-      </div>
+        </section>
 
-      <div class="orders-section">
-        <div class="section-header">
-          <h2>待处理工单</h2>
-          <el-button type="primary" link @click="goToAllOrders" class="view-all-btn">全部工单 →</el-button>
-        </div>
-        <div class="table-container">
-          <el-table :data="pendingOrders" stripe style="width: 100%" height="300" empty-text="当前无待办工单">
-            <el-table-column prop="orderId" label="编号" min-width="150" align="center" header-align="center" />
-            <el-table-column prop="alert" label="告警内容" min-width="130" align="center" header-align="center" />
-            <el-table-column prop="assignee" label="指派人" min-width="100" align="center" header-align="center" />
-            <el-table-column prop="status" label="状态" min-width="90" align="center" header-align="center">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>工单跟进</h2>
+              <p>待处理和流转中的工作项</p>
+            </div>
+            <el-button link type="primary" @click="goToAllOrders">全部工单</el-button>
+          </div>
+          <el-table :data="pendingOrders" height="286" stripe empty-text="当前无待办工单">
+            <el-table-column prop="title" label="工单" min-width="210" show-overflow-tooltip />
+            <el-table-column prop="assignee" label="负责人" width="110" />
+            <el-table-column prop="priorityText" label="优先级" width="86" align="center">
               <template #default="{ row }">
-                <el-tag :type="getOrderStatusTag(row.status)">{{ row.status }}</el-tag>
+                <el-tag size="small" :type="getPriorityTag(row.priority)">{{ row.priorityText }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="updatedAt" label="更新时间" min-width="140" align="center" header-align="center" />
-            <el-table-column label="操作" min-width="150" align="center" header-align="center">
+            <el-table-column prop="status" label="状态" width="92" align="center">
               <template #default="{ row }">
-                <el-button size="small" @click="viewOrder(row)">查看</el-button>
-                <el-button size="small" type="success" @click="completeOrder(row)" :disabled="row.status === '已完成'">验收</el-button>
+                <el-tag size="small" :type="getOrderStatusTag(row.status)">{{ getOrderStatusText(row.status) }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="timeText" label="更新时间" width="130" />
+            <el-table-column label="操作" width="84" align="center">
+              <template #default="{ row }">
+                <el-button size="small" link type="primary" @click="viewOrder(row)">查看</el-button>
               </template>
             </el-table-column>
           </el-table>
-        </div>
+        </section>
       </div>
 
-      <!-- Quick Actions Section -->
-      <div class="quick-actions-section">
-        <div class="section-header">
-          <h2>快捷入口</h2>
-        </div>
-        <div class="quick-actions-grid">
-          <div class="quick-action-card" @click="goToDeviceManagement">
-            <div class="action-icon">
-              <el-icon><Grid /></el-icon>
-            </div>
-            <div class="action-text">设备管理</div>
-          </div>
-
-          <div class="quick-action-card" @click="goToThresholdSettings">
-            <div class="action-icon">
-              <el-icon><Operation /></el-icon>
-            </div>
-            <div class="action-text">阈值规则</div>
-          </div>
-
-          <div class="quick-action-card" @click="goToAlertCenter">
-            <div class="action-icon">
-              <el-icon><Warning /></el-icon>
-            </div>
-            <div class="action-text">告警中心</div>
-          </div>
-
-          <div class="quick-action-card" @click="generateDailyReport">
-            <div class="action-icon">
-              <el-icon><Document /></el-icon>
-            </div>
-            <div class="action-text">AI日报生成</div>
-          </div>
-
-          <!-- Super Admin only actions -->
-          <div v-if="isSuperAdmin" class="quick-action-card" @click="goToUserManagement">
-            <div class="action-icon">
-              <el-icon><User /></el-icon>
-            </div>
-            <div class="action-text">管理员管理</div>
-          </div>
-
-          <div v-if="isSuperAdmin" class="quick-action-card" @click="goToPermissionManagement">
-            <div class="action-icon">
-              <el-icon><Tickets /></el-icon>
-            </div>
-            <div class="action-text">权限分配</div>
-          </div>
-
-          <div v-if="isSuperAdmin" class="quick-action-card" @click="goToAuditLogs">
-            <div class="action-icon">
-              <el-icon><Memo /></el-icon>
-            </div>
-            <div class="action-text">审计日志</div>
-          </div>
-        </div>
-      </div>
+      <section class="quick-strip">
+        <button v-for="action in quickActions" :key="action.label" type="button" @click="action.onClick">
+          <el-icon><component :is="action.icon" /></el-icon>
+          <span>{{ action.label }}</span>
+        </button>
+      </section>
     </div>
   </Layout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 import Layout from '@/components/Layout.vue'
 import {
-  Link, WarningFilled, CircleCloseFilled, Finished,
-  Grid, Operation, Warning, Document,
-  User, Tickets, Memo
+  Monitor,
+  WarningFilled,
+  Tickets,
+  Finished,
+  Refresh,
+  Warning,
+  Grid,
+  Operation,
+  Document,
+  User,
+  Memo,
+  TrendCharts
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { dashboardApi } from '@/api/dashboard' // 导入我们刚才建好的 API
+import { dashboardApi } from '@/api/dashboard'
+import { deviceApi } from '@/api/device'
+import { alertApi } from '@/api/alert'
+import { workOrderApi } from '@/api/work-order'
+import * as echarts from 'echarts'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-// 状态控制
 const loading = ref(false)
 const chartLoading = ref(false)
-const isSuperAdmin = computed(() => authStore.getUserRole === 'SUPER_ADMIN')
-
-// 过滤参数
+const lastUpdated = ref('')
 const selectedArea = ref('')
-const timeWindow = ref('realtime')
-const selectedChartArea = ref('')
-const selectedDevice = ref('')
 const chartMetric = ref('temperature')
 
-// 核心数据模型 (清空原本的 mock 数据，赋初值)
 const kpi = ref({
   onlineDevices: 0,
   totalDevices: 0,
   todayAlerts: 0,
   unhandledAlerts: 0,
+  pendingWorkOrders: 0,
   todayClosedWorkOrders: 0
 })
 const areas = ref([])
-const devices = ref([])
+const monitorDevices = ref([])
 const recentAlerts = ref([])
+const unhandledAlerts = ref([])
 const pendingOrders = ref([])
 const chartData = ref([])
+const chartRef = ref(null)
+let chartInstance = null
 
-// 计算属性
+const isSuperAdmin = computed(() => ['ADMIN', 'SUPER_ADMIN'].includes(authStore.getUserRole))
+
+const chartMetricText = computed(() => chartMetric.value === 'temperature' ? '温度' : '湿度')
+
 const filteredAreas = computed(() => {
   if (!selectedArea.value) return areas.value
   return areas.value.filter(area => area.id === selectedArea.value)
 })
 
-// 根据选择的库区动态过滤图表设备下拉框
-const availableDevicesForChart = computed(() => {
-  if (!selectedChartArea.value) return devices.value
-  return devices.value.filter(d => d.areaId === selectedChartArea.value)
+const visibleUnhandledAlerts = computed(() => unhandledAlerts.value.slice(0, 4))
+const visiblePendingOrders = computed(() => pendingOrders.value.slice(0, 4))
+
+const kpiCards = computed(() => {
+  const total = Number(kpi.value.totalDevices || 0)
+  const online = Number(kpi.value.onlineDevices || 0)
+  const offline = Math.max(0, total - online)
+  return [
+    {
+      label: '在线设备',
+      value: `${online}/${total}`,
+      note: `离线 ${offline} 台`,
+      icon: Monitor,
+      tone: offline ? 'warning' : 'success',
+      path: '/monitor',
+      query: { online: 'true' }
+    },
+    {
+      label: '未处理告警',
+      value: kpi.value.unhandledAlerts || 0,
+      note: '需要研判处理',
+      icon: WarningFilled,
+      tone: kpi.value.unhandledAlerts ? 'danger' : 'success',
+      path: '/alerts',
+      query: { status: 'unhandled' }
+    },
+    {
+      label: '待处理工单',
+      value: kpi.value.pendingWorkOrders || pendingOrders.value.length || 0,
+      note: '等待派工/处理',
+      icon: Tickets,
+      tone: kpi.value.pendingWorkOrders ? 'warning' : 'primary',
+      path: '/work-orders',
+      query: { status: 'PENDING' }
+    },
+    {
+      label: '今日闭环',
+      value: kpi.value.todayClosedWorkOrders || 0,
+      note: `今日告警 ${kpi.value.todayAlerts || 0}`,
+      icon: Finished,
+      tone: 'primary',
+      path: '/work-orders',
+      query: { status: 'COMPLETED', date: 'today' }
+    }
+  ]
 })
 
-const selectedAreaName = computed(() => {
-  if (!selectedChartArea.value) return '全部库区'
-  const area = areas.value.find(a => a.id === selectedChartArea.value)
-  return area ? area.name : '未知库区'
+const quickActions = computed(() => {
+  const actions = [
+    { label: '实时监测', icon: Monitor, onClick: () => router.push('/monitor') },
+    { label: '设备管理', icon: Grid, onClick: () => router.push('/devices') },
+    { label: '阈值规则', icon: Operation, onClick: () => router.push('/settings/thresholds') },
+    { label: '趋势分析', icon: TrendCharts, onClick: () => router.push('/trend-analysis') },
+    {
+      label: 'AI 日报',
+      icon: Document,
+      onClick: () => router.push('/ai-assistant?prompt=生成今日冷链设备巡检与告警总结')
+    }
+  ]
+
+  if (isSuperAdmin.value) {
+    actions.push(
+      { label: '管理员', icon: User, onClick: () => router.push('/managers') },
+      { label: '审计日志', icon: Memo, onClick: () => router.push('/audit-logs') }
+    )
+  }
+  return actions
 })
 
-const chartMetricText = computed(() => {
-  return chartMetric.value === 'temperature' ? '温度' : '湿度'
+const unwrapData = (response, fallback = null) => {
+  const payload = response?.data
+  if (!payload) return fallback
+  if (payload.code === 200 || payload.success) return payload.data
+  return payload.data ?? payload ?? fallback
+}
+
+const unwrapPage = (response) => {
+  const payload = unwrapData(response, {})
+  const records = payload.records || payload.data || payload.list || []
+  return {
+    records: Array.isArray(records) ? records : [],
+    total: Number(payload.total || records.length || 0)
+  }
+}
+
+const toNumber = (value) => {
+  if (value === null || value === undefined || value === '') return null
+  const next = Number(value)
+  return Number.isFinite(next) ? next : null
+}
+
+const average = (values) => {
+  const valid = values.map(toNumber).filter(value => value !== null)
+  if (!valid.length) return null
+  return valid.reduce((sum, value) => sum + value, 0) / valid.length
+}
+
+const buildAreaOverview = (devices) => {
+  const groups = new Map()
+
+  devices.forEach((device) => {
+    const rawId = device.areaId ?? 'unassigned'
+    const id = String(rawId)
+    if (!groups.has(id)) {
+      groups.set(id, {
+        id,
+        rawId,
+        name: device.areaPath || device.areaName || '未分配库区',
+        total: 0,
+        online: 0,
+        alarming: 0,
+        temps: [],
+        humis: []
+      })
+    }
+
+    const area = groups.get(id)
+    area.total += 1
+    if (device.online || device.onlineStatus) area.online += 1
+    if (device.hasUnresolvedAlert || device.alarming) area.alarming += 1
+    area.temps.push(device.latestTemp ?? device.temperature)
+    area.humis.push(device.latestHumi ?? device.humidity)
+  })
+
+  return Array.from(groups.values()).map((area) => {
+    const offline = Math.max(0, area.total - area.online)
+    const avgTemp = average(area.temps)
+    const avgHumi = average(area.humis)
+    const onlineRate = area.total ? Math.round((area.online / area.total) * 100) : 0
+    const statusText = area.alarming ? '有告警' : offline ? '有离线' : '正常'
+    const tagType = area.alarming ? 'danger' : offline ? 'warning' : 'success'
+
+    return {
+      ...area,
+      offline,
+      avgTemp,
+      avgHumi,
+      onlineRate,
+      statusText,
+      tagType,
+      sortWeight: area.alarming ? 0 : offline ? 1 : 2
+    }
+  }).sort((a, b) => a.sortWeight - b.sortWeight || b.total - a.total)
+}
+
+const adaptAlert = (alert) => {
+  const status = alert.status || (alert.resolved ? 'RESOLVED' : 'UNHANDLED')
+  const levelValue = alert.alertLevel || alert.level || alert.severityLevel
+  return {
+    id: alert.id,
+    title: alert.description || alert.alertType || `告警 #${alert.id}`,
+    location: alert.deviceName || alert.areaName || alert.location || '未知位置',
+    status,
+    statusText: getAlertStatusText(status),
+    levelText: getAlertLevelText(levelValue),
+    levelTag: getAlertLevelTag(levelValue),
+    timeText: formatDate(alert.createdAt || alert.timestamp || alert.updateTime)
+  }
+}
+
+const adaptOrder = (order) => ({
+  id: order.id || order.orderId,
+  title: order.title || order.description || order.orderNo || `工单 #${order.id || order.orderId}`,
+  assignee: order.assigneeName || order.assignee || (order.assigneeId ? `用户 ${order.assigneeId}` : '未分配'),
+  status: order.status || 'PENDING',
+  priority: order.priority || 'MEDIUM',
+  priorityText: getPriorityText(order.priority),
+  timeText: formatDate(order.updateTime || order.updatedAt || order.createdAt || order.createTime)
 })
 
-// === API 数据获取逻辑 ===
-
-// 1. 初始化所有基础数据 (并行加载提升速度)
 const fetchAllData = async () => {
   loading.value = true
   try {
-    // 使用 Promise.all 并发请求
-    const [kpiRes, areasRes, devicesRes, alertsRes, ordersRes] = await Promise.all([
+    const [statsRes, devicesRes, alertsRes, unhandledRes, ordersRes] = await Promise.allSettled([
       dashboardApi.getStats(),
-      dashboardApi.getAreaOverview(timeWindow.value),
-      dashboardApi.getDevices(),
-      dashboardApi.getRecentAlerts(5),
-      dashboardApi.getPendingOrders(5)
+      deviceApi.getList({ page: 1, size: 200 }),
+      alertApi.search({ page: 1, size: 6 }),
+      alertApi.search({ status: 'UNHANDLED', page: 1, size: 5 }),
+      workOrderApi.getList({ status: 'PENDING', page: 1, size: 6 })
     ])
 
-    // 数据映射赋值 (处理标准响应格式: {code, message, data})
-    if (kpiRes.data && kpiRes.data.code === 200) {
-      kpi.value = kpiRes.data.data || kpiRes.data
-    } else {
-      // 如果没有标准格式，直接使用返回的数据
-      kpi.value = kpiRes.data
+    if (statsRes.status === 'fulfilled') {
+      kpi.value = { ...kpi.value, ...(unwrapData(statsRes.value, {}) || {}) }
     }
 
-    if (areasRes.data && areasRes.data.code === 200) {
-      areas.value = areasRes.data.data || []
-    } else {
-      areas.value = areasRes.data || []
+    if (devicesRes.status === 'fulfilled') {
+      const page = unwrapPage(devicesRes.value)
+      monitorDevices.value = page.records
+      areas.value = buildAreaOverview(page.records)
     }
 
-    if (devicesRes.data && devicesRes.data.code === 200) {
-      devices.value = devicesRes.data.data || []
-    } else {
-      devices.value = devicesRes.data || []
+    if (alertsRes.status === 'fulfilled') {
+      recentAlerts.value = unwrapPage(alertsRes.value).records.map(adaptAlert)
     }
 
-    // 映射告警数据 (适配前端 table prop)
-    if (alertsRes.data && alertsRes.data.code === 200) {
-      const rawAlerts = alertsRes.data.data || []
-      recentAlerts.value = rawAlerts.map(a => ({
-        id: a.id,
-        timestamp: a.timestamp,
-        area: a.area,
-        device: a.device,
-        type: a.type,
-        level: a.level,
-        status: a.status
-      }))
-    } else {
-      recentAlerts.value = []
+    if (unhandledRes.status === 'fulfilled') {
+      const page = unwrapPage(unhandledRes.value)
+      unhandledAlerts.value = page.records.map(adaptAlert)
+      kpi.value.unhandledAlerts = kpi.value.unhandledAlerts || page.total
     }
 
-    // 映射工单数据
-    if (ordersRes.data && ordersRes.data.code === 200) {
-      const rawOrders = ordersRes.data.data || []
-      pendingOrders.value = rawOrders.map(o => ({
-        orderId: o.orderId,
-        alert: o.alert,
-        assignee: o.assignee,
-        status: o.status,
-        updatedAt: o.updatedAt
-      }))
-    } else {
-      pendingOrders.value = []
+    if (ordersRes.status === 'fulfilled') {
+      const page = unwrapPage(ordersRes.value)
+      pendingOrders.value = page.records.map(adaptOrder)
+      kpi.value.pendingWorkOrders = kpi.value.pendingWorkOrders || page.total
     }
 
-    // 初始加载一次图表数据
     await fetchChartData()
+    lastUpdated.value = new Date().toLocaleString('zh-CN')
   } catch (error) {
-    console.error('获取大盘数据失败:', error)
-    ElMessage.error('无法加载仪表盘数据，请检查网络或联系管理员')
+    console.error('获取仪表盘数据失败:', error)
+    ElMessage.error('无法加载仪表盘数据，请检查后端服务')
   } finally {
     loading.value = false
   }
 }
 
-// 2. 单独刷新库区概览
-const fetchAreaOverview = async () => {
-  try {
-    const res = await dashboardApi.getAreaOverview(timeWindow.value)
-    if (res.data && res.data.code === 200) {
-      areas.value = res.data.data || []
-    } else {
-      areas.value = res.data || []
-    }
-  } catch (error) {
-    ElMessage.error('刷新库区状态失败')
-  }
-}
-
-// 3. 单独刷新图表数据
 const fetchChartData = async () => {
   chartLoading.value = true
   try {
-    // 实际的图表API还未实现，这里暂时使用mock数据
-    // 在实际环境中，这里会调用dashboardApi.getEnvironmentTrend
-    chartData.value = [10, 20, 15, 30, 25, 40, 35]
+    const response = await dashboardApi.getEnvironmentTrend({ interval: 'daily' })
+    const trend = unwrapData(response, {})
+    chartData.value = Array.isArray(trend?.data) ? trend.data : []
+    await renderTrendChart()
   } catch (error) {
-    console.warn('暂无图表趋势数据', error)
+    console.warn('暂无环境趋势数据:', error)
     chartData.value = []
+    await renderTrendChart()
   } finally {
     chartLoading.value = false
   }
 }
 
-// 监听图表条件变化，自动拉取新数据
-watch([selectedChartArea, selectedDevice, chartMetric], () => {
-  fetchChartData()
-})
+const renderTrendChart = async () => {
+  await nextTick()
+  if (!chartRef.value) return
 
-// === 路由与交互操作 ===
-const goToOnlineDevices = () => router.push('/devices?status=online')
-const goToTodayAlerts = () => router.push('/alerts?date=today')
-const goToUnhandledAlerts = () => router.push('/alerts?status=unhandled')
-const goToTodayClosedOrders = () => router.push('/orders?date=today&status=closed')
+  if (!chartData.value.length) {
+    chartInstance?.dispose()
+    chartInstance = null
+    return
+  }
+
+  if (!chartInstance) {
+    chartInstance = echarts.init(chartRef.value)
+    window.addEventListener('resize', resizeChart)
+  }
+
+  const valueKeys = chartMetric.value === 'temperature'
+    ? ['temperature', 'avgTemperature', 'avgTemp', 'temp']
+    : ['humidity', 'avgHumidity', 'avgHumi', 'humi']
+
+  const xAxis = chartData.value.map(item => item.date || item.time || item.period || item.label)
+  const values = chartData.value.map((item) => {
+    const key = valueKeys.find(name => item[name] !== undefined && item[name] !== null)
+    return key ? Number(item[key]) : 0
+  })
+
+  chartInstance.setOption({
+    tooltip: { trigger: 'axis' },
+    color: [chartMetric.value === 'temperature' ? '#ef4444' : '#2563eb'],
+    grid: { top: 28, right: 16, bottom: 32, left: 46 },
+    xAxis: {
+      type: 'category',
+      data: xAxis,
+      boundaryGap: false,
+      axisTick: { show: false },
+      axisLine: { lineStyle: { color: '#d1d5db' } }
+    },
+    yAxis: {
+      type: 'value',
+      name: chartMetric.value === 'temperature' ? '°C' : '%',
+      splitLine: { lineStyle: { color: '#eef2f7' } }
+    },
+    series: [
+      {
+        name: chartMetricText.value,
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        data: values,
+        areaStyle: { opacity: 0.12 },
+        lineStyle: { width: 3 }
+      }
+    ]
+  })
+}
+
+const resizeChart = () => chartInstance?.resize()
+
+watch(chartMetric, fetchChartData)
+
+const go = (path, query = {}) => router.push({ path, query })
+const goToUnhandledAlerts = () => go('/alerts', { status: 'unhandled' })
+const goToPendingOrders = () => go('/work-orders', { status: 'PENDING' })
 const goToAllAlerts = () => router.push('/alerts')
-const viewAlert = (alert) => router.push(`/alerts/${alert.id}`)
-const createOrder = (alert) => router.push(`/orders/create?alertId=${alert.id}`)
-const goToAllOrders = () => router.push('/orders')
-const viewOrder = (order) => router.push(`/orders/${order.orderId}`)
-const goToAreaDetail = (areaId) => router.push(`/monitoring/${areaId}`)
-
-const goToDeviceManagement = () => router.push('/devices')
-const goToThresholdSettings = () => router.push('/settings/thresholds')
-const goToAlertCenter = () => router.push('/alerts')
-const generateDailyReport = () => {
-  ElMessage.info('正在请求AI生成日报...')
-  router.push('/ai-assistant?prompt=生成今日冷链设备巡检与告警总结')
+const goToAllOrders = () => router.push('/work-orders')
+const viewAlert = (alert) => alert.id && router.push(`/alerts/${alert.id}`)
+const viewOrder = (order) => order.id && router.push(`/work-orders/${order.id}`)
+const goToAreaDetail = (area) => {
+  if (area.rawId === 'unassigned') return
+  router.push({ path: '/monitor', query: { areaId: area.rawId } })
 }
 
-const goToUserManagement = () => router.push('/admin/users')
-const goToPermissionManagement = () => router.push('/admin/permissions')
-const goToAuditLogs = () => router.push('/admin/logs')
-
-const completeOrder = (order) => {
-  ElMessage.success(`正在跳转验收: 工单 ${order.orderId}`)
-  router.push(`/orders/${order.orderId}?action=complete`)
+const formatMetric = (value, unit) => {
+  if (value === null || value === undefined) return '-'
+  return `${Number(value).toFixed(1)}${unit}`
 }
 
-// === 样式映射 Helper ===
-const getAlertTypeTag = (type) => {
-  if (!type) return 'info'
-  if (type.includes('温度') || type.includes('超限')) return 'danger'
-  if (type.includes('湿度')) return 'warning'
-  if (type.includes('离线') || type.includes('断电')) return 'info'
-  return 'info'
+const formatDate = (value) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  const now = new Date()
+  const diff = Math.floor((now - date) / 1000)
+  if (diff >= 0 && diff < 60) return '刚刚'
+  if (diff >= 0 && diff < 3600) return `${Math.floor(diff / 60)}分钟前`
+  if (diff >= 0 && diff < 86400) return `${Math.floor(diff / 3600)}小时前`
+  return date.toLocaleDateString('zh-CN')
+}
+
+const getAlertLevelText = (level) => {
+  const normalized = normalizeLevel(level)
+  const map = { CRITICAL: '紧急', HIGH: '高', MEDIUM: '中', LOW: '低' }
+  return map[normalized] || '未知'
 }
 
 const getAlertLevelTag = (level) => {
-  if (level === '高' || level === 'CRITICAL' || level === 'HIGH') return 'danger'
-  if (level === '中' || level === 'MEDIUM') return 'warning'
+  const normalized = normalizeLevel(level)
+  if (normalized === 'CRITICAL' || normalized === 'HIGH') return 'danger'
+  if (normalized === 'MEDIUM') return 'warning'
   return 'info'
 }
 
+const normalizeLevel = (level) => {
+  if (typeof level === 'number') {
+    if (level >= 4) return 'CRITICAL'
+    if (level === 3) return 'HIGH'
+    if (level === 2) return 'MEDIUM'
+    return 'LOW'
+  }
+  return String(level || '').toUpperCase()
+}
+
+const getAlertStatusText = (status) => {
+  const map = {
+    UNHANDLED: '未处理',
+    HANDLING: '处理中',
+    RESOLVED: '已解决',
+    IGNORED: '已忽略'
+  }
+  return map[status] || status || '未知'
+}
+
 const getAlertStatusTag = (status) => {
-  if (status === '未处理' || status === 'UNHANDLED') return 'danger'
-  if (status === '处理中' || status === 'HANDLING') return 'warning'
-  return 'success'
+  if (status === 'UNHANDLED') return 'danger'
+  if (status === 'HANDLING') return 'warning'
+  if (status === 'RESOLVED') return 'success'
+  return 'info'
+}
+
+const getOrderStatusText = (status) => {
+  const map = {
+    PENDING: '待处理',
+    PROCESSING: '处理中',
+    VERIFYING: '待验收',
+    COMPLETED: '已完成',
+    CLOSED: '已关闭'
+  }
+  return map[status] || status || '未知'
 }
 
 const getOrderStatusTag = (status) => {
-  if (status === '待处理' || status === 'PENDING') return 'warning'
-  if (status === '处理中' || status === 'PROCESSING') return 'primary'
-  return 'success'
+  if (status === 'PENDING') return 'warning'
+  if (status === 'PROCESSING' || status === 'VERIFYING') return 'primary'
+  if (status === 'COMPLETED') return 'success'
+  return 'info'
 }
 
-// 生命周期挂载
-onMounted(() => {
-  fetchAllData()
+const getPriorityText = (priority) => {
+  const map = { URGENT: '紧急', HIGH: '高', MEDIUM: '中', LOW: '低' }
+  return map[priority] || '普通'
+}
+
+const getPriorityTag = (priority) => {
+  if (priority === 'URGENT') return 'danger'
+  if (priority === 'HIGH') return 'warning'
+  if (priority === 'LOW') return 'success'
+  return 'info'
+}
+
+onMounted(fetchAllData)
+
+onUnmounted(() => {
+  window.removeEventListener('resize', resizeChart)
+  chartInstance?.dispose()
+  chartInstance = null
 })
 </script>
 
 <style scoped>
-.dashboard-content {
-  padding: 20px;
-  height: 100%;
-  min-height: 0;
+.dashboard-page {
+  min-height: 100%;
+  padding: 20px 24px 28px;
+  background: #f6f8fb;
+  color: #1f2937;
+  box-sizing: border-box;
 }
 
-.kpi-section {
+.dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.dashboard-header p,
+.panel-header p {
+  margin: 5px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.kpi-strip {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
 }
 
 .kpi-card {
   display: flex;
   align-items: center;
-  padding: 20px;
-  background: white;
+  gap: 13px;
+  min-height: 104px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-left-width: 4px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: #fff;
+  text-align: left;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
 }
 
 .kpi-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .kpi-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #e6f7ff;
-  border-radius: 50%;
-  margin-right: 16px;
-  color: #409eff;
+  border-radius: 8px;
+  background: #f3f6fb;
+  color: #2563eb;
+  font-size: 22px;
+  flex-shrink: 0;
 }
 
-.kpi-content {
-  flex: 1;
+.kpi-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.kpi-label,
+.kpi-note {
+  color: #6b7280;
+  font-size: 13px;
 }
 
 .kpi-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: #303133;
+  margin: 5px 0 2px;
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 750;
+  color: #111827;
 }
 
-.kpi-label {
-  font-size: 14px;
-  color: #909399;
-  margin-top: 4px;
+.tone-danger {
+  border-left-color: #ef4444;
 }
 
-.overview-section {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.tone-warning {
+  border-left-color: #f59e0b;
 }
 
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+.tone-success {
+  border-left-color: #10b981;
 }
 
-.section-header h2 {
-  margin: 0;
-  font-size: 18px;
-  color: #303133;
+.tone-primary {
+  border-left-color: #2563eb;
 }
 
-.filters {
-  display: flex;
-  gap: 12px;
-}
-
-.area-filter, .time-filter {
-  width: 150px;
-}
-
-.overview-grid {
+.operations-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: minmax(360px, 1.15fr) minmax(320px, 0.95fr) minmax(330px, 0.9fr);
   gap: 16px;
+  margin-bottom: 16px;
 }
 
-.area-card {
-  border: 1px solid #dcdfe6;
-  border-radius: 8px;
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.panel {
+  min-width: 0;
   padding: 16px;
-  cursor: pointer;
-  transition: all 0.2s;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
-.area-card:hover {
-  border-color: #409eff;
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
-}
-
-.area-card.area-error {
-  border-color: #f56c6c;
-}
-
-.area-header {
+.panel-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
-.area-header h3 {
+.panel-header h2 {
   margin: 0;
   font-size: 16px;
-  color: #303133;
+  font-weight: 700;
 }
 
-.area-status {
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
+.compact-select {
+  width: 132px;
+  flex-shrink: 0;
 }
 
-.area-status.normal {
-  background-color: #e6f7ff;
-  color: #13c2c2;
-}
-
-.area-status.warning {
-  background-color: #fff7e6;
-  color: #fa8c16;
-}
-
-.area-status.error {
-  background-color: #fff1f0;
-  color: #f5222d;
-}
-
-.area-stats {
+.area-list {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 310px;
+  overflow: auto;
+}
+
+.area-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 12px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #edf0f5;
+  border-radius: 8px;
+  background: #fbfcfe;
+  text-align: left;
+  cursor: pointer;
+}
+
+.area-row:hover {
+  border-color: #93c5fd;
+  background: #f8fbff;
+}
+
+.area-main,
+.area-title,
+.queue-copy {
+  min-width: 0;
+}
+
+.area-main,
+.queue-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.area-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.area-title strong,
+.queue-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.area-subtitle,
+.queue-copy em {
+  margin-top: 5px;
+  color: #6b7280;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.area-metrics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #111827;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.online-bar {
+  grid-column: 1 / -1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.online-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #10b981;
+}
+
+.chart-wrap {
+  height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trend-chart {
+  width: 100%;
+  height: 100%;
+}
+
+.queue-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.queue-group + .queue-group {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #edf0f5;
+}
+
+.queue-title {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 700;
 }
 
-.stat {
-  display: flex;
-  flex-direction: column;
-}
-
-.label {
-  font-size: 12px;
-  color: #909399;
-}
-
-.value {
-  font-size: 16px;
-  font-weight: bold;
-  color: #303133;
-}
-
-.area-devices {
-  font-size: 12px;
-  color: #909399;
-}
-
-.chart-section {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.chart-filters {
-  display: flex;
-  gap: 12px;
-}
-
-.chart-filter {
-  width: 150px;
-}
-
-.chart-container {
-  margin-top: 16px;
-  min-height: 300px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.chart-placeholder {
-  text-align: center;
-  color: #909399;
-}
-
-.chart-title {
-  font-size: 18px;
-  margin-bottom: 8px;
-}
-
-.chart-subtitle {
-  font-size: 16px;
-  margin-bottom: 4px;
-}
-
-.chart-description {
-  font-size: 14px;
-}
-
-.alerts-section, .orders-section {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.view-all-btn {
-  border: none;
-}
-
-.table-container {
-  margin-top: 16px;
-  overflow-x: auto;
-  max-height: 300px;
-}
-
-/* Table styles for better alignment and font sizing */
-:deep(.el-table th),
-:deep(.el-table td) {
-  text-align: center !important;
-  font-size: 15px;
-}
-
-:deep(.el-table th) {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.quick-actions-section {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.quick-actions-grid {
+.queue-item {
+  width: 100%;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* Distribute evenly based on content */
-  gap: 24px; /* Increase gap for better spacing */
-  margin-top: 16px;
-}
-
-.quick-action-card {
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: center;
-  padding: 24px 16px; /* Increase padding for better visual appearance */
-  border: 1px solid #dcdfe6;
-  border-radius: 8px;
+  gap: 10px;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
   cursor: pointer;
-  transition: all 0.2s;
-  min-height: 120px; /* Ensure consistent height */
-  text-align: center; /* Center the text */
 }
 
-.quick-action-card:hover {
-  border-color: #409eff;
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+.queue-item:hover {
+  background: #f6f8fb;
 }
 
-.action-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #e6f7ff;
+.queue-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  margin-bottom: 8px;
-  color: #409eff;
 }
 
-.action-text {
-  font-size: 14px;
-  color: #606266;
+.queue-dot.danger {
+  background: #ef4444;
 }
 
-/* Responsive design */
-@media (max-width: 1200px) {
-  .kpi-section {
-    grid-template-columns: repeat(2, 1fr);
+.queue-dot.warning {
+  background: #f59e0b;
+}
+
+.quick-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.quick-strip button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+}
+
+.quick-strip button:hover {
+  border-color: #93c5fd;
+  color: #2563eb;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background: #f8fafc;
+  color: #4b5563;
+  font-weight: 650;
+}
+
+:deep(.el-table .cell) {
+  line-height: 1.35;
+}
+
+@media (max-width: 1280px) {
+  .operations-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1500px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-header {
+    flex-direction: column;
   }
 
-  .overview-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  .kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 768px) {
-  .kpi-section {
+@media (max-width: 620px) {
+  .dashboard-page {
+    padding: 16px;
+  }
+
+  .kpi-strip {
     grid-template-columns: 1fr;
   }
 
-  .quick-actions-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  .panel-header,
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .compact-select {
+    width: 100%;
   }
 }
 </style>

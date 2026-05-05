@@ -356,13 +356,22 @@ public class AlertService {
     private AlertDto convertToAlertDto(AlertEntity entity) {
         AlertDto dto = new AlertDto();
         dto.setId(entity.getId());
-        // 将Long类型的deviceId转换为String
         dto.setDeviceId(entity.getDeviceId() != null ? entity.getDeviceId().toString() : null);
         dto.setDeviceName(entity.getDeviceName());
+        dto.setDeviceCode(entity.getDeviceCode());
+        dto.setAreaId(entity.getAreaId() != null ? entity.getAreaId() : entity.getWarehouseId());
+        dto.setAreaName(entity.getAreaName());
         dto.setAlertType(entity.getAlertType());
-        dto.setDescription(entity.getMessage()); // message映射到description
+        dto.setAlertLevel(entity.getAlertLevel());
+        dto.setDescription(entity.getMessage());
+        dto.setTemperature(entity.getTemperature());
+        dto.setHumidity(entity.getHumidity());
+        dto.setThresholdValue(entity.getThresholdValue());
+        dto.setStatus(entity.getStatus());
+        dto.setHandleRemark(entity.getHandleRemark());
+        dto.setHandleTime(entity.getHandleTime());
+        dto.setCreatedTime(entity.getCreateTime());
 
-        // 将AlertEntity中的alertLevel映射到AlertDto中的severityLevel
         if (entity.getAlertLevel() != null) {
             switch (entity.getAlertLevel().toUpperCase()) {
                 case "LOW":
@@ -382,20 +391,19 @@ public class AlertService {
             }
         }
 
-        // 将AlertEntity中的status映射到AlertDto中的isResolved
         if (entity.getStatus() != null) {
             dto.setResolved("RESOLVED".equalsIgnoreCase(entity.getStatus()) ||
                            "IGNORED".equalsIgnoreCase(entity.getStatus()));
         }
 
-        // 将LocalDateTime类型的firstTime转换为Long类型的createdAt（毫秒时间戳）
-        if (entity.getFirstTime() != null) {
-            dto.setCreatedAt(entity.getFirstTime().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+        LocalDateTime createdTime = entity.getCreateTime() != null ? entity.getCreateTime() : entity.getFirstTime();
+        if (createdTime != null) {
+            dto.setCreatedAt(createdTime.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
         }
 
-        // 将LocalDateTime类型的updateTime转换为Long类型的resolvedAt（毫秒时间戳）
-        if (entity.getUpdateTime() != null) {
-            dto.setResolvedAt(entity.getUpdateTime().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+        LocalDateTime resolvedTime = entity.getUpdateTime() != null ? entity.getUpdateTime() : entity.getHandleTime();
+        if (resolvedTime != null) {
+            dto.setResolvedAt(resolvedTime.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
         }
 
         return dto;

@@ -21,18 +21,19 @@
 
       <el-form-item label="工单类型" prop="workType">
         <el-select v-model="form.workType" placeholder="请选择工单类型" style="width: 100%">
+          <el-option label="告警修复" value="ALERT_FIX" />
           <el-option label="告警消缺" value="ALERT_DEFECT" />
-          <el-option label="日常巡检" value="ROUTINE_INSPECTION" />
-          <el-option label="设备维保" value="EQUIPMENT_MAINTENANCE" />
+          <el-option label="日常巡检" value="INSPECTION" />
+          <el-option label="设备维保" value="MAINTENANCE" />
         </el-select>
       </el-form-item>
 
       <el-form-item label="优先级" prop="priority">
         <el-radio-group v-model="form.priority">
-          <el-radio label="LOW">低</el-radio>
-          <el-radio label="MEDIUM">中</el-radio>
-          <el-radio label="HIGH">高</el-radio>
-          <el-radio label="URGENT">紧急</el-radio>
+          <el-radio value="LOW">低</el-radio>
+          <el-radio value="MEDIUM">中</el-radio>
+          <el-radio value="HIGH">高</el-radio>
+          <el-radio value="URGENT">紧急</el-radio>
         </el-radio-group>
       </el-form-item>
 
@@ -49,25 +50,34 @@
 
       <el-form-item label="库区" prop="warehouseId">
         <el-select v-model="form.warehouseId" placeholder="请选择库区" style="width: 100%">
-          <el-option label="冷库A区" value="1" />
-          <el-option label="冷库B区" value="2" />
-          <el-option label="恒温库" value="3" />
+          <el-option
+            v-for="area in areaOptions"
+            :key="area.id"
+            :label="area.areaName || area.name"
+            :value="area.id"
+          />
         </el-select>
       </el-form-item>
 
       <el-form-item label="设备" prop="deviceId">
         <el-select v-model="form.deviceId" placeholder="请选择设备" style="width: 100%">
-          <el-option label="温度传感器001" value="1" />
-          <el-option label="湿度传感器002" value="2" />
-          <el-option label="温湿度一体机003" value="3" />
+          <el-option
+            v-for="device in filteredDevices"
+            :key="device.id"
+            :label="device.deviceName"
+            :value="device.id"
+          />
         </el-select>
       </el-form-item>
 
       <el-form-item label="责任人" prop="assigneeId">
         <el-select v-model="form.assigneeId" placeholder="请选择责任人" style="width: 100%">
-          <el-option label="张三" value="1" />
-          <el-option label="李四" value="2" />
-          <el-option label="王五" value="3" />
+          <el-option
+            v-for="employee in employeeOptions"
+            :key="employee.id"
+            :label="employee.realName || employee.username"
+            :value="employee.id"
+          />
         </el-select>
       </el-form-item>
 
@@ -84,8 +94,12 @@
 
       <el-form-item label="关联告警">
         <el-select v-model="form.alertId" placeholder="可选择关联的告警" style="width: 100%" clearable>
-          <el-option label="告警001: 温度过高" value="1" />
-          <el-option label="告警002: 湿度过低" value="2" />
+          <el-option
+            v-for="alert in alertOptions"
+            :key="alert.id"
+            :label="`#${alert.id} ${alert.description || alert.alertType}`"
+            :value="alert.id"
+          />
         </el-select>
       </el-form-item>
     </el-form>
@@ -103,6 +117,10 @@
 import { ref, computed, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { workOrderApi } from '@/api/work-order.js';
+import { alertApi } from '@/api/alert.js';
+import { areaApi } from '@/api/area.js';
+import { deviceApi } from '@/api/device.js';
+import { employeeApi } from '@/utils/api.js';
 
 // Props
 const props = defineProps({
@@ -130,6 +148,10 @@ const form = ref({
 
 const formRef = ref();
 const submitting = ref(false);
+const areaOptions = ref([]);
+const deviceOptions = ref([]);
+const employeeOptions = ref([]);
+const alertOptions = ref([]);
 
 // Validation rules
 const rules = {
@@ -161,6 +183,53 @@ const dialogVisible = computed({
     if (!value) {
       emit('close');
     }
+  }
+});
+
+const unwrapPageList = (response) => {
+  const payload = response?.data?.data || response?.data || {};
+  if (Array.isArray(payload)) return payload;
+  return payload.data || payload.records || payload.list || [];
+};
+
+const flattenAreas = (nodes = []) => {
+  const result = [];
+  nodes.forEach(node => {
+    result.push(node);
+    if (node.children?.length) {
+      result.push(...flattenAreas(node.children));
+    }
+  });
+  return result;
+};
+
+const filteredDevices = computed(() => {
+  if (!form.value.warehouseId) return deviceOptions.value;
+  return deviceOptions.value.filter(device => device.areaId === form.value.warehouseId);
+});
+
+const loadOptions = async () => {
+  try {
+    const [areasRes, devicesRes, employeesRes, alertsRes] = await Promise.all([
+      areaApi.getAreaTree(),
+      deviceApi.getList({ page: 1, size: 200 }),
+      employeeApi.getEmployeeList({}, 1, 200),
+      alertApi.search({ page: 1, size: 50, status: 'UNHANDLED' })
+    ]);
+
+    areaOptions.value = flattenAreas(areasRes.data?.data || []);
+    deviceOptions.value = unwrapPageList(devicesRes);
+    employeeOptions.value = unwrapPageList(employeesRes);
+    alertOptions.value = unwrapPageList(alertsRes);
+  } catch (error) {
+    console.error('加载工单选项失败:', error);
+    ElMessage.warning('部分工单选项加载失败，请稍后重试');
+  }
+};
+
+watch(() => props.visible, (visible) => {
+  if (visible) {
+    loadOptions();
   }
 });
 

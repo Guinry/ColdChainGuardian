@@ -14,8 +14,8 @@
         FROM (
             SELECT
                 COUNT(d.id) as enabledDevices,
-                SUM(CASE WHEN UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time) &lt;= 120 THEN 1 ELSE 0 END) as onlineDevices,
-                SUM(CASE WHEN UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time) &gt; 120 THEN 1 ELSE 0 END) as offlineDevices,
+                SUM(CASE WHEN d.online_status = 1 THEN 1 ELSE 0 END) as onlineDevices,
+                SUM(CASE WHEN d.online_status = 0 THEN 1 ELSE 0 END) as offlineDevices,
                 COUNT(DISTINCT CASE WHEN ua.device_id IS NOT NULL THEN ua.device_id ELSE NULL END) as alarmingDevices,
                 COUNT(DISTINCT CASE WHEN d.last_seen_time &gt;= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN d.id ELSE NULL END) as last5MinReportDevices
             FROM devices d
@@ -47,13 +47,17 @@
         </if>
         <if test="online != null">
             AND (
-                (#{online} = 1 OR #{online} = true OR #{online} = 'true') AND (UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time)) &lt;= 120
+                (#{online} = 1 OR #{online} = true OR #{online} = 'true') AND d.online_status = 1
                 OR
-                (#{online} = 0 OR #{online} = false OR #{online} = 'false') AND (UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time)) &gt; 120
+                (#{online} = 0 OR #{online} = false OR #{online} = 'false') AND d.online_status = 0
             )
         </if>
         <if test="alarming != null">
-            AND ua.alert_count IS NOT NULL
+            AND (
+                ((#{alarming} = 1 OR #{alarming} = true OR #{alarming} = 'true') AND ua.alert_count IS NOT NULL)
+                OR
+                ((#{alarming} = 0 OR #{alarming} = false OR #{alarming} = 'false') AND ua.alert_count IS NULL)
+            )
         </if>
         <if test="deviceType != null and deviceType != ''">
             AND d.device_type = #{deviceType}
@@ -90,17 +94,19 @@
             d.device_type as deviceType,
             d.area_id as areaId,
             wa.area_name as areaName,
-            CASE
-                WHEN UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time) &lt;= 120
-                THEN 1
-                ELSE 0
-            END as online,
+            wa.area_name as areaPath,
+            d.online_status as online,
             d.last_seen_time as lastSeenTime,
             ld.temperature as latestTemp,
             ld.humidity as latestHumi,
             ld.data_time as latestDataTime,
             IFNULL(ua.alert_count &gt; 0, 0) as hasUnresolvedAlert,
-            ua.highest_alert_level as highestAlertLevel
+            ua.highest_alert_level as highestAlertLevel,
+            d.threshold_mode as thresholdMode,
+            COALESCE(d.temperature_threshold_min, wa.temperature_threshold_min) as temperatureThresholdMin,
+            COALESCE(d.temperature_threshold_max, wa.temperature_threshold_max) as temperatureThresholdMax,
+            COALESCE(d.humidity_threshold_min, wa.humidity_threshold_min) as humidityThresholdMin,
+            COALESCE(d.humidity_threshold_max, wa.humidity_threshold_max) as humidityThresholdMax
         FROM devices d
         LEFT JOIN latest_data ld ON ld.device_id = d.id AND ld.rn = 1
         LEFT JOIN unresolved_alerts ua ON ua.device_id = d.id
@@ -111,13 +117,17 @@
         </if>
         <if test="online != null">
             AND (
-                (#{online} = 1 OR #{online} = true OR #{online} = 'true') AND (UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time)) &lt;= 120
+                (#{online} = 1 OR #{online} = true OR #{online} = 'true') AND d.online_status = 1
                 OR
-                (#{online} = 0 OR #{online} = false OR #{online} = 'false') AND (UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(d.last_seen_time)) &gt; 120
+                (#{online} = 0 OR #{online} = false OR #{online} = 'false') AND d.online_status = 0
             )
         </if>
         <if test="alarming != null">
-            AND ua.alert_count IS NOT NULL
+            AND (
+                ((#{alarming} = 1 OR #{alarming} = true OR #{alarming} = 'true') AND ua.alert_count IS NOT NULL)
+                OR
+                ((#{alarming} = 0 OR #{alarming} = false OR #{alarming} = 'false') AND ua.alert_count IS NULL)
+            )
         </if>
         <if test="deviceType != null and deviceType != ''">
             AND d.device_type = #{deviceType}

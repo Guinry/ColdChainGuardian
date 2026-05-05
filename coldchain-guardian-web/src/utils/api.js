@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { recordAuditEvent } from '@/utils/audit'
 
 // Create an Axios instance
 export const apiClient = axios.create({
@@ -25,8 +26,31 @@ apiClient.interceptors.request.use(
 
 // Response interceptor to handle token expiration
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const method = response.config?.method?.toUpperCase()
+    if (method && method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+      recordAuditEvent({
+        method,
+        url: response.config?.url,
+        status: response.status,
+        result: 'SUCCESS',
+        message: response.data?.message || '操作成功'
+      })
+    }
+    return response
+  },
   (error) => {
+    const method = error.config?.method?.toUpperCase()
+    if (method && method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+      recordAuditEvent({
+        method,
+        url: error.config?.url,
+        status: error.response?.status || '-',
+        result: 'FAILED',
+        message: error.response?.data?.message || error.message || '操作失败'
+      })
+    }
+
     // Only redirect on 401 if not on login route
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname
@@ -113,6 +137,29 @@ export const employeeApi = {
   // 解绑员工微信账号
   unbindEmployeeWechat: (userId) =>
     apiClient.delete(`/admin/employees/${userId}/wechat-binding`)
+};
+
+export const managerApi = {
+  getManagerList: (params, pageNum = 1, pageSize = 10) =>
+    apiClient.get('/admin/managers', {
+      params: {
+        ...params,
+        pageNum,
+        pageSize
+      }
+    }),
+
+  createManager: (data) => apiClient.post('/admin/managers', data),
+
+  updateManager: (data) => apiClient.put('/admin/managers', data),
+
+  updateManagerStatus: (userId, status) =>
+    apiClient.patch(`/admin/managers/${userId}/status`, null, {
+      params: { status }
+    }),
+
+  unbindManagerWechat: (userId) =>
+    apiClient.delete(`/admin/managers/${userId}/wechat-binding`)
 };
 
 export const userApi = {

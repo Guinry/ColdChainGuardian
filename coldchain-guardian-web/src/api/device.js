@@ -38,13 +38,15 @@ export const deviceApi = {
   },
 
   // 启用/禁用设备
-  updateStatus(id, enabled) {
-    return apiClient.put(`/devices/${id}/status`, { enabled })
+  updateStatus(id, data) {
+    const payload = typeof data === 'object' && data !== null ? data : { enabled: data }
+    return apiClient.put(`/devices/${id}/status`, payload)
   },
 
   // 更新告警开关状态
-  updateAlarmStatus(id, alarmEnabled) {
-    return apiClient.put(`/devices/${id}/alarm-status`, { alarmEnabled })
+  updateAlarmStatus(id, data) {
+    const payload = typeof data === 'object' && data !== null ? data : { alarmEnabled: data }
+    return apiClient.put(`/devices/${id}/alarm-status`, payload)
   },
 
   // 更新设备阈值
@@ -53,8 +55,9 @@ export const deviceApi = {
   },
 
   // 批量启用/禁用设备
-  batchUpdateStatus(ids, enabled) {
-    return apiClient.put('/devices/batch-status', { ids, enabled })
+  batchUpdateStatus(data, enabled) {
+    const payload = Array.isArray(data) ? { ids: data, enabled } : data
+    return apiClient.put('/devices/batch-status', payload)
   },
 
   // 解绑设备与库区的关联

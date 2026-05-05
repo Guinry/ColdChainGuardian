@@ -1,0 +1,147 @@
+<view class="page-container">
+  <view class="fixed-header" style="padding-top: {{paddingTop}}px;">
+    <view class="nav-bar" style="height: {{capsuleHeight}}px;">
+      <view class="back-btn" bindtap="goBack">
+        <text class="back-icon">‹</text>
+      </view>
+      <text class="nav-title">新建报修</text>
+      <view class="right-placeholder"></view>
+    </view>
+  </view>
+
+  <scroll-view class="scroll-area" scroll-y="true" enhanced="true" show-scrollbar="false">
+    <view class="intro-panel">
+      <text class="intro-title">提交现场问题</text>
+      <text class="intro-desc">选择发生库区，补充问题描述后生成待处理工单。</text>
+      <view class="intro-meta">
+        <text class="meta-pill">默认分配给当前账号</text>
+        <text class="meta-pill">24小时内截止</text>
+      </view>
+    </view>
+
+    <view class="form-section">
+      <view class="field-block">
+        <view class="field-head">
+          <text class="field-label required">工单标题</text>
+          <text class="field-hint">{{form.title.length}}/40</text>
+        </view>
+        <input class="text-input"
+               value="{{form.title}}"
+               maxlength="40"
+               placeholder="例如：B02 冷藏库温度波动异常"
+               bindinput="onTitleInput" />
+      </view>
+
+      <view class="field-block">
+        <view class="field-head">
+          <text class="field-label required">工单类型</text>
+        </view>
+        <view class="segmented">
+          <view class="segment-item {{form.workType === item.value ? 'active' : ''}}"
+                wx:for="{{typeOptions}}"
+                wx:key="value"
+                data-value="{{item.value}}"
+                bindtap="chooseType">
+            {{item.label}}
+          </view>
+        </view>
+      </view>
+
+      <view class="field-block">
+        <view class="field-head">
+          <text class="field-label required">优先级</text>
+        </view>
+        <view class="priority-row">
+          <view class="priority-chip {{form.priority === item.value ? 'active ' + item.className : ''}}"
+                wx:for="{{priorityOptions}}"
+                wx:key="value"
+                data-value="{{item.value}}"
+                bindtap="choosePriority">
+            {{item.label}}
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="form-section">
+      <view class="field-block">
+        <view class="field-head">
+          <text class="field-label required">发生库区</text>
+          <text wx:if="{{loadingOptions}}" class="field-hint">加载中</text>
+        </view>
+        <picker mode="selector"
+                range="{{areaOptions}}"
+                range-key="name"
+                value="{{areaIndex}}"
+                bindchange="onAreaChange">
+          <view class="picker-row {{areaIndex < 0 ? 'placeholder' : ''}}">
+            <text>{{areaIndex >= 0 ? areaOptions[areaIndex].name : '请选择发生库区'}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+
+      <view class="field-block">
+        <view class="field-head">
+          <text class="field-label">关联设备</text>
+          <text class="field-hint">可选</text>
+        </view>
+        <picker mode="selector"
+                disabled="{{filteredDevices.length === 0}}"
+                range="{{filteredDevices}}"
+                range-key="name"
+                value="{{deviceIndex}}"
+                bindchange="onDeviceChange">
+          <view class="picker-row {{deviceIndex < 0 ? 'placeholder' : ''}}">
+            <text>{{deviceIndex >= 0 ? filteredDevices[deviceIndex].name : (filteredDevices.length ? '请选择关联设备' : '暂无可选设备')}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+
+      <view class="field-block">
+        <view class="field-head">
+          <text class="field-label">详细位置</text>
+          <text class="field-hint">{{form.locationDetail.length}}/60</text>
+        </view>
+        <input class="text-input"
+               value="{{form.locationDetail}}"
+               maxlength="60"
+               placeholder="例如：B栋冷藏库 B02 货架北侧"
+               bindinput="onLocationInput" />
+      </view>
+    </view>
+
+    <view class="form-section">
+      <view class="field-block">
+        <view class="field-head">
+          <text class="field-label required">情况描述</text>
+          <text class="field-hint">{{form.description.length}}/500</text>
+        </view>
+        <textarea class="textarea-input"
+                  value="{{form.description}}"
+                  maxlength="500"
+                  placeholder="请说明现场现象、影响范围、已采取措施或需要协助的内容"
+                  bindinput="onDescriptionInput"></textarea>
+      </view>
+    </view>
+
+    <view class="preview-card">
+      <view class="preview-head">
+        <text class="preview-title">提交预览</text>
+        <text class="preview-status">待接收</text>
+      </view>
+      <text class="preview-line">库区：{{selectedAreaName || '未选择'}}</text>
+      <text class="preview-line">设备：{{selectedDeviceName || '未关联设备'}}</text>
+      <text class="preview-line">位置：{{form.locationDetail || '未填写详细位置'}}</text>
+    </view>
+
+    <view class="bottom-spacer"></view>
+  </scroll-view>
+
+  <view class="fixed-bottom-bar">
+    <button class="submit-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submitOrder">
+      提交工单
+    </button>
+  </view>
+</view>

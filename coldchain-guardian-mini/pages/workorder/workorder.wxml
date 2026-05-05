@@ -1,54 +1,87 @@
 <view class="page-container">
-
   <view class="fixed-header" style="padding-top: {{paddingTop}}px;">
-    <view class="nav-title" style="height: {{capsuleHeight}}px; line-height: {{capsuleHeight}}px;">
-      <text>工单处理</text>
+    <view class="nav-row" style="height: {{capsuleHeight}}px;">
+      <view class="nav-side"></view>
+      <text class="nav-title">工单处理</text>
+      <view class="nav-action" bindtap="goCreateOrder">新建</view>
     </view>
-    <view class="segment-wrap">
-      <view class="segment-control">
-        <view class="segment-item {{activeTab === 'pending' ? 'active' : ''}}" data-tab="pending" bindtap="switchTab">待接收</view>
-        <view class="segment-item {{activeTab === 'processing' ? 'active' : ''}}" data-tab="processing" bindtap="switchTab">处理中</view>
-        <view class="segment-item {{activeTab === 'completed' ? 'active' : ''}}" data-tab="completed" bindtap="switchTab">已完成</view>
+
+    <view class="search-bar">
+      <input class="search-input"
+             value="{{keyword}}"
+             bindinput="onKeywordInput"
+             bindconfirm="searchOrders"
+             confirm-type="search"
+             placeholder="搜索工单标题、位置或描述" />
+      <text wx:if="{{keyword}}" class="search-clear" bindtap="clearSearch">清除</text>
+      <text class="search-action" bindtap="searchOrders">搜索</text>
+    </view>
+
+    <scroll-view class="tab-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+      <view class="tab-row">
+        <view class="tab-item {{activeTab === item.key ? 'active' : ''}}"
+              wx:for="{{tabs}}"
+              wx:key="key"
+              data-tab="{{item.key}}"
+              bindtap="switchTab">
+          <text>{{item.label}}</text>
+          <text class="tab-count">{{item.count}}</text>
+        </view>
       </view>
-    </view>
+    </scroll-view>
   </view>
 
-  <scroll-view class="scroll-area" scroll-y="true" type="list" refresher-enabled="true" refresher-triggered="{{isRefreshing}}" bindrefresherrefresh="onRefresh">
+  <scroll-view class="scroll-area"
+               scroll-y="true"
+               type="list"
+               refresher-enabled="true"
+               refresher-triggered="{{isRefreshing}}"
+               bindrefresherrefresh="onRefresh">
 
     <view class="workorder-list" wx:if="{{workOrders.length > 0}}">
-      <view class="workorder-card {{item.priority}}" wx:for="{{workOrders}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}" hover-class="card-hover">
-
+      <view class="workorder-card {{item.priority}}"
+            wx:for="{{workOrders}}"
+            wx:key="id"
+            bindtap="goToDetail"
+            data-id="{{item.id}}"
+            hover-class="card-hover">
         <view class="card-header">
           <view class="title-wrap">
-            <view class="type-tag">{{item.type}}</view>
             <text class="workorder-title">{{item.title}}</text>
+            <text class="status-tag {{item.statusClass}}">{{item.statusText}}</text>
+          </view>
+          <view class="tag-line">
+            <text class="type-tag">{{item.type}}</text>
+            <text class="priority-tag">{{item.priorityText}}</text>
+            <text wx:if="{{item.isOverdue}}" class="overdue-tag">已逾期</text>
           </view>
         </view>
 
         <view class="card-body">
-          <view class="info-row">
-            <text class="info-icon">📍</text>
-            <text class="info-text">{{item.location}}</text>
-          </view>
-          <view class="info-row mt-10">
-            <text class="info-icon">⏳</text>
-            <text class="info-text {{item.priority === 'urgent' ? 'text-danger' : ''}}">{{item.deadline}}</text>
-          </view>
+          <text class="info-line">位置：{{item.location}}</text>
+          <text class="info-line {{item.isOverdue ? 'text-danger' : ''}}">截止：{{item.deadline}}</text>
         </view>
 
         <view class="card-footer">
-          <text class="footer-text">查看详情</text>
-          <text class="footer-icon">></text>
+          <text class="footer-text">{{item.canAccept ? '接收处理' : item.canSubmit ? '继续处理' : '查看详情'}}</text>
+          <text class="footer-icon">›</text>
         </view>
+      </view>
 
+      <view class="load-more" wx:if="{{hasMore}}" bindtap="loadMore">
+        <text>{{loading ? '加载中...' : '加载更多'}}</text>
+      </view>
+      <view class="load-more done" wx:else>
+        <text>已加载全部 {{total}} 条</text>
       </view>
     </view>
 
     <view wx:else class="empty-state">
-      <text class="empty-emoji">📋</text>
-      <text class="empty-text">当前分类下没有工单</text>
+      <text class="empty-title">{{loading ? '正在加载工单' : '当前分类暂无工单'}}</text>
+      <text class="empty-desc">可切换状态或搜索工单内容</text>
+      <button wx:if="{{!loading}}" class="empty-action" bindtap="goCreateOrder">新建报修工单</button>
     </view>
 
-    <view style="height: 40rpx;"></view>
+    <view class="bottom-space"></view>
   </scroll-view>
 </view>

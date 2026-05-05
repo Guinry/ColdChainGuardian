@@ -1,5 +1,4 @@
 <view class="page-container">
-
   <view class="fixed-nav" style="height: {{navHeight}}px;">
     <view class="nav-title"
       style="padding-top: {{paddingTop}}px; height: {{capsuleHeight}}px; line-height: {{capsuleHeight}}px;">
@@ -7,7 +6,12 @@
     </view>
   </view>
 
-  <scroll-view class="scroll-area" scroll-y="true" type="list">
+  <scroll-view class="scroll-area"
+               scroll-y="true"
+               type="list"
+               refresher-enabled="true"
+               refresher-triggered="{{isRefreshing}}"
+               bindrefresherrefresh="onRefresh">
 
     <view class="header-bg"></view>
 
@@ -18,57 +22,61 @@
       </view>
       <view class="user-info">
         <text class="user-name">{{userInfo.name}}</text>
-        <view class="tag-wrap">
-          <text class="user-dept">{{userInfo.department}}</text>
-        </view>
+        <text class="user-meta">{{userInfo.roleText}} · {{userInfo.phone}}</text>
       </view>
     </view>
 
-    <view class="section-title">我的绩效</view>
-    <view class="performance-card">
+    <view class="section-title">工单概览</view>
+    <view class="performance-grid">
       <view class="perf-item">
-        <text class="perf-val">{{performance.completionRate}}</text>
-        <text class="perf-label">按时完成率</text>
+        <text class="perf-val">{{performance.pendingCount}}</text>
+        <text class="perf-label">待接收</text>
       </view>
-      <view class="perf-divider"></view>
       <view class="perf-item">
-        <text class="perf-val">{{performance.processedCount}}</text>
-        <text class="perf-label">本月处理 (单)</text>
+        <text class="perf-val">{{performance.processingCount}}</text>
+        <text class="perf-label">处理中</text>
+      </view>
+      <view class="perf-item warning">
+        <text class="perf-val">{{performance.overdueCount}}</text>
+        <text class="perf-label">已逾期</text>
+      </view>
+      <view class="perf-item">
+        <text class="perf-val">{{performance.completedThisWeek}}</text>
+        <text class="perf-label">本周完成</text>
       </view>
     </view>
 
-    <view class="section-title">离线数据中心</view>
-    <view class="offline-card">
-      <view class="offline-header">
-        <view class="status-wrap">
-          <text class="status-dot {{offlineData.syncStatus === '已连接' ? 'green' : 'red'}}"></text>
-          <text class="status-text">网络{{offlineData.syncStatus}}</text>
+    <view class="section-title">连接状态</view>
+    <view class="settings-card">
+      <view class="setting-item">
+        <view class="setting-copy">
+          <text class="setting-name">后端服务</text>
+          <text class="setting-desc">{{connection.apiBaseUrl}}</text>
         </view>
-        <button class="sync-btn {{offlineData.pendingWorkOrders > 0 ? 'active' : ''}}" bindtap="manualSync">
-          {{offlineData.pendingWorkOrders > 0 ? '立即同步' : '已是最新'}}
-        </button>
+        <text class="status-pill {{connection.status === '已连接' ? 'ok' : 'bad'}}">{{connection.status}}</text>
       </view>
-      <view class="offline-body">
-        <text class="offline-label">本地暂存工单</text>
-        <view class="offline-value">
-          <text
-            class="num {{offlineData.pendingWorkOrders > 0 ? 'text-warning' : ''}}">{{offlineData.pendingWorkOrders}}</text>
-          <text class="unit">条</text>
+      <view class="setting-item arrow-item" bindtap="manualSync">
+        <view class="setting-copy">
+          <text class="setting-name">刷新数据</text>
+          <text class="setting-desc">重新拉取账号与工单统计</text>
         </view>
+        <text class="arrow-icon">›</text>
       </view>
     </view>
 
-    <view class="section-title">消息设置</view>
+    <view class="section-title">消息偏好</view>
     <view class="settings-card">
       <view class="setting-item" wx:for="{{notificationSettings}}" wx:key="id">
-        <text class="setting-name">{{item.name}}</text>
-        <switch class="setting-switch" color="#3A7AFE" checked="{{item.enabled}}" data-id="{{item.id}}"
-          bindchange="toggleNotification" />
+        <view class="setting-copy">
+          <text class="setting-name">{{item.name}}</text>
+          <text class="setting-desc">{{item.enabled ? '已开启' : '已关闭'}}</text>
+        </view>
+        <switch class="setting-switch" color="#1565D8" checked="{{item.enabled}}" data-id="{{item.id}}" bindchange="toggleNotification" />
       </view>
     </view>
 
     <view class="settings-card mt-24">
-      <view class="setting-item arrow-item">
+      <view class="setting-item arrow-item" bindtap="showAbout">
         <text class="setting-name">关于冷链守护</text>
         <text class="arrow-icon">›</text>
       </view>
@@ -77,7 +85,6 @@
       </view>
     </view>
 
-    <view style="height: 60rpx;"></view>
+    <view class="bottom-space"></view>
   </scroll-view>
-
 </view>

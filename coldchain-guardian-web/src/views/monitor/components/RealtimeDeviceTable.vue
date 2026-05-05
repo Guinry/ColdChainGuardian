@@ -1,9 +1,9 @@
 <template>
   <div class="device-table-container">
     <!-- 筛选栏 -->
-    <el-form :model="localFilters" inline class="filter-form">
-      <el-row :gutter="12">
-        <el-col :span="6">
+    <el-form :model="localFilters" class="filter-form">
+      <div class="filter-grid">
+        <div class="filter-item keyword">
           <el-form-item label="关键字">
             <el-input
               v-model="localFilters.keyword"
@@ -12,8 +12,8 @@
               @keyup.enter="handleFilterChange"
             />
           </el-form-item>
-        </el-col>
-        <el-col :span="4.5">
+        </div>
+        <div class="filter-item">
           <el-form-item label="在线状态">
             <el-select
               v-model="localFilters.online"
@@ -25,8 +25,8 @@
               <el-option label="离线" :value="false" />
             </el-select>
           </el-form-item>
-        </el-col>
-        <el-col :span="4.5">
+        </div>
+        <div class="filter-item">
           <el-form-item label="告警状态">
             <el-select
               v-model="localFilters.alarming"
@@ -38,8 +38,8 @@
               <el-option label="无" :value="false" />
             </el-select>
           </el-form-item>
-        </el-col>
-        <el-col :span="4.5">
+        </div>
+        <div class="filter-item">
           <el-form-item label="设备类型">
             <el-select
               v-model="localFilters.deviceType"
@@ -53,14 +53,14 @@
               <el-option label="门磁" value="DOOR" />
             </el-select>
           </el-form-item>
-        </el-col>
-        <el-col :span="4.5">
+        </div>
+        <div class="filter-actions">
           <el-form-item>
             <el-button type="primary" @click="handleFilterChange" :icon="Search">查询</el-button>
             <el-button @click="resetFilters">重置</el-button>
           </el-form-item>
-        </el-col>
-      </el-row>
+        </div>
+      </div>
     </el-form>
 
     <!-- 表格 -->
@@ -73,7 +73,7 @@
       stripe
       :header-cell-style="{ background: '#f8f9ff', color: '#606266' }"
     >
-      <el-table-column prop="deviceName" label="设备信息" min-width="150">
+      <el-table-column prop="deviceName" label="设备信息" min-width="140">
         <template #default="{ row }">
           <div class="device-info">
             <div class="device-name">{{ row.deviceName }}</div>
@@ -82,16 +82,16 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="areaPath" label="所属库区" min-width="180" show-overflow-tooltip>
+      <el-table-column prop="areaPath" label="所属库区" min-width="132" show-overflow-tooltip>
         <template #default="{ row }">
-          <el-link type="primary" @click="goToArea(row.areaId)" :underline="'never'">
+          <el-link class="area-link" type="primary" @click="goToArea(row.areaId)" :underline="'never'">
             <el-icon><Location /></el-icon>
             {{ row.areaPath }}
           </el-link>
         </template>
       </el-table-column>
 
-      <el-table-column prop="latestTemp" label="最新温度(℃)" min-width="120" sortable>
+      <el-table-column prop="latestTemp" label="温度(℃)" min-width="98" sortable>
         <template #default="{ row }">
           <div :class="['temp-value', getTempClass(row.latestTemp, row.temperatureThresholdMin, row.temperatureThresholdMax)]">
             <span v-if="row.latestTemp !== null">{{ row.latestTemp }}℃</span>
@@ -102,7 +102,7 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="latestHumi" label="最新湿度(%)" min-width="120" sortable>
+      <el-table-column prop="latestHumi" label="湿度(%)" min-width="98" sortable>
         <template #default="{ row }">
           <div :class="['humi-value', getHumiClass(row.latestHumi, row.humidityThresholdMin, row.humidityThresholdMax)]">
             <span v-if="row.latestHumi !== null">{{ row.latestHumi }}%</span>
@@ -113,7 +113,7 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="latestDataTime" label="数据时间" min-width="140" sortable>
+      <el-table-column prop="latestDataTime" label="数据时间" min-width="112" sortable>
         <template #default="{ row }">
           <div class="time-cell">
             <span v-if="row.latestDataTime">{{ formatDate(row.latestDataTime) }}</span>
@@ -122,7 +122,7 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="online" label="在线状态" min-width="90" align="center">
+      <el-table-column prop="online" label="在线" min-width="78" align="center">
         <template #default="{ row }">
           <el-tag :type="row.online ? 'success' : 'danger'" size="small">
             {{ row.online ? '在线' : '离线' }}
@@ -130,7 +130,7 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="hasUnresolvedAlert" label="告警状态" min-width="120" align="center">
+      <el-table-column prop="hasUnresolvedAlert" label="告警" min-width="88" align="center">
         <template #default="{ row }">
           <el-tag
             v-if="row.hasUnresolvedAlert"
@@ -145,18 +145,20 @@
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" min-width="180" fixed="right" align="center">
+      <el-table-column label="操作" width="108" align="center">
         <template #default="{ row }">
-          <el-button size="small" @click="$emit('viewDetail', row)">详情</el-button>
-          <el-button size="small" type="primary" @click="$emit('viewTrend', row)">曲线</el-button>
-          <el-popconfirm
-            title="确定要查看告警吗？"
-            @confirm="$emit('viewAlert', row)"
-          >
-            <template #reference>
-              <el-button size="small" type="warning">告警</el-button>
-            </template>
-          </el-popconfirm>
+          <div class="table-actions">
+            <el-button size="small" type="primary" link @click="$emit('viewDetail', row)">详情</el-button>
+            <el-dropdown trigger="click" @command="(command) => handleRowAction(command, row)">
+              <el-button size="small" link :icon="MoreFilled" />
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="trend">查看曲线</el-dropdown-item>
+                  <el-dropdown-item command="alert">查看告警</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -177,8 +179,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, defineProps, defineEmits, watch } from 'vue'
-import { Search, Location, Warning, CircleCloseFilled } from '@element-plus/icons-vue'
+import { reactive, defineProps, defineEmits, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { Search, Location, Warning, CircleCloseFilled, MoreFilled } from '@element-plus/icons-vue'
+
+const router = useRouter()
 
 const props = defineProps({
   data: {
@@ -234,27 +239,28 @@ const handleSizeChange = (size) => {
 
 // 处理筛选变化
 const handleFilterChange = () => {
-  emit('filterChange')
+  emit('filterChange', { ...localFilters })
 }
 
 // 重置筛选
 const resetFilters = () => {
-  // 重置本地filters
-  localFilters.keyword = ''
-  localFilters.online = null
-  localFilters.alarming = null
-  localFilters.deviceType = ''
-
-  // 重置父级组件的filters
   const resetFiltersObj = {
     keyword: '',
     online: null,
     alarming: null,
     deviceType: ''
   }
-  Object.assign(props.filters, resetFiltersObj)
 
-  emit('filterChange')
+  Object.assign(localFilters, resetFiltersObj)
+  emit('filterChange', resetFiltersObj)
+}
+
+const handleRowAction = (command, row) => {
+  if (command === 'trend') {
+    emit('viewTrend', row)
+  } else if (command === 'alert') {
+    emit('viewAlert', row)
+  }
 }
 
 // 格式化时间
@@ -308,7 +314,7 @@ const getAlertLevelType = (level) => {
     'LOW': 'info',
     'MEDIUM': 'warning',
     'HIGH': 'danger',
-    'CRITICAL': 'error'
+    'CRITICAL': 'danger'
   }
   return typeMap[level] || 'info'
 }
@@ -326,8 +332,8 @@ const getAlertLevelText = (level) => {
 
 // 跳转到库区
 const goToArea = (areaId) => {
-  console.log('Go to area:', areaId)
-  // 可以跳转到库区管理页面或在地图上高亮显示
+  if (!areaId) return
+  router.push({ path: '/warehouse-area', query: { areaId } })
 }
 
 // 打开告警抽屉
@@ -338,21 +344,52 @@ const openAlertDrawer = (device) => {
 
 <style scoped>
 .device-table-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+  width: 100%;
 }
 
 .filter-form {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   padding: 16px;
-  background: #fafafa;
-  border-radius: 4px;
+  background: #f8fafc;
+  border: 1px solid var(--ccg-border);
+  border-radius: 8px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.35fr) repeat(3, minmax(150px, 0.9fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.filter-item,
+.filter-actions {
+  min-width: 0;
 }
 
 .filter-form :deep(.el-form-item) {
-  margin-bottom: 12px;
+  width: 100%;
+  margin-bottom: 0;
   margin-right: 0;
+}
+
+.filter-form :deep(.el-form-item__content) {
+  width: 100%;
+}
+
+.filter-form :deep(.el-select),
+.filter-form :deep(.el-input) {
+  width: 100%;
+}
+
+.device-table-container :deep(.el-table__cell) {
+  padding: 9px 0;
+}
+
+.device-table-container :deep(.caret-wrapper) {
+  width: 32px;
+  height: 28px;
+  justify-content: center;
 }
 
 .device-info {
@@ -368,6 +405,17 @@ const openAlertDrawer = (device) => {
 .device-code {
   font-size: 12px;
   color: #909399;
+}
+
+.area-link {
+  max-width: 100%;
+}
+
+.area-link :deep(.el-link__inner) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .temp-value, .humi-value {
@@ -414,9 +462,40 @@ const openAlertDrawer = (device) => {
   color: #909399;
 }
 
-.pagination-container {
-  margin-top: 20px;
-  display: flex;
+.table-actions {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.pagination-container {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid var(--ccg-border);
+}
+
+@media (max-width: 1380px) {
+  .filter-grid {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+
+  .filter-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pagination-container {
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
 }
 </style>

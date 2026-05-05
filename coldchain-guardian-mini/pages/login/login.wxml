@@ -12,10 +12,11 @@
         value="{{phone}}" />
     </view>
 
-    <button class="submit-btn" bindtap="handleManualLogin">绑定微信并登录</button>
+    <button class="submit-btn" loading="{{loading}}" disabled="{{loading}}" bindtap="handleManualLogin">绑定微信并登录</button>
   </view>
 
   <view class="tips-area">
+    <text wx:if="{{isDevtools}}" class="tips devtools-tip">PC 模拟器将使用手机号调试登录，不会变更真实微信绑定</text>
     <text class="tips">首次登录将自动与当前微信账号绑定</text>
     <text class="tips">非内部员工请勿尝试</text>
   </view>

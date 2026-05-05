@@ -24,9 +24,10 @@ public class DashboardController {
      */
     @Operation(summary = "获取仪表盘统计", description = "获取综合仪表盘统计数据，包括设备、告警、工单等核心指标")
     @GetMapping("/stats")
-    public ApiResponse<Map<String, Object>> getDashboardStats() {
+    public ApiResponse<Map<String, Object>> getDashboardStats(
+            @RequestParam(required = false) Long assigneeId) {
         try {
-            Map<String, Object> stats = dashboardService.getDashboardStats();
+            Map<String, Object> stats = dashboardService.getDashboardStats(assigneeId);
             return ApiResponse.success(stats);
         } catch (Exception e) {
             return ApiResponse.error("获取仪表盘统计失败：" + e.getMessage());

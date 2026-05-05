@@ -1,186 +1,243 @@
 <template>
   <Layout>
-    <div class="ai-assistant-container">
-      <div class="history-sidebar">
-        <div class="sidebar-header">
-          <el-button type="primary" icon="Plus" @click="createNewChat" class="new-chat-btn">
-            <el-icon><EditPen /></el-icon> 新建洞察
-          </el-button>
+    <div class="ai-workspace" v-loading="contextLoading" element-loading-text="正在同步数据库上下文...">
+      <aside class="session-rail">
+        <div class="rail-head">
+          <span class="eyebrow">AI 运维助手</span>
+          <el-button type="primary" :icon="EditPen" @click="createNewChat">新建研判</el-button>
         </div>
 
-        <div class="chat-history-list">
-          <div
-              v-for="session in chatSessions"
-              :key="session.id"
-              class="chat-item"
-              :class="{ active: session.id === currentSessionId }"
-              @mouseenter="hoveredSessionId = session.id"
-              @mouseleave="hoveredSessionId = null"
-              @click="switchSession(session.id)"
+        <div class="session-list">
+          <button
+            v-for="session in chatSessions"
+            :key="session.id"
+            type="button"
+            class="session-item"
+            :class="{ active: session.id === currentSessionId }"
+            @mouseenter="hoveredSessionId = session.id"
+            @mouseleave="hoveredSessionId = null"
+            @click="switchSession(session.id)"
           >
-            <div class="chat-info">
-              <div class="chat-title">{{ session.title }}</div>
-              <div class="chat-time">{{ formatDate(session.lastUpdated) }}</div>
-            </div>
-            <div class="chat-actions" v-show="hoveredSessionId === session.id">
-              <el-icon @click.stop="renameSession(session.id)" class="action-icon"><Edit /></el-icon>
-              <el-icon @click.stop="deleteSession(session.id)" class="action-icon"><Delete /></el-icon>
-            </div>
-          </div>
+            <span class="session-copy">
+              <strong>{{ session.title || '未命名研判' }}</strong>
+              <small>{{ formatDate(session.lastUpdated || session.updateTime || session.createTime) }}</small>
+            </span>
+            <span v-show="hoveredSessionId === session.id" class="session-actions">
+              <el-icon @click.stop="renameSession(session.id)"><Edit /></el-icon>
+              <el-icon @click.stop="deleteSession(session.id)"><Delete /></el-icon>
+            </span>
+          </button>
+          <el-empty v-if="!chatSessions.length" description="暂无历史会话" :image-size="64" />
         </div>
-      </div>
+      </aside>
 
-      <div class="chat-main-area">
-        <div class="messages-container" ref="messagesContainer">
+      <main class="assistant-main">
+        <header class="assistant-toolbar">
+          <div>
+            <h1>数据库智能研判</h1>
+            <p>基于设备、告警、工单和遥测数据输出冷链运行分析</p>
+          </div>
+          <div class="toolbar-actions">
+            <el-tag effect="plain" :type="riskTagType">{{ riskText }}</el-tag>
+            <el-button :icon="Refresh" @click="loadDatabaseContext">刷新上下文</el-button>
+          </div>
+        </header>
+
+        <section class="context-strip">
+          <button
+            v-for="item in contextOptions"
+            :key="item.value"
+            type="button"
+            class="context-chip"
+            :class="{ selected: attachedContext.includes(item.value) }"
+            @click="toggleContext(item.value)"
+          >
+            <el-icon><component :is="item.icon" /></el-icon>
+            <span>{{ item.label }}</span>
+          </button>
+        </section>
+
+        <div ref="messagesContainer" class="messages-container">
           <div v-if="currentMessages.length === 0" class="empty-state">
-            <div class="welcome-message">
-              <h2>您好，我是冷链守护 AI</h2>
-              <p>我可以帮您分析告警、排查设备故障，或生成运维报告。</p>
+            <div class="empty-copy">
+              <span class="status-dot"></span>
+              <h2>从数据库开始分析，而不是只聊天</h2>
+              <p>右侧快照会同步当前设备、告警和工单；发送问题时会一并传给后端 AI 服务。</p>
             </div>
-
-            <div class="prompt-suggestions">
-              <el-card
-                  v-for="prompt in quickPrompts"
-                  :key="prompt.id"
-                  class="prompt-card"
-                  @click="sendPrompt(prompt.text)"
+            <div class="prompt-grid">
+              <button
+                v-for="prompt in quickPrompts"
+                :key="prompt.id"
+                type="button"
+                class="prompt-button"
+                @click="sendPrompt(prompt.text, prompt.contextTypes)"
               >
-                <el-icon><Lightning /></el-icon>
-                {{ prompt.text }}
-              </el-card>
+                <span>{{ prompt.title }}</span>
+                <small>{{ prompt.text }}</small>
+              </button>
             </div>
           </div>
 
-          <div
-              v-for="(message, index) in currentMessages"
-              :key="index"
-              class="message-wrapper"
-              :class="{ 'user-message': message.role === 'user', 'assistant-message': message.role === 'assistant' }"
+          <article
+            v-for="(message, index) in currentMessages"
+            :key="`${message.role}-${index}`"
+            class="message-row"
+            :class="message.role === 'user' ? 'from-user' : 'from-assistant'"
           >
-            <div v-if="message.role === 'assistant'" class="assistant-content">
-              <div class="avatar">
-                <el-avatar :size="32" icon="Monitor" style="background-color: #f2f6fc; color: #409eff;" />
+            <div v-if="message.role === 'assistant'" class="assistant-avatar">
+              <el-icon><Monitor /></el-icon>
+            </div>
+            <div class="message-panel">
+              <div class="message-meta">
+                <strong>{{ message.role === 'assistant' ? 'ColdChain AI' : '我' }}</strong>
+                <span v-if="message.contextTypes?.length">已纳入 {{ message.contextTypes.length }} 类上下文</span>
               </div>
-              <div class="message-bubble assistant-bubble">
 
+              <div v-if="message.role === 'assistant'">
                 <div v-if="isThinking && !message.content && index === currentMessages.length - 1" class="typing-indicator">
-                  <span class="dot"></span>
-                  <span class="dot"></span>
-                  <span class="dot"></span>
+                  <span></span>
+                  <span></span>
+                  <span></span>
                 </div>
+                <div v-else class="markdown-report" v-html="renderMarkdown(message.content)"></div>
+                <span v-if="isThinking && index === currentMessages.length - 1" class="stream-cursor"></span>
+              </div>
+              <p v-else class="user-text">{{ message.content }}</p>
 
-                <div v-else class="message-text">
-                  <div class="markdown-body" v-html="renderMarkdown(message.content)"></div>
-                  <span v-if="isThinking && index === currentMessages.length - 1" class="blinking-cursor">▍</span>
-                </div>
-
-                <div v-if="message.cards && message.cards.length > 0" class="structured-cards">
-                  <component
-                      v-for="(card, cardIndex) in message.cards"
-                      :key="cardIndex"
-                      :is="getCardComponent(card.type)"
-                      :data="card.data"
-                  />
-                </div>
-
-                <div class="message-actions" v-if="!isThinking || index !== currentMessages.length - 1">
-                  <el-tooltip content="复制内容" placement="top">
-                    <el-button link size="small" icon="CopyDocument" @click="copyMessage(message.content)" />
-                  </el-tooltip>
-                  <el-tooltip content="有帮助" placement="top">
-                    <el-button link size="small" icon="Select" @click="likeMessage(message)" />
-                  </el-tooltip>
-                  <el-tooltip content="无帮助" placement="top">
-                    <el-button link size="small" icon="CloseBold" @click="dislikeMessage(message)" />
-                  </el-tooltip>
-                </div>
+              <div v-if="message.role === 'assistant' && (!isThinking || index !== currentMessages.length - 1)" class="message-actions">
+                <el-button link size="small" :icon="CopyDocument" @click="copyMessage(message.content)">复制</el-button>
+                <el-button link size="small" :icon="Select" @click="likeMessage">有帮助</el-button>
+                <el-button link size="small" :icon="CloseBold" @click="dislikeMessage">需改进</el-button>
               </div>
             </div>
-
-            <div v-else class="user-content">
-              <div class="message-bubble user-bubble">{{ message.content }}</div>
-            </div>
-          </div>
+          </article>
         </div>
 
-        <div class="input-area">
-          <div class="context-tools">
-            <el-popover placement="top-start" trigger="click" :width="200">
-              <template #reference>
-                <el-button icon="Paperclip" circle title="附加系统上下文" />
-              </template>
-              <div class="context-menu">
-                <div style="margin-bottom: 8px; font-size: 12px; color: #909399;">选择要发给AI的系统数据</div>
-                <el-checkbox-group v-model="attachedContext" class="context-checkboxes">
-                  <el-checkbox value="device-info">当前设备状态</el-checkbox>
-                  <el-checkbox value="alert-record">最新告警记录</el-checkbox>
-                  <el-checkbox value="workorder-detail">我的待办工单</el-checkbox>
-                </el-checkbox-group>
-              </div>
-            </el-popover>
+        <footer class="composer">
+          <div class="composer-context">
+            <span>数据库上下文</span>
+            <el-tag v-for="item in selectedContextLabels" :key="item" size="small" effect="plain">{{ item }}</el-tag>
           </div>
-
-          <div class="input-wrapper">
+          <div class="composer-box">
             <el-input
-                v-model="inputMessage"
-                type="textarea"
-                :autosize="{ minRows: 1, maxRows: 6 }"
-                placeholder="输入您的问题，按 Enter 发送，Shift + Enter 换行..."
-                @keydown.enter.exact.prevent="sendMessage"
-                @keydown.shift.enter.native="insertNewline"
-                :disabled="isThinking"
+              v-model="inputMessage"
+              type="textarea"
+              :autosize="{ minRows: 1, maxRows: 5 }"
+              placeholder="例如：请基于数据库分析当前冷链运行风险，并给出优先处置顺序"
+              :disabled="isThinking"
+              @keydown.enter.exact.prevent="sendMessage"
             />
+            <el-button
+              v-if="!isThinking"
+              type="primary"
+              :icon="Top"
+              circle
+              :disabled="!inputMessage.trim()"
+              @click="sendMessage"
+            />
+            <el-button v-else type="danger" :icon="VideoPause" circle @click="stopGeneration" />
           </div>
+        </footer>
+      </main>
 
-          <div class="send-tools">
-            <el-button
-                v-if="!isThinking"
-                type="primary"
-                icon="Top"
-                circle
-                @click="sendMessage"
-                :disabled="!inputMessage.trim()"
-            />
-            <el-button
-                v-else
-                type="danger"
-                icon="VideoPause"
-                circle
-                @click="stopGeneration"
-                title="停止生成"
-            />
+      <aside class="data-inspector">
+        <div class="inspector-head">
+          <div>
+            <span class="eyebrow">数据库快照</span>
+            <h2>{{ lastUpdated || '待同步' }}</h2>
+          </div>
+          <el-button link type="primary" @click="loadDatabaseContext">同步</el-button>
+        </div>
+
+        <div class="metric-grid">
+          <div v-for="metric in snapshotMetrics" :key="metric.label" class="metric-cell" :class="metric.tone">
+            <span>{{ metric.label }}</span>
+            <strong>{{ metric.value }}</strong>
+            <small>{{ metric.note }}</small>
           </div>
         </div>
-      </div>
+
+        <section class="inspector-section">
+          <div class="section-title">
+            <span>重点风险</span>
+            <el-button link type="primary" @click="sendPrompt('请基于数据库快照列出当前 Top 5 冷链风险和处置顺序', ['device-info', 'alert-record', 'workorder-detail'])">让 AI 研判</el-button>
+          </div>
+          <div class="risk-list">
+            <button v-for="risk in riskItems" :key="risk.key" type="button" @click="sendPrompt(risk.prompt, risk.contextTypes)">
+              <span :class="`risk-dot ${risk.tone}`"></span>
+              <span>
+                <strong>{{ risk.title }}</strong>
+                <small>{{ risk.detail }}</small>
+              </span>
+            </button>
+            <el-empty v-if="!riskItems.length" description="暂无重点风险" :image-size="56" />
+          </div>
+        </section>
+
+        <section class="inspector-section">
+          <div class="section-title">
+            <span>未处理告警</span>
+            <small>{{ unhandledAlerts.length }} 条</small>
+          </div>
+          <ul class="compact-list">
+            <li v-for="alert in unhandledAlerts.slice(0, 5)" :key="alert.id">
+              <strong>{{ alert.title }}</strong>
+              <span>{{ alert.location }} · {{ alert.levelText }}</span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="inspector-section">
+          <div class="section-title">
+            <span>待办工单</span>
+            <small>{{ pendingOrders.length }} 条</small>
+          </div>
+          <ul class="compact-list">
+            <li v-for="order in pendingOrders.slice(0, 5)" :key="order.id || order.orderNo">
+              <strong>{{ order.title }}</strong>
+              <span>{{ order.assignee }} · {{ order.statusText }}</span>
+            </li>
+          </ul>
+        </section>
+      </aside>
     </div>
   </Layout>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useAiAssistant } from '@/composables/useAiAssistant'
 import MarkdownIt from 'markdown-it'
 import Layout from '@/components/Layout.vue'
+import { useAiAssistant } from '@/composables/useAiAssistant'
+import { dashboardApi } from '@/api/dashboard'
+import { deviceApi } from '@/api/device'
+import { alertApi } from '@/api/alert'
+import { workOrderApi } from '@/api/work-order'
 import {
-  Edit,
-  Delete,
-  Lightning,
-  EditPen,
-  Paperclip,
-  Top,
-  VideoPause,
-  CopyDocument,
-  Select,
+  Bell,
   CloseBold,
-  Monitor
+  CopyDocument,
+  Delete,
+  Edit,
+  EditPen,
+  Finished,
+  Monitor,
+  Refresh,
+  Select,
+  Tickets,
+  Top,
+  TrendCharts,
+  VideoPause,
+  WarningFilled
 } from '@element-plus/icons-vue'
 
-import AlertAnalysisCard from './components/AlertAnalysisCard.vue'
-import MiniChartCard from './components/MiniChartCard.vue'
-import DataTableCard from './components/DataTableCard.vue'
-
-const md = new MarkdownIt({ html: true, linkify: true, typographer: true })
+const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  typographer: true,
+  breaks: true
+})
 
 const {
   chatSessions,
@@ -196,27 +253,181 @@ const currentSessionId = ref(null)
 const currentMessages = ref([])
 const isThinking = ref(false)
 const hoveredSessionId = ref(null)
-const attachedContext = ref([])
+const attachedContext = ref(['device-info', 'alert-record', 'workorder-detail'])
 const messagesContainer = ref(null)
+const contextLoading = ref(false)
+const lastUpdated = ref('')
+
+const kpi = ref({
+  onlineDevices: 0,
+  totalDevices: 0,
+  todayAlerts: 0,
+  unhandledAlerts: 0,
+  pendingWorkOrders: 0,
+  todayClosedWorkOrders: 0
+})
+const devices = ref([])
+const recentAlerts = ref([])
+const unhandledAlerts = ref([])
+const pendingOrders = ref([])
 
 let currentSSEController = null
 let scrollObserver = null
 
-const quickPrompts = [
-  { id: 1, text: '分析最近 24 小时未处理的紧急告警' },
-  { id: 2, text: '生成本周冷库温湿度波动总结' },
-  { id: 3, text: '设备离线通常有哪些原因？如何排查？' },
-  { id: 4, text: '帮我催办所有已逾期的运维工单' }
+const contextOptions = [
+  { value: 'device-info', label: '设备状态', icon: Monitor },
+  { value: 'alert-record', label: '告警记录', icon: Bell },
+  { value: 'workorder-detail', label: '工单进度', icon: Tickets },
+  { value: 'trend-data', label: '趋势遥测', icon: TrendCharts }
 ]
 
-// 核心优化：利用 MutationObserver 监听 DOM 变化实现丝滑自动滚动
+const quickPrompts = [
+  {
+    id: 1,
+    title: '运行风险研判',
+    text: '请基于数据库分析当前冷链运行风险，并按优先级给出处置顺序',
+    contextTypes: ['device-info', 'alert-record', 'workorder-detail', 'trend-data']
+  },
+  {
+    id: 2,
+    title: '告警处置建议',
+    text: '分析最近未处理告警，说明可能原因、影响范围和处理步骤',
+    contextTypes: ['alert-record', 'device-info']
+  },
+  {
+    id: 3,
+    title: '工单催办清单',
+    text: '整理当前待办工单，标出紧急项、责任人和建议完成时间',
+    contextTypes: ['workorder-detail', 'alert-record']
+  },
+  {
+    id: 4,
+    title: '毕业答辩汇报',
+    text: '生成一段适合毕业设计答辩展示的系统运行数据说明',
+    contextTypes: ['device-info', 'alert-record', 'workorder-detail']
+  }
+]
+
+const selectedContextLabels = computed(() => {
+  const map = new Map(contextOptions.map(item => [item.value, item.label]))
+  return attachedContext.value.map(value => map.get(value)).filter(Boolean)
+})
+
+const snapshotMetrics = computed(() => {
+  const total = Number(kpi.value.totalDevices || devices.value.length || 0)
+  const online = Number(kpi.value.onlineDevices || devices.value.filter(device => isOnline(device)).length || 0)
+  const offline = Math.max(0, total - online)
+  return [
+    {
+      label: '设备在线',
+      value: `${online}/${total}`,
+      note: `离线 ${offline} 台`,
+      tone: offline ? 'warning' : 'success'
+    },
+    {
+      label: '未处理告警',
+      value: kpi.value.unhandledAlerts || unhandledAlerts.value.length,
+      note: '待确认/派工',
+      tone: (kpi.value.unhandledAlerts || unhandledAlerts.value.length) ? 'danger' : 'success'
+    },
+    {
+      label: '待办工单',
+      value: kpi.value.pendingWorkOrders || pendingOrders.value.length,
+      note: '待处理/处理中',
+      tone: (kpi.value.pendingWorkOrders || pendingOrders.value.length) ? 'warning' : 'success'
+    },
+    {
+      label: '今日闭环',
+      value: kpi.value.todayClosedWorkOrders || 0,
+      note: `今日告警 ${kpi.value.todayAlerts || 0}`,
+      tone: 'primary'
+    }
+  ]
+})
+
+const riskItems = computed(() => {
+  const items = []
+  const offlineDevices = devices.value.filter(device => !isOnline(device))
+  const alarmingDevices = devices.value.filter(device => device.hasUnresolvedAlert || device.alarming)
+  const criticalAlerts = unhandledAlerts.value.filter(alert => ['CRITICAL', 'HIGH', '紧急', '高'].includes(String(alert.level || alert.alertLevel || alert.levelText || '').toUpperCase()))
+  const urgentOrders = pendingOrders.value.filter(order => ['URGENT', 'HIGH'].includes(order.priority))
+
+  if (criticalAlerts.length) {
+    items.push({
+      key: 'critical-alerts',
+      title: `${criticalAlerts.length} 条高优先级告警`,
+      detail: criticalAlerts[0]?.title || '需要优先处置',
+      tone: 'danger',
+      prompt: '请分析当前高优先级未处理告警，给出处置顺序和责任建议',
+      contextTypes: ['alert-record', 'device-info', 'workorder-detail']
+    })
+  }
+  if (offlineDevices.length) {
+    items.push({
+      key: 'offline-devices',
+      title: `${offlineDevices.length} 台设备离线`,
+      detail: offlineDevices.slice(0, 2).map(device => device.deviceName || device.name || device.deviceCode).join('、'),
+      tone: 'warning',
+      prompt: '请分析离线设备风险，按供电、网络、网关和设备故障给出排查清单',
+      contextTypes: ['device-info', 'alert-record']
+    })
+  }
+  if (alarmingDevices.length) {
+    items.push({
+      key: 'alarming-devices',
+      title: `${alarmingDevices.length} 台设备存在未解除风险`,
+      detail: alarmingDevices.slice(0, 2).map(device => device.deviceName || device.name || device.deviceCode).join('、'),
+      tone: 'danger',
+      prompt: '请列出存在未解除风险的设备，说明温湿度与库区影响',
+      contextTypes: ['device-info', 'trend-data', 'alert-record']
+    })
+  }
+  if (urgentOrders.length) {
+    items.push({
+      key: 'urgent-orders',
+      title: `${urgentOrders.length} 个高优先级工单`,
+      detail: urgentOrders[0]?.title || '需要跟进闭环',
+      tone: 'warning',
+      prompt: '请梳理高优先级工单，给出催办话术和闭环检查项',
+      contextTypes: ['workorder-detail', 'alert-record']
+    })
+  }
+  return items.slice(0, 4)
+})
+
+const riskText = computed(() => {
+  const unhandled = Number(kpi.value.unhandledAlerts || unhandledAlerts.value.length || 0)
+  const pending = Number(kpi.value.pendingWorkOrders || pendingOrders.value.length || 0)
+  const offline = devices.value.filter(device => !isOnline(device)).length
+  if (unhandled || offline) return '存在待处置风险'
+  if (pending) return '工单待跟进'
+  return '运行平稳'
+})
+
+const riskTagType = computed(() => riskText.value === '运行平稳' ? 'success' : riskText.value === '工单待跟进' ? 'warning' : 'danger')
+
+const unwrapData = (response, fallback = null) => {
+  const payload = response?.data
+  if (!payload) return fallback
+  if (payload.code === 200 || payload.success) return payload.data
+  return payload.data ?? payload ?? fallback
+}
+
+const unwrapPage = (response) => {
+  const payload = unwrapData(response, {})
+  const records = payload.records || payload.data || payload.list || []
+  return {
+    records: Array.isArray(records) ? records : [],
+    total: Number(payload.total || records.length || 0)
+  }
+}
+
 const setupScrollObserver = () => {
   if (!messagesContainer.value) return
 
   scrollObserver = new MutationObserver(() => {
     const container = messagesContainer.value
-    // 如果用户往上翻看历史记录（距离底部超过 150px），则不强制滚动到底部，尊重用户操作
-    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 180
     if (isNearBottom || isThinking.value) {
       container.scrollTop = container.scrollHeight
     }
@@ -229,76 +440,100 @@ const setupScrollObserver = () => {
   })
 }
 
+const loadDatabaseContext = async () => {
+  contextLoading.value = true
+  try {
+    const [statsRes, devicesRes, alertsRes, unhandledRes, ordersRes] = await Promise.allSettled([
+      dashboardApi.getStats(),
+      deviceApi.getList({ page: 1, size: 200, pageNum: 1, pageSize: 200 }),
+      alertApi.search({ page: 1, size: 8, pageNum: 1, pageSize: 8 }),
+      alertApi.search({ status: 'UNHANDLED', page: 1, size: 8, pageNum: 1, pageSize: 8 }),
+      workOrderApi.getList({ status: 'PENDING', page: 1, size: 8, pageNum: 1, pageSize: 8 })
+    ])
+
+    if (statsRes.status === 'fulfilled') {
+      kpi.value = { ...kpi.value, ...(unwrapData(statsRes.value, {}) || {}) }
+    }
+    if (devicesRes.status === 'fulfilled') {
+      devices.value = unwrapPage(devicesRes.value).records
+    }
+    if (alertsRes.status === 'fulfilled') {
+      recentAlerts.value = unwrapPage(alertsRes.value).records.map(adaptAlert)
+    }
+    if (unhandledRes.status === 'fulfilled') {
+      const page = unwrapPage(unhandledRes.value)
+      unhandledAlerts.value = page.records.map(adaptAlert)
+      if (!kpi.value.unhandledAlerts) kpi.value.unhandledAlerts = page.total
+    }
+    if (ordersRes.status === 'fulfilled') {
+      const page = unwrapPage(ordersRes.value)
+      pendingOrders.value = page.records.map(adaptOrder)
+      if (!kpi.value.pendingWorkOrders) kpi.value.pendingWorkOrders = page.total
+    }
+
+    lastUpdated.value = new Date().toLocaleString('zh-CN', { hour12: false })
+  } catch (error) {
+    console.error('数据库上下文加载失败:', error)
+    ElMessage.error('数据库上下文加载失败，请检查后端服务')
+  } finally {
+    contextLoading.value = false
+  }
+}
+
 const sendMessage = async () => {
   if (!inputMessage.value.trim() || isThinking.value) return
 
   const userText = inputMessage.value.trim()
-  currentMessages.value.push({ role: 'user', content: userText })
+  const contextTypes = [...attachedContext.value]
+  currentMessages.value.push({ role: 'user', content: userText, contextTypes })
   inputMessage.value = ''
-
   isThinking.value = true
 
   try {
-    // 1. 🌟 先直接把空数据推入响应式数组中
-    currentMessages.value.push({
-      role: 'assistant',
-      content: '',
-      cards: []
-    })
+    currentMessages.value.push({ role: 'assistant', content: '', contextTypes })
 
-    // 如果还没有会话，自动创建一个隐式会话
     if (!currentSessionId.value) {
-      const newSession = await createChatSession({ title: userText.substring(0, 15) })
+      const newSession = await createChatSession({
+        title: userText.length > 18 ? `${userText.substring(0, 18)}...` : userText,
+        userId: 1,
+        isDeleted: 0
+      })
       currentSessionId.value = newSession.id
     }
 
     let fullResponse = ''
-
-    // 2. 🌟🌟🌟 极其关键：从数组的最后一位，把刚刚推入的那个对象"捞"出来！
-    // 这个被捞出来的 targetMessage 是被 Vue 包装过的 Proxy 响应式对象！
     const targetMessage = currentMessages.value[currentMessages.value.length - 1]
 
     currentSSEController = streamMessage(
-        userText,
-        null,
-        null,
-        currentSessionId.value,
-        (token) => {
-          // 防错兼容：如果 sse.js 传过来的是对象，就提取 content，否则直接用字符串
-          const chunkText = typeof token === 'string' ? token : (token.content || '')
-
-          // 过滤掉后端的流结束标识符(如果有的话)
-          if (chunkText === '[DONE]') return
-
-          fullResponse += chunkText
-
-          // 3. 🌟 修改这个 Proxy 对象的 content，就能瞬间触发 Vue 的视图刷新！
-          targetMessage.content = fullResponse
-        },
-        (error) => {
-          console.error('SSE error:', error)
-          if (fullResponse === '') {
-            targetMessage.content = '抱歉，连接服务器失败，请稍后重试。'
-          }
-          isThinking.value = false
-        },
-        () => {
-          // 流完成回调：设置 isThinking 为 false 并清理状态
-          isThinking.value = false
-          currentSSEController = null
+      userText,
+      null,
+      null,
+      currentSessionId.value,
+      contextTypes,
+      (token) => {
+        const chunkText = typeof token === 'string' ? token : (token.content || '')
+        if (chunkText === '[DONE]') return
+        fullResponse += chunkText
+        targetMessage.content = fullResponse
+      },
+      (error) => {
+        console.error('SSE error:', error)
+        if (fullResponse === '') {
+          targetMessage.content = '### 结论\nAI 服务连接失败，请检查后端服务与模型环境变量。\n\n### 后续跟踪\n可先刷新数据库上下文，再重新发起研判。'
         }
+        isThinking.value = false
+      },
+      () => {
+        isThinking.value = false
+        currentSSEController = null
+        getChatHistory().catch(() => {})
+      }
     )
-
   } catch (error) {
     console.error('发送失败:', error)
     isThinking.value = false
+    ElMessage.error('发送失败，请检查服务连接')
   }
-}
-
-// 供 sse.js 中 `if (data === '[DONE]')` 触发时调用的结束方法 (如已实现可接入)
-const onStreamComplete = () => {
-  isThinking.value = false
-  currentSSEController = null
 }
 
 const stopGeneration = () => {
@@ -309,47 +544,7 @@ const stopGeneration = () => {
   isThinking.value = false
 }
 
-const formatDate = (date) => {
-  if (!date) return '刚刚'
-  const dateObj = typeof date === 'string' ? new Date(date) : date
-  if (isNaN(dateObj.getTime())) return '刚刚'
-
-  const now = new Date()
-  const diff = now - dateObj
-  const dayDiff = Math.floor(diff / (1000 * 60 * 60 * 24))
-
-  if (dayDiff === 0) return dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  if (dayDiff === 1) return '昨天'
-  if (dayDiff <= 7) return `${dayDiff}天前`
-  return dateObj.toLocaleDateString()
-}
-
-const renderMarkdown = (text) => {
-  if (!text) return ''
-  return md.render(text)
-}
-
-const getCardComponent = (type) => {
-  switch (type) {
-    case 'alert-analysis': return AlertAnalysisCard
-    case 'mini-chart': return MiniChartCard
-    case 'data-table': return DataTableCard
-    default: return null
-  }
-}
-
-const copyMessage = (content) => {
-  navigator.clipboard.writeText(content).then(() => ElMessage.success('已复制'))
-}
-const likeMessage = () => ElMessage.success('感谢反馈')
-const dislikeMessage = () => ElMessage.info('已记录您的反馈，我们会继续改进')
-
-const insertNewline = (event) => {
-  event.target.value += '\n'
-  inputMessage.value = event.target.value
-}
-
-const createNewChat = async () => {
+const createNewChat = () => {
   if (isThinking.value) return
   currentSessionId.value = null
   currentMessages.value = []
@@ -359,349 +554,785 @@ const switchSession = async (sessionId) => {
   if (isThinking.value) return
   currentSessionId.value = sessionId
   try {
-    if (!sessionId) {
-      currentMessages.value = []
-      return
-    }
     const messages = await getChatMessages(sessionId)
     currentMessages.value = messages.map(msg => ({
-      role: msg.role.toLowerCase(),
-      content: msg.content
+      role: String(msg.role || '').toLowerCase(),
+      content: msg.content || '',
+      contextTypes: msg.contextTypes || []
     }))
-    nextTick(() => {
-      if (messagesContainer.value) {
-        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-      }
-    })
+    await nextTick()
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    }
   } catch (error) {
+    console.error('切换会话失败:', error)
     currentMessages.value = []
   }
 }
 
 const renameSession = (sessionId) => {
-  const session = chatSessions.value.find(s => s.id === sessionId)
+  const session = chatSessions.value.find(item => item.id === sessionId)
   ElMessageBox.prompt('请输入新的会话标题', '重命名', {
-    inputValue: session?.title
+    inputValue: session?.title || ''
   }).then(({ value }) => {
-    if (session) session.title = value
+    if (session && value?.trim()) session.title = value.trim()
   }).catch(() => {})
 }
 
 const deleteSession = async (sessionId) => {
   try {
-    if (!sessionId) {
-      return
-    }
     await deleteChatSession(sessionId)
     if (currentSessionId.value === sessionId) {
       currentSessionId.value = null
       currentMessages.value = []
     }
-  } catch (error) {}
+  } catch (error) {
+    console.error('删除会话失败:', error)
+  }
 }
 
-const sendPrompt = (prompt) => {
+const sendPrompt = (prompt, contextTypes = attachedContext.value) => {
+  attachedContext.value = Array.from(new Set(contextTypes))
   inputMessage.value = prompt
   sendMessage()
 }
 
+const toggleContext = (value) => {
+  if (attachedContext.value.includes(value)) {
+    attachedContext.value = attachedContext.value.filter(item => item !== value)
+    return
+  }
+  attachedContext.value = [...attachedContext.value, value]
+}
+
+const renderMarkdown = (text) => {
+  if (!text) return ''
+  return md.render(text)
+}
+
+const copyMessage = (content) => {
+  navigator.clipboard.writeText(content || '').then(() => ElMessage.success('已复制'))
+}
+const likeMessage = () => ElMessage.success('感谢反馈')
+const dislikeMessage = () => ElMessage.info('已记录反馈')
+
+const adaptAlert = (alert) => {
+  const levelValue = alert.alertLevel || alert.level || alert.severityLevel
+  const status = alert.status || (alert.resolved ? 'RESOLVED' : 'UNHANDLED')
+  return {
+    ...alert,
+    id: alert.id,
+    title: alert.message || alert.description || alert.alertType || `告警 #${alert.id}`,
+    location: alert.deviceName || alert.areaName || alert.location || alert.sourceCode || '未知位置',
+    level: levelValue,
+    levelText: getAlertLevelText(levelValue),
+    statusText: getAlertStatusText(status)
+  }
+}
+
+const adaptOrder = (order) => {
+  const status = order.status || 'PENDING'
+  return {
+    ...order,
+    id: order.id || order.orderId || order.orderNo,
+    title: order.title || order.description || order.orderNo || `工单 #${order.id || order.orderId}`,
+    assignee: order.assigneeName || order.assignee || (order.assigneeId ? `用户 ${order.assigneeId}` : '未分配'),
+    status,
+    statusText: getOrderStatusText(status),
+    priority: order.priority || 'MEDIUM'
+  }
+}
+
+const isOnline = (device) => {
+  if (typeof device.online === 'boolean') return device.online
+  return Number(device.onlineStatus ?? device.online_status ?? 0) === 1
+}
+
+const formatDate = (value) => {
+  if (!value) return '刚刚'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '刚刚'
+  const diff = Date.now() - date.getTime()
+  if (diff >= 0 && diff < 60 * 1000) return '刚刚'
+  if (diff >= 0 && diff < 60 * 60 * 1000) return `${Math.floor(diff / 60000)}分钟前`
+  if (diff >= 0 && diff < 24 * 60 * 60 * 1000) return `${Math.floor(diff / 3600000)}小时前`
+  return date.toLocaleDateString('zh-CN')
+}
+
+const getAlertLevelText = (level) => {
+  const normalized = normalizeLevel(level)
+  const map = { CRITICAL: '紧急', HIGH: '高', MEDIUM: '中', LOW: '低' }
+  return map[normalized] || '未知'
+}
+
+const normalizeLevel = (level) => {
+  if (typeof level === 'number') {
+    if (level >= 4) return 'CRITICAL'
+    if (level === 3) return 'HIGH'
+    if (level === 2) return 'MEDIUM'
+    return 'LOW'
+  }
+  return String(level || '').toUpperCase()
+}
+
+const getAlertStatusText = (status) => {
+  const map = {
+    UNHANDLED: '未处理',
+    HANDLING: '处理中',
+    RESOLVED: '已解决',
+    IGNORED: '已忽略'
+  }
+  return map[status] || status || '未知'
+}
+
+const getOrderStatusText = (status) => {
+  const map = {
+    PENDING: '待处理',
+    PROCESSING: '处理中',
+    VERIFYING: '待验收',
+    COMPLETED: '已完成',
+    CLOSED: '已关闭'
+  }
+  return map[status] || status || '未知'
+}
+
 onMounted(async () => {
-  await getChatHistory()
+  await Promise.allSettled([getChatHistory(), loadDatabaseContext()])
   setupScrollObserver()
 })
 
 onUnmounted(() => {
   if (scrollObserver) scrollObserver.disconnect()
+  if (currentSSEController) currentSSEController.abort()
 })
 </script>
 
 <style scoped>
-.ai-assistant-container {
-  display: flex;
-  height: calc(100vh - 60px);
-  background-color: #ffffff;
+.ai-workspace {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) 340px;
+  height: calc(100vh - var(--ccg-header-height));
+  min-height: 0;
+  background: #f6f8fb;
+  color: #1f2937;
 }
 
-/* 左侧栏样式优化 */
-.history-sidebar {
-  width: 260px;
-  background: #f9f9f9;
-  border-right: 1px solid #e4e7ed;
+.session-rail,
+.data-inspector {
+  min-height: 0;
+  background: #fff;
+  border-color: #e5e7eb;
+}
+
+.session-rail {
   display: flex;
   flex-direction: column;
+  border-right: 1px solid #e5e7eb;
 }
 
-.sidebar-header {
-  padding: 16px;
-  border-bottom: 1px solid transparent; /* 保持高度占位 */
+.rail-head,
+.inspector-head {
+  padding: 18px;
+  border-bottom: 1px solid #eef1f5;
 }
 
-.new-chat-btn {
-  width: 100%;
-  border-radius: 8px;
-  font-weight: 500;
-}
-
-.chat-history-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 12px;
-}
-
-.chat-item {
+.rail-head {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.eyebrow {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.session-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+}
+
+.session-item {
+  display: flex;
   align-items: center;
-  padding: 10px 12px;
-  margin-bottom: 4px;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 58px;
+  margin-bottom: 6px;
+  padding: 10px;
+  border: 1px solid transparent;
   border-radius: 8px;
+  background: transparent;
+  color: #1f2937;
+  text-align: left;
   cursor: pointer;
-  transition: all 0.2s ease;
-  color: #303133;
 }
 
-.chat-item:hover {
-  background-color: #eef2f9;
+.session-item:hover,
+.session-item.active {
+  border-color: #bfdbfe;
+  background: #eff6ff;
 }
 
-.chat-item.active {
-  background-color: #e1edfd;
-  color: #409eff;
+.session-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
-.chat-title {
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 4px;
-  white-space: nowrap;
+.session-copy strong,
+.compact-list strong,
+.risk-list strong {
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 160px;
+  white-space: nowrap;
 }
 
-.chat-actions {
+.session-copy strong {
+  max-width: 190px;
+  font-size: 14px;
+}
+
+.session-copy small,
+.compact-list span,
+.risk-list small,
+.metric-cell small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.session-actions {
   display: flex;
   gap: 6px;
+  color: #64748b;
 }
 
-.action-icon {
-  padding: 4px;
-  border-radius: 4px;
-}
-
-.action-icon:hover {
-  background-color: #dcdfe6;
-  color: #f56c6c;
-}
-
-/* 主对话区优化 */
-.chat-main-area {
-  flex: 1;
+.assistant-main {
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  min-width: 0;
+  min-height: 0;
+}
+
+.assistant-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 14px;
+  background: #f6f8fb;
+}
+
+.assistant-toolbar h1,
+.inspector-head h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.assistant-toolbar p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.context-strip {
+  display: flex;
+  gap: 10px;
+  padding: 0 24px 14px;
+  overflow-x: auto;
+}
+
+.context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.context-chip.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
 .messages-container {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 24px 15%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  scroll-behavior: smooth;
+  padding: 6px 24px 22px;
 }
 
-.message-wrapper {
-  display: flex;
-  width: 100%;
+.empty-state {
+  max-width: 820px;
+  margin: 52px auto 0;
 }
 
-.user-message {
-  justify-content: flex-end;
-  /* 确保父容器占满整行，但子元素靠右对齐 */
-  width: 100%;
+.empty-copy {
+  padding-bottom: 22px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.user-bubble {
-  background-color: #f4f6f8;
-  color: #303133;
-  border-radius: 16px;
-  padding: 10px 16px; /* 稍微调小一点内边距，看起来更紧凑 */
+.empty-copy h2 {
+  margin: 10px 0 8px;
+  font-size: 26px;
+}
 
-  /* 🌟 核心修复 1：不要设为块级元素，设为 inline-block 可以让气泡紧贴文字宽度 */
+.empty-copy p {
+  margin: 0;
+  color: #64748b;
+}
+
+.status-dot {
   display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.12);
+}
 
-  /* 🌟 核心修复 2：取消固定的 max-width 80%，改用 vw 或 fit-content */
-  max-width: fit-content;
+.prompt-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
 
-  font-size: 15px;
-  line-height: 1.6;
+.prompt-button {
+  min-height: 92px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
 
-  /* 保留 pre-wrap 以支持用户输入的真实换行 */
+.prompt-button:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.07);
+}
+
+.prompt-button span,
+.section-title span {
+  display: block;
+  font-weight: 700;
+}
+
+.prompt-button small {
+  display: block;
+  margin-top: 8px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.message-row {
+  display: flex;
+  gap: 12px;
+  margin: 0 auto 18px;
+  max-width: 980px;
+}
+
+.message-row.from-user {
+  justify-content: flex-end;
+}
+
+.assistant-avatar {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.message-panel {
+  min-width: 0;
+  max-width: 880px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.from-user .message-panel {
+  max-width: min(680px, 78%);
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.message-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.message-meta strong {
+  color: #334155;
+  font-size: 13px;
+}
+
+.user-text {
+  margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-
-  /* 确保文本靠左对齐，但气泡整体靠右 */
-  text-align: left;
-}
-
-.assistant-content {
-  display: flex;
-  gap: 16px;
-  max-width: 90%;
-}
-
-.assistant-bubble {
-  flex: 1;
-  color: #303133;
-  font-size: 15px;
   line-height: 1.7;
 }
 
-/* Markdown 排版细节优化 */
-.markdown-body :deep(p) { margin-top: 0; margin-bottom: 1em; }
-.markdown-body :deep(p:last-child) { margin-bottom: 0; }
-.markdown-body :deep(code) {
-  background-color: #f0f2f5;
-  padding: 2px 6px;
-  border-radius: 4px;
+.markdown-report {
+  color: #1f2937;
+  line-height: 1.75;
+  word-break: break-word;
+}
+
+.markdown-report :deep(h3) {
+  margin: 16px 0 8px;
+  padding-left: 10px;
+  border-left: 3px solid #2563eb;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.markdown-report :deep(h3:first-child) {
+  margin-top: 0;
+}
+
+.markdown-report :deep(p) {
+  margin: 0 0 10px;
+}
+
+.markdown-report :deep(ul),
+.markdown-report :deep(ol) {
+  margin: 8px 0 12px;
+  padding-left: 22px;
+}
+
+.markdown-report :deep(li) {
+  margin: 5px 0;
+}
+
+.markdown-report :deep(code) {
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: #f1f5f9;
+  color: #be123c;
   font-family: Consolas, Monaco, monospace;
   font-size: 13px;
-  color: #f56c6c;
 }
-.markdown-body :deep(pre) {
-  background-color: #282c34;
-  color: #abb2bf;
-  padding: 16px;
-  border-radius: 8px;
+
+.markdown-report :deep(pre) {
   overflow-x: auto;
-  margin: 16px 0;
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #e5e7eb;
 }
-.markdown-body :deep(pre code) {
-  background-color: transparent;
-  color: inherit;
+
+.markdown-report :deep(pre code) {
   padding: 0;
-}
-.markdown-body :deep(ul), .markdown-body :deep(ol) {
-  padding-left: 24px;
-  margin-bottom: 16px;
+  background: transparent;
+  color: inherit;
 }
 
-/* 光标与动画 */
-.blinking-cursor {
-  display: inline-block;
-  width: 8px;
-  height: 16px;
-  background-color: #409eff;
-  vertical-align: middle;
-  animation: blink 1s step-end infinite;
-  margin-left: 4px;
+.markdown-report :deep(table) {
+  width: 100%;
+  margin: 12px 0;
+  border-collapse: collapse;
+  font-size: 14px;
 }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+.markdown-report :deep(th),
+.markdown-report :deep(td) {
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.markdown-report :deep(th) {
+  background: #f8fafc;
+}
+
+.message-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
 }
 
 .typing-indicator {
   display: flex;
-  align-items: center;
-  height: 24px;
-  gap: 4px;
-  padding: 4px 8px;
+  gap: 5px;
+  padding: 6px 0;
 }
 
-.dot {
-  width: 6px;
-  height: 6px;
-  background-color: #a8abb2;
+.typing-indicator span {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  animation: bounce 1.4s infinite ease-in-out both;
+  background: #94a3b8;
+  animation: pulse 1.2s infinite ease-in-out;
 }
 
-.dot:nth-child(1) { animation-delay: -0.32s; }
-.dot:nth-child(2) { animation-delay: -0.16s; }
-
-@keyframes bounce {
-  0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
-  40% { transform: scale(1); opacity: 1; }
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.14s;
 }
 
-.message-actions {
-  margin-top: 8px;
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.28s;
+}
+
+@keyframes pulse {
+  0%, 80%, 100% { opacity: 0.35; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+
+.stream-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 18px;
+  margin-left: 4px;
+  background: #2563eb;
+  vertical-align: middle;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.composer {
+  padding: 12px 24px 18px;
+  background: linear-gradient(to top, #f6f8fb 82%, rgba(246, 248, 251, 0));
+}
+
+.composer-context {
   display: flex;
-  gap: 4px;
-  opacity: 0;
-  transition: opacity 0.2s;
+  align-items: center;
+  gap: 8px;
+  margin: 0 auto 8px;
+  max-width: 980px;
+  color: #64748b;
+  font-size: 12px;
 }
 
-.assistant-content:hover .message-actions {
-  opacity: 1;
-}
-
-/* 输入区优化 */
-.input-area {
-  padding: 16px 15%;
-  background: #ffffff;
+.composer-box {
   display: flex;
   align-items: flex-end;
-  gap: 12px;
-  position: relative;
+  gap: 10px;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 8px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #fff;
 }
 
-.input-area::before {
-  content: '';
-  position: absolute;
-  top: -40px;
-  left: 0;
-  right: 0;
-  height: 40px;
-  background: linear-gradient(to top, rgba(255,255,255,1), rgba(255,255,255,0));
-  pointer-events: none;
-}
-
-.input-wrapper {
-  flex: 1;
-  background: #f4f6f8;
-  border-radius: 16px;
-  padding: 4px;
-  border: 1px solid transparent;
-  transition: border-color 0.2s;
-}
-.input-wrapper:focus-within {
-  border-color: #c0c4cc;
-  background: #ffffff;
-}
-
-.input-wrapper :deep(.el-textarea__inner) {
-  background: transparent;
-  border: none;
+.composer-box :deep(.el-textarea__inner) {
+  min-height: 42px !important;
+  border: 0;
   box-shadow: none;
-  padding: 8px 12px;
-  font-size: 15px;
   resize: none;
 }
 
-.context-checkboxes {
+.data-inspector {
+  min-width: 0;
+  overflow-y: auto;
+  border-left: 1px solid #e5e7eb;
+}
+
+.inspector-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.inspector-head h2 {
+  margin-top: 5px;
+  font-size: 15px;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+
+.metric-cell {
+  min-height: 92px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.metric-cell span,
+.metric-cell small {
+  display: block;
+}
+
+.metric-cell strong {
+  display: block;
+  margin: 8px 0 4px;
+  font-size: 24px;
+}
+
+.metric-cell.danger { border-left-color: #ef4444; }
+.metric-cell.warning { border-left-color: #f59e0b; }
+.metric-cell.success { border-left-color: #10b981; }
+.metric-cell.primary { border-left-color: #2563eb; }
+
+.inspector-section {
+  padding: 14px;
+  border-top: 1px solid #eef1f5;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.section-title small {
+  color: #64748b;
+}
+
+.risk-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-/* 空状态卡片优化 */
-.empty-state {
-  margin-top: 10vh;
+.risk-list button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fbfdff;
+  text-align: left;
+  cursor: pointer;
 }
-.welcome-message h2 { font-size: 28px; margin-bottom: 12px; font-weight: 600; }
-.prompt-card {
-  border-radius: 12px;
-  border: 1px solid #ebeef5;
-  color: #606266;
-  font-size: 14px;
+
+.risk-list button:hover {
+  border-color: #93c5fd;
+  background: #f8fbff;
 }
-.prompt-card:hover {
-  border-color: #409eff;
-  color: #409eff;
+
+.risk-list span:last-child {
+  min-width: 0;
+}
+
+.risk-list small,
+.compact-list span {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.risk-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+.risk-dot.danger { background: #ef4444; }
+.risk-dot.warning { background: #f59e0b; }
+
+.compact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compact-list li {
+  min-width: 0;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.compact-list li:last-child {
+  border-bottom: 0;
+}
+
+.compact-list strong {
+  display: block;
+  font-size: 13px;
+}
+
+@media (max-width: 1280px) {
+  .ai-workspace {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+
+  .data-inspector {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .ai-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .session-rail {
+    display: none;
+  }
+
+  .assistant-toolbar,
+  .toolbar-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .prompt-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .from-user .message-panel {
+    max-width: 92%;
+  }
 }
 </style>

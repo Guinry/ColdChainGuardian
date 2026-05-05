@@ -2,6 +2,7 @@ package com.coldchain.guardian.infra.persistence.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -17,6 +18,7 @@ public class UserEntity extends BaseEntity {
     @NotBlank(message = "密码不能为空")
     @Size(min = 6, max = 100, message = "密码长度必须在6-100个字符之间")
     @TableField("password")
+    @JsonIgnore
     private String password;
 
     @Email(message = "邮箱格式不正确")

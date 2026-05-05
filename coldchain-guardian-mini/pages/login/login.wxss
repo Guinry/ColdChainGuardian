@@ -107,3 +107,7 @@ page {
   font-size: 24rpx;
   color: #C0C4CC;
 }
+
+.devtools-tip {
+  color: #3A7AFE;
+}

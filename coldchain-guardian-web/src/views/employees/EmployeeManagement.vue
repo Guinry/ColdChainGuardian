@@ -1,6 +1,14 @@
 <template>
   <Layout>
     <div class="employee-management-container">
+      <header class="page-head">
+        <div>
+          <h1>员工管理</h1>
+          <p>维护小程序端员工账号、角色、微信绑定和启停状态。</p>
+        </div>
+        <el-button type="primary" :icon="Plus" @click="handleAdd">新增员工</el-button>
+      </header>
+
       <el-card class="search-card">
         <div class="search-and-action-wrapper">
           <el-form :model="queryParams" inline class="search-form">
@@ -39,10 +47,6 @@
             <el-form-item>
               <el-button type="primary" @click="handleSearch">查询</el-button>
               <el-button @click="resetQuery">重置</el-button>
-              <el-button type="success" @click="handleAdd" class="add-btn">
-                <el-icon><Plus /></el-icon>
-                新增员工
-              </el-button>
             </el-form-item>
           </el-form>
         </div>
@@ -439,21 +443,38 @@ onMounted(() => {
 
 <style scoped>
 .employee-management-container {
-  padding: 20px;
+  min-height: 100%;
+  padding: 20px 24px 28px;
+  background: var(--ccg-bg);
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 750;
+  color: var(--ccg-text);
+}
+
+.page-head p {
+  margin: 6px 0 0;
+  color: var(--ccg-muted);
+  font-size: 13px;
 }
 
 .search-card, .table-card {
-  margin-bottom: 20px;
-  border: none;
+  margin-bottom: 16px;
+  border: 1px solid var(--ccg-border);
   border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-
-/* 优化搜索区域布局，让内部元素更紧凑 */
-.search-and-action-wrapper {
-  display: flex;
-  justify-content: flex-start;
-  align-items: flex-start;
+  box-shadow: var(--ccg-shadow-sm);
 }
 
 .search-form {
@@ -461,10 +482,6 @@ onMounted(() => {
 }
 
 /* 给新增按钮加一点左边距，和重置按钮拉开一点距离 */
-.add-btn {
-  margin-left: 15px;
-}
-
 .font-bold {
   font-weight: 600;
 }
@@ -523,5 +540,11 @@ onMounted(() => {
   gap: 12px;
   padding-top: 20px;
   border-top: 1px solid #eee;
+}
+
+@media (max-width: 900px) {
+  .page-head {
+    flex-direction: column;
+  }
 }
 </style>

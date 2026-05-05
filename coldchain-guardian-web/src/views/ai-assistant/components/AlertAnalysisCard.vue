@@ -35,6 +35,9 @@
 
 <script setup>
 import { defineProps } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const props = defineProps({
   data: {
@@ -60,10 +63,13 @@ const getSeverityType = (severity) => {
 
 // 创建工单
 const createWorkOrder = () => {
-  // 这里应该调用创建工单的API
-  console.log('创建工单', props.data)
-  // 弹出创建工单的对话框
-  // 这可能需要通过 emit 或全局事件来触发父组件中的对话框
+  router.push({
+    path: '/work-orders',
+    query: {
+      create: '1',
+      alertId: props.data.alertId || props.data.id || ''
+    }
+  })
 }
 </script>
 

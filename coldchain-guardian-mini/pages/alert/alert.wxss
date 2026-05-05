@@ -1,233 +1,335 @@
-/* pages/alert/alert.wxss */
 page {
-  background-color: #F5F7FA;
+  height: 100vh;
+  background: #F4F7FB;
+  color: #172033;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', sans-serif;
-  /* 🌟 修复关键：让页面强制撑满100%高度，并开启flex纵向布局 */
-  height: 100vh; 
-  display: flex;
-  flex-direction: column;
 }
 
 .page-container {
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100%;
 }
 
-/* --- 1. 固定头部 (不再需要 sticky) --- */
 .fixed-header {
-  background-color: #FFFFFF;
-  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.03);
-  flex-shrink: 0; /* 🌟 修复关键：保证头部不会被下方的列表挤压变形 */
-  z-index: 100;
+  flex-shrink: 0;
+  z-index: 20;
+  background: #FFFFFF;
+  box-shadow: 0 6rpx 24rpx rgba(23, 32, 51, 0.05);
 }
 
-/* --- 2. 滚动区域 (占据剩余全部空间) --- */
-.scroll-area {
-  flex: 1; /* 🌟 修复关键：自动占满头部以外的所有空间 */
-  overflow: hidden; 
-}
-
-/* 页面标题 */
 .nav-title {
   text-align: center;
   font-size: 34rpx;
-  font-weight: bold;
-  color: #303133;
-  width: 100%;
+  font-weight: 800;
+  color: #172033;
+}
+
+.search-bar {
+  margin: 20rpx 32rpx 0;
+  height: 76rpx;
+  border-radius: 18rpx;
+  background: #F4F7FB;
+  display: flex;
+  align-items: center;
+  padding: 0 22rpx;
+  box-sizing: border-box;
+}
+
+.search-input {
+  flex: 1;
+  height: 76rpx;
+  font-size: 27rpx;
+  color: #172033;
+}
+
+.search-clear,
+.search-action {
+  margin-left: 18rpx;
+  font-size: 25rpx;
+  color: #8B96A8;
+}
+
+.search-action {
+  color: #1565D8;
+  font-weight: 700;
 }
 
 .segment-wrap {
-  padding: 24rpx 32rpx 20rpx;
+  padding: 22rpx 32rpx 20rpx;
 }
 
 .segment-control {
   display: flex;
-  background-color: #F0F2F5;
-  border-radius: 16rpx;
+  background: #EEF2F7;
+  border-radius: 18rpx;
   padding: 6rpx;
 }
 
 .segment-item {
   flex: 1;
-  text-align: center;
-  padding: 16rpx 0;
-  font-size: 28rpx;
-  color: #606266;
-  border-radius: 12rpx;
-  transition: all 0.3s ease;
+  height: 68rpx;
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  color: #637083;
+  font-size: 25rpx;
+  font-weight: 600;
 }
 
 .segment-item.active {
-  background-color: #FFFFFF;
-  color: #3A7AFE;
-  font-weight: bold;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+  background: #FFFFFF;
+  color: #1565D8;
+  box-shadow: 0 4rpx 14rpx rgba(23, 32, 51, 0.06);
 }
 
-/* --- 2. 告警卡片列表 --- */
+.segment-count {
+  min-width: 32rpx;
+  height: 32rpx;
+  border-radius: 999rpx;
+  background: rgba(21, 101, 216, 0.10);
+  color: inherit;
+  font-size: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8rpx;
+  box-sizing: border-box;
+}
+
+.scroll-area {
+  flex: 1;
+  overflow: hidden;
+}
+
 .alert-list {
   padding: 24rpx 32rpx;
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  gap: 20rpx;
 }
 
 .alert-card {
-  background: #FFFFFF;
-  border-radius: 24rpx;
-  padding: 32rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.03);
   position: relative;
   overflow: hidden;
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 18rpx rgba(23, 32, 51, 0.04);
+  border-left: 8rpx solid #D8E2F0;
+}
+
+.alert-card.focused {
+  box-shadow: 0 0 0 4rpx rgba(21, 101, 216, 0.12), 0 8rpx 24rpx rgba(21, 101, 216, 0.12);
+}
+
+.alert-card.urgent {
+  border-left-color: #E5484D;
+}
+
+.alert-card.high {
+  border-left-color: #F59E0B;
+}
+
+.alert-card.medium {
+  border-left-color: #1565D8;
 }
 
 .card-hover {
-  background-color: #FAFAFA;
+  opacity: 0.82;
 }
 
-.alert-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 8rpx;
-}
-
-/* 色彩语义 */
-.urgent::before { background-color: #F54A45; }
-.urgent .priority-tag { background: #FFF0F0; color: #F54A45; }
-.urgent .current-color { color: #F54A45; }
-
-.high::before { background-color: #FF8F1F; }
-.high .priority-tag { background: #FFF5EB; color: #FF8F1F; }
-.high .current-color { color: #FF8F1F; }
-
-.normal::before { background-color: #3A7AFE; }
-.normal .priority-tag { background: #EBF2FF; color: #3A7AFE; }
-.normal .current-color { color: #3A7AFE; }
-
-/* 头部 */
 .card-header {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 24rpx;
+  justify-content: space-between;
+  gap: 18rpx;
 }
 
 .title-wrap {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  flex: 1;
-  padding-right: 20rpx;
+  gap: 12rpx;
 }
 
 .priority-tag {
-  font-size: 20rpx;
-  font-weight: bold;
-  padding: 4rpx 12rpx;
-  border-radius: 6rpx;
-  margin-right: 12rpx;
   flex-shrink: 0;
+  border-radius: 999rpx;
+  padding: 5rpx 14rpx;
+  font-size: 21rpx;
+  color: #E5484D;
+  background: #FFF1F1;
+  font-weight: 800;
+}
+
+.alert-card.high .priority-tag {
+  color: #B45309;
+  background: #FFF7E6;
+}
+
+.alert-card.medium .priority-tag {
+  color: #1565D8;
+  background: #EEF5FF;
 }
 
 .alert-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #303133;
+  min-width: 0;
+  flex: 1;
+  color: #172033;
+  font-size: 31rpx;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .alert-time {
-  font-size: 24rpx;
-  color: #909399;
   flex-shrink: 0;
-  margin-top: 6rpx;
-}
-
-/* 数据面板 */
-.card-body {
-  margin-bottom: 30rpx;
+  color: #8B96A8;
+  font-size: 23rpx;
+  margin-top: 5rpx;
 }
 
 .data-panel {
-  background-color: #F8FAFC;
-  border-radius: 16rpx;
-  padding: 24rpx;
+  margin-top: 24rpx;
+  background: #F7FAFD;
+  border-radius: 18rpx;
+  padding: 22rpx;
   display: flex;
   align-items: center;
-  margin-bottom: 20rpx;
 }
 
 .data-box {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
 .data-label {
-  font-size: 24rpx;
-  color: #909399;
-  margin-bottom: 8rpx;
+  color: #8B96A8;
+  font-size: 23rpx;
 }
 
 .data-value {
-  font-size: 40rpx;
-  font-weight: bold;
-  font-family: 'DIN Alternate', Arial, sans-serif;
+  color: #172033;
+  font-size: 38rpx;
+  font-weight: 800;
+  margin-top: 8rpx;
+}
+
+.current-color {
+  color: #E5484D;
+}
+
+.alert-card.high .current-color {
+  color: #F59E0B;
+}
+
+.alert-card.medium .current-color {
+  color: #1565D8;
 }
 
 .limit-color {
-  color: #303133;
+  color: #172033;
 }
 
 .data-divider {
   width: 2rpx;
   height: 60rpx;
-  background-color: #E4E7ED;
-  margin: 0 40rpx;
+  background: #E4EAF2;
+  margin: 0 28rpx;
 }
 
-.location-row {
+.meta-block {
+  margin-top: 20rpx;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 8rpx;
 }
 
-.loc-icon { font-size: 28rpx; margin-right: 8rpx; }
-.loc-text { font-size: 26rpx; color: #606266; }
+.meta-line {
+  color: #637083;
+  font-size: 25rpx;
+  line-height: 1.45;
+}
 
-/* 底部操作区 */
 .card-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 20rpx;
-  border-top: 1px dashed #F0F2F5;
-  padding-top: 24rpx;
-}
-
-.btn-ghost, .btn-primary {
-  margin: 0;
-  font-size: 26rpx;
-  font-weight: 500;
-  border-radius: 12rpx;
-  height: 60rpx;
-  line-height: 60rpx;
-  padding: 0 32rpx;
-}
-
-.btn-ghost::after, .btn-primary::after { border: none; }
-.btn-ghost { background-color: #F4F4F5; color: #606266; }
-.btn-primary { background-color: #EBF2FF; color: #3A7AFE; font-weight: bold; }
-
-/* --- 3. 空状态 --- */
-.empty-state {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding-top: 200rpx;
+  gap: 18rpx;
+  margin-top: 24rpx;
+  padding-top: 22rpx;
+  border-top: 1rpx solid #EEF2F7;
 }
 
-.empty-emoji { font-size: 100rpx; margin-bottom: 20rpx; }
-.empty-text { font-size: 28rpx; color: #909399; }
+.btn-ghost,
+.btn-primary {
+  margin: 0;
+  min-width: 150rpx;
+  height: 62rpx;
+  line-height: 62rpx;
+  border-radius: 14rpx;
+  padding: 0 24rpx;
+  font-size: 25rpx;
+  font-weight: 700;
+}
+
+.btn-ghost::after,
+.btn-primary::after {
+  border: none;
+}
+
+.btn-ghost {
+  color: #637083;
+  background: #F1F4F8;
+}
+
+.btn-primary {
+  color: #FFFFFF;
+  background: #1565D8;
+}
+
+.readonly-tip {
+  color: #8B96A8;
+  font-size: 25rpx;
+}
+
+.load-more {
+  text-align: center;
+  color: #1565D8;
+  font-size: 26rpx;
+  padding: 24rpx 0 6rpx;
+}
+
+.load-more.done {
+  color: #8B96A8;
+}
+
+.empty-state {
+  padding: 220rpx 48rpx 0;
+  text-align: center;
+}
+
+.empty-title {
+  display: block;
+  font-size: 30rpx;
+  color: #172033;
+  font-weight: 800;
+}
+
+.empty-desc {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 25rpx;
+  color: #8B96A8;
+}
+
+.bottom-space {
+  height: 70rpx;
+}

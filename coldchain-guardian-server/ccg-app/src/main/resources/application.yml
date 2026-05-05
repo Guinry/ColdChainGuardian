@@ -28,16 +28,6 @@ spring:
           min-idle: 1
           time-between-eviction-runs: 10s
 
-  ai:
-    openai:
-      api-key: "4d152e0e-f8b0-4d5c-82d4-c6460aeb06da"
-      # 通义千问兼容OpenAI格式的API配置
-      base-url: "https://ark.cn-beijing.volces.com/api/coding"
-      chat:
-        options:
-          # 通义千问模型名称
-          model: "ark-code-latest"
-
   main:
     allow-bean-definition-overriding: true
 
@@ -51,7 +41,19 @@ wx:
   miniprogram:
     appid: ${WX_APP_ID:wx839593338a0174f1}  # 微信小程序AppID
     secret: ${WX_APP_SECRET:f5b225c35dc53ad736984cad0641b03f}  # 微信小程序AppSecret
+    allow-devtools-login: ${WX_ALLOW_DEVTOOLS_LOGIN:true} # PC 模拟器/微信开发者工具允许按手机号开发登录
     request-timeout: 5000  # 请求超时时间（毫秒）
+
+ccg:
+  ai:
+    openai:
+      api-key: ${SPRING_AI_OPENAI_API_KEY:${OPENAI_API_KEY:not-configured}}
+      base-url: ${SPRING_AI_OPENAI_BASE_URL:https://www.openclaudecode.cn}
+      model: ${SPRING_AI_OPENAI_CHAT_MODEL:deepseek-v4-pro}
+      protocol: ${SPRING_AI_OPENAI_PROTOCOL:chat-completions}
+      user-agent: ${SPRING_AI_OPENAI_USER_AGENT:Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0}
+      timeout-seconds: ${SPRING_AI_OPENAI_TIMEOUT_SECONDS:90}
+      max-output-tokens: ${SPRING_AI_OPENAI_MAX_OUTPUT_TOKENS:4096}
 
 # JWT配置
 jwt:

@@ -111,6 +111,15 @@ public class AuthService {
             throw new BusinessException(ErrorCode.ACCOUNT_DISABLED, "账号已被禁用");
         }
 
+        // 🌟 核心修复：对于非ADMIN角色（员工/普通用户），检查微信是否已绑定
+        // 如果openId为空，说明已经被管理员解绑，需要让用户重新绑定登录
+        String role = user.getRole();
+        if (!"ADMIN".equals(role) && !"SUPER_ADMIN".equals(role)) {
+            if (!org.springframework.util.StringUtils.hasText(user.getOpenId())) {
+                throw new BusinessException(ErrorCode.AUTH_FAILED, "微信未绑定，请重新绑定手机号登录");
+            }
+        }
+
         CurrentUserInfoResponseDto response = new CurrentUserInfoResponseDto();
         BeanUtils.copyProperties(user, response);
 

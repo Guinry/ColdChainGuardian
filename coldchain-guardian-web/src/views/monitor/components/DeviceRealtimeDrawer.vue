@@ -15,7 +15,7 @@
               <el-descriptions-item label="设备编码">{{ device.deviceCode }}</el-descriptions-item>
               <el-descriptions-item label="设备名称">{{ device.deviceName }}</el-descriptions-item>
               <el-descriptions-item label="设备类型">{{ getDeviceTypeLabel(device.deviceType) }}</el-descriptions-item>
-              <el-descriptions-item label="所属库区">{{ device.areaPath || '未分配' }}</el-descriptions-item>
+                <el-descriptions-item label="所属库区">{{ device.areaPath || device.areaName || '未分配' }}</el-descriptions-item>
               <el-descriptions-item label="最新温度">
                 <span :class="getTempClass(device.latestTemp, device.temperatureThresholdMin, device.temperatureThresholdMax)">
                   {{ device.latestTemp !== null ? device.latestTemp + '℃' : '未上报' }}
@@ -104,8 +104,21 @@
               <el-table-column prop="createdTime" label="创建时间" width="160" />
               <el-table-column label="操作" width="150">
                 <template #default="{ row }">
-                  <el-button size="small" @click="handleAcknowledge(row)">确认</el-button>
-                  <el-button size="small" type="primary" @click="handleHandle(row)">处理</el-button>
+                  <el-button
+                    size="small"
+                    :disabled="row.status === 'HANDLING' || row.status === 'RESOLVED' || row.resolved"
+                    @click="handleAcknowledge(row)"
+                  >
+                    确认
+                  </el-button>
+                  <el-button
+                    size="small"
+                    type="primary"
+                    :disabled="row.status === 'RESOLVED' || row.resolved"
+                    @click="handleHandle(row)"
+                  >
+                    处理
+                  </el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -128,10 +141,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
-import { useEcharts } from '@/composables/useEcharts'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import * as echarts from 'echarts'
 import { monitorApi } from '@/api/monitor'
-import { alertApi } from '@/api/alert' // 假设存在告警API
+import { alertApi } from '@/api/alert'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const props = defineProps({
   visible: {
@@ -161,6 +175,12 @@ const chartRef = ref(null)
 
 // 图表实例
 let chartInstance = null
+const disposeChart = () => {
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
+}
 
 // 告警分页
 const alertPagination = ref({
@@ -183,6 +203,7 @@ watch(localVisible, (val) => {
       loadAlertData()
     }
   } else {
+    disposeChart()
     emit('update:visible', false)
     emit('close')
   }
@@ -204,8 +225,7 @@ const getTitle = computed(() => {
 
 // 方法
 const handleClose = () => {
-  emit('update:visible', false)
-  emit('close')
+  localVisible.value = false
 }
 
 const formatDate = (dateStr) => {
@@ -270,7 +290,7 @@ const getAlertLevelType = (level) => {
     'LOW': 'info',
     'MEDIUM': 'warning',
     'HIGH': 'danger',
-    'CRITICAL': 'error'
+    'CRITICAL': 'danger'
   }
   return typeMap[level] || 'info'
 }
@@ -340,8 +360,9 @@ const loadTrendData = async () => {
 
     // 使用 ECharts 渲染图表
     await nextTick()
+    if (!chartRef.value) return
     if (!chartInstance) {
-      chartInstance = useEcharts(chartRef.value)
+      chartInstance = echarts.init(chartRef.value)
     }
 
     const option = {
@@ -426,8 +447,10 @@ const loadTrendData = async () => {
     }
 
     chartInstance.setOption(option)
+    chartInstance.resize()
   } catch (error) {
     console.error('加载趋势数据失败:', error)
+    ElMessage.error('加载趋势数据失败')
   } finally {
     trendLoading.value = false
   }
@@ -439,17 +462,6 @@ const loadAlertData = async () => {
 
   alertLoading.value = true
   try {
-    const params = {
-      page: alertPagination.value.currentPage,
-      size: alertPagination.value.pageSize,
-      deviceId: props.device.id
-    }
-    // 注意：这里需要实际的告警API来获取设备的告警记录
-    // const response = await alertApi.getAlertsByDeviceId(params)
-    // alertList.value = response.data.list || []
-    // alertPagination.value.total = response.data.total || 0
-
-    // 实际的告警数据加载
     const response = await alertApi.getByDeviceId(props.device.id, {
       page: alertPagination.value.currentPage,
       size: alertPagination.value.pageSize
@@ -466,25 +478,38 @@ const loadAlertData = async () => {
 // 告警处理方法
 const handleAcknowledge = async (alert) => {
   try {
-    // 调用告警确认API
-    // await alertApi.acknowledgeAlert(alert.id)
-    console.log('确认告警:', alert.id)
-    // 刷新告警列表
+    await alertApi.updateStatus(alert.id, {
+      status: 'HANDLING',
+      handleRemark: '监控页确认告警'
+    })
+    ElMessage.success('告警已确认')
     loadAlertData()
   } catch (error) {
     console.error('确认告警失败:', error)
+    ElMessage.error(error.response?.data?.message || '确认告警失败')
   }
 }
 
 const handleHandle = async (alert) => {
   try {
-    // 调用告警处理API
-    // await alertApi.handleAlert(alert.id)
-    console.log('处理告警:', alert.id)
-    // 刷新告警列表
+    const { value } = await ElMessageBox.prompt('请输入处理备注', '处理告警', {
+      confirmButtonText: '标记已解决',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputPlaceholder: '例如：已检查设备与库区环境，恢复正常'
+    })
+
+    await alertApi.updateStatus(alert.id, {
+      status: 'RESOLVED',
+      handleRemark: value || '监控页快速处理'
+    })
+    ElMessage.success('告警已处理')
     loadAlertData()
   } catch (error) {
-    console.error('处理告警失败:', error)
+    if (error !== 'cancel' && error !== 'close') {
+      console.error('处理告警失败:', error)
+      ElMessage.error(error.response?.data?.message || '处理告警失败')
+    }
   }
 }
 
@@ -500,8 +525,9 @@ const handleAlertPageChange = (page) => {
   loadAlertData()
 }
 
-// 组件卸载时销毁图表
-// 注意：在实际应用中，需要在组件卸载时调用 chartInstance.dispose()
+onBeforeUnmount(() => {
+  disposeChart()
+})
 </script>
 
 <style scoped>

@@ -1,6 +1,14 @@
 <template>
   <Layout>
     <div class="manager-management-container">
+      <header class="page-head">
+        <div>
+          <h1>管理员管理</h1>
+          <p>维护 Web 管理端账号，控制管理员微信绑定和账号启停状态。</p>
+        </div>
+        <el-button type="primary" :icon="Plus" @click="handleAdd">新增管理员</el-button>
+      </header>
+
       <el-card class="search-card">
         <div class="search-and-action-wrapper">
           <el-form :model="queryParams" inline class="search-form">
@@ -31,10 +39,6 @@
             <el-form-item>
               <el-button type="primary" @click="handleSearch">查询</el-button>
               <el-button @click="resetQuery">重置</el-button>
-              <el-button type="danger" @click="handleAdd" class="add-btn">
-                <el-icon><Plus /></el-icon>
-                新增管理员
-              </el-button>
             </el-form-item>
           </el-form>
         </div>
@@ -173,7 +177,7 @@ import Layout from '@/components/Layout.vue'
 import { useAuthStore } from '@/store/auth'
 // ⚠️ 注意：这里我们复用 employeeApi，但强制传参 role='ADMIN'
 // 如果你有专门的 managerApi，请替换掉它
-import { employeeApi } from '@/utils/api'
+import { managerApi } from '@/utils/api'
 
 // 获取当前登录用户，用于防止停用自己
 const authStore = useAuthStore()
@@ -239,7 +243,7 @@ const formRules: FormRules = {
 const getList = async () => {
   loading.value = true
   try {
-    const response = await employeeApi.getEmployeeList(
+    const response = await managerApi.getManagerList(
         queryParams,
         pagination.currentPage,
         pagination.pageSize
@@ -336,7 +340,7 @@ const handleStatusChange = async (row: Manager) => {
         }
     )
 
-    await employeeApi.updateEmployeeStatus(row.id, row.status)
+    await managerApi.updateManagerStatus(row.id, row.status)
     ElMessage.success(`${row.status === 1 ? '启用' : '停用'}成功`)
   } catch {
     row.status = row.status === 1 ? 0 : 1
@@ -356,7 +360,7 @@ const handleUnbindWechat = async (row: Manager) => {
         }
     )
 
-    await employeeApi.unbindEmployeeWechat(row.id)
+    await managerApi.unbindManagerWechat(row.id)
     ElMessage.success('解绑微信成功')
     // 刷新列表确保数据同步
     await getList()
@@ -381,10 +385,10 @@ const handleSubmit = async () => {
 
   try {
     if (managerForm.id) {
-      await employeeApi.updateEmployee(managerForm)
+      await managerApi.updateManager(managerForm)
       ElMessage.success('编辑成功')
     } else {
-      await employeeApi.createEmployee(managerForm)
+      await managerApi.createManager(managerForm)
       ElMessage.success('新增成功')
     }
 
@@ -404,28 +408,42 @@ onMounted(() => {
 
 <style scoped>
 .manager-management-container {
-  padding: 20px;
+  min-height: 100%;
+  padding: 20px 24px 28px;
+  background: var(--ccg-bg);
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 750;
+  color: var(--ccg-text);
+}
+
+.page-head p {
+  margin: 6px 0 0;
+  color: var(--ccg-muted);
+  font-size: 13px;
 }
 
 .search-card, .table-card {
-  margin-bottom: 20px;
-  border: none;
+  margin-bottom: 16px;
+  border: 1px solid var(--ccg-border);
   border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-
-.search-and-action-wrapper {
-  display: flex;
-  justify-content: flex-start;
-  align-items: flex-start;
+  box-shadow: var(--ccg-shadow-sm);
 }
 
 .search-form {
   flex: 1;
-}
-
-.add-btn {
-  margin-left: 15px;
 }
 
 .font-bold {
@@ -486,5 +504,11 @@ onMounted(() => {
   gap: 12px;
   padding-top: 20px;
   border-top: 1px solid #eee;
+}
+
+@media (max-width: 900px) {
+  .page-head {
+    flex-direction: column;
+  }
 }
 </style>

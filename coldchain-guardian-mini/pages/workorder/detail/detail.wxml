@@ -1,5 +1,4 @@
 <view class="page-container">
-
   <view class="fixed-header" style="padding-top: {{paddingTop}}px;">
     <view class="nav-bar" style="height: {{capsuleHeight}}px;">
       <view class="back-btn" bindtap="goBack">
@@ -10,77 +9,112 @@
     </view>
   </view>
 
-  <scroll-view class="scroll-area" scroll-y="true">
+  <scroll-view class="scroll-area" scroll-y="true" wx:if="{{workOrder}}">
+    <view class="hero-card {{workOrder.priority}}">
+      <view class="title-row">
+        <text class="main-title">{{workOrder.title}}</text>
+        <text class="status-tag {{workOrder.statusClass}}">{{workOrder.statusText}}</text>
+      </view>
+      <view class="tag-row">
+        <text class="tag">{{workOrder.type}}</text>
+        <text class="tag">{{workOrder.priorityText}}优先级</text>
+        <text wx:if="{{workOrder.isOverdue}}" class="tag danger">已逾期</text>
+      </view>
+      <text class="description">{{workOrder.description}}</text>
+    </view>
 
     <view class="info-card">
-      <view class="card-title-row">
-        <text class="main-title">{{workOrder.title}}</text>
-        <view class="status-tag processing">处理中</view>
+      <view class="info-row">
+        <text class="label">发生位置</text>
+        <text class="value">{{workOrder.location}}</text>
       </view>
-
-      <view class="info-grid">
-        <view class="grid-item">
-          <text class="label">任务类型</text>
-          <text class="value">{{workOrder.type}}</text>
-        </view>
-        <view class="grid-item">
-          <text class="label">发生位置</text>
-          <text class="value">{{workOrder.location}}</text>
-        </view>
-        <view class="grid-item">
-          <text class="label">截止时间</text>
-          <text class="value text-danger">{{workOrder.deadline}}</text>
-        </view>
+      <view class="info-row">
+        <text class="label">截止时间</text>
+        <text class="value {{workOrder.isOverdue ? 'danger-text' : ''}}">{{workOrder.deadline}}</text>
       </view>
-
-      <view class="desc-box">
-        <text class="label">故障描述</text>
-        <text class="value multiline">{{workOrder.description}}</text>
+      <view class="info-row">
+        <text class="label">关联告警</text>
+        <text class="value">{{workOrder.alertId || '无'}}</text>
+      </view>
+      <view class="info-row">
+        <text class="label">最后更新</text>
+        <text class="value">{{workOrder.updatedTimeText}}</text>
       </view>
     </view>
 
-    <view class="operation-card">
+    <view class="operation-card" wx:if="{{!workOrder.readonly}}">
       <view class="section-title">现场执行</view>
 
-      <button class="checkin-btn" bindtap="scanCheckIn">
-        <text class="btn-icon">📍</text> 扫码到场签到
+      <button class="checkin-btn {{checkedIn ? 'checked' : ''}}" bindtap="scanCheckIn">
+        {{checkedIn ? '已记录到场' : '扫码到场签到'}}
       </button>
 
       <view class="operation-item">
         <view class="item-header">
-          <text class="label">现场照片</text>
-          <text class="sub-label">最多9张</text>
+          <text class="item-title">现场照片</text>
+          <text class="sub-label">{{photos.length}}/9</text>
         </view>
         <view class="photo-grid">
           <view class="photo-item" wx:for="{{photos}}" wx:key="index">
-            <image class="photo-image" src="{{item}}" mode="aspectFill"></image>
+            <image class="photo-image" src="{{item}}" mode="aspectFill" data-src="{{item}}" bindtap="previewPhoto"></image>
             <view class="photo-delete" bindtap="deletePhoto" data-index="{{index}}">×</view>
           </view>
           <view class="photo-add" bindtap="takePhoto" wx:if="{{photos.length < 9}}">
-            <text class="add-icon">📷</text>
-            <text class="add-text">添加</text>
+            <text class="add-icon">+</text>
+            <text class="add-text">添加照片</text>
           </view>
         </view>
       </view>
 
       <view class="operation-item">
         <view class="item-header">
-          <text class="label">处理记录</text>
+          <text class="item-title">处理记录</text>
+          <text class="sub-label">{{recordText.length}}/500</text>
         </view>
         <view class="record-box">
-          <textarea class="record-input" placeholder="请详细描述处理过程及更换备件..." value="{{recordText}}" bindinput="inputRecord" maxlength="500"></textarea>
-          <view class="voice-btn" bindlongpress="voiceInput">
-            <text>🎤 按住语音输入</text>
+          <textarea class="record-input"
+                    placeholder="请记录现场检查、处理措施、备件更换或异常原因"
+                    value="{{recordText}}"
+                    bindinput="inputRecord"
+                    maxlength="500"></textarea>
+          <view class="voice-btn" bindlongpress="voiceInput">按住语音输入</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="readonly-card" wx:else>
+      <text class="readonly-title">当前工单不可编辑</text>
+      <text class="readonly-desc">待验收、已完成或已关闭状态仅支持查看详情和操作日志。</text>
+    </view>
+
+    <view class="log-card">
+      <view class="section-title">操作日志</view>
+      <view wx:if="{{logs.length > 0}}">
+        <view class="log-item" wx:for="{{logs}}" wx:key="id">
+          <view class="log-dot"></view>
+          <view class="log-content">
+            <view class="log-head">
+              <text class="log-title">{{item.actionText}}</text>
+              <text class="log-time">{{item.timeText}}</text>
+            </view>
+            <text class="log-meta">{{item.operatorText}}</text>
+            <text class="log-remark">{{item.remarkText}}</text>
           </view>
         </view>
       </view>
+      <view class="empty-log" wx:else>暂无操作日志</view>
     </view>
 
     <view class="bottom-spacer"></view>
   </scroll-view>
 
-  <view class="fixed-bottom-bar">
-    <button class="submit-btn" bindtap="submitForReview">提交验收</button>
+  <view class="empty-state" wx:else>
+    <text>{{loading ? '正在加载工单详情' : '未找到工单详情'}}</text>
   </view>
 
+  <view class="fixed-bottom-bar" wx:if="{{workOrder && !workOrder.readonly}}">
+    <button class="submit-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="handlePrimaryAction">
+      {{workOrder.canAccept ? '接收并开始处理' : '提交验收'}}
+    </button>
+  </view>
 </view>

@@ -1,8 +1,6 @@
 package com.coldchain.guardian.app.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.coldchain.guardian.app.service.ManagerService;
 import com.coldchain.guardian.common.api.PageResponse;
 import com.coldchain.guardian.common.exception.BusinessException;
@@ -13,6 +11,8 @@ import com.coldchain.guardian.infra.persistence.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+
+import java.util.List;
 
 /**
  * 管理员管理服务实现类
@@ -56,15 +56,20 @@ public class ManagerServiceImpl implements ManagerService {
         // 排序
         wrapper.orderByDesc(UserEntity::getId);
 
-        IPage<UserEntity> page = new Page<>(pageNum, pageSize);
-        IPage<UserEntity> resultPage = userMapper.selectPage(page, wrapper);
+        List<UserEntity> allRecords = userMapper.selectList(wrapper);
+        allRecords.forEach(user -> user.setPassword(null));
 
-        // 手动创建PageResponse
+        int safePage = Math.max(pageNum, 1);
+        int safeSize = Math.max(pageSize, 1);
+        int fromIndex = Math.min((safePage - 1) * safeSize, allRecords.size());
+        int toIndex = Math.min(fromIndex + safeSize, allRecords.size());
+        List<UserEntity> pageRecords = allRecords.subList(fromIndex, toIndex);
+
         return PageResponse.of(
-            resultPage.getRecords(),
-            resultPage.getTotal(),
-            (int) resultPage.getCurrent(),
-            (int) resultPage.getSize()
+            pageRecords,
+            allRecords.size(),
+            safePage,
+            safeSize
         );
     }
 
@@ -159,13 +164,16 @@ public class ManagerServiceImpl implements ManagerService {
             throw new BusinessException(ErrorCode.FORBIDDEN, "无权操作非管理员账户");
         }
 
-        // 清除微信相关字段
-        user.setOpenId(null);
-        user.setUnionId(null);
-        user.setWxNickname(null);
-        user.setWxAvatar(null);
+        // 清除微信相关字段 - 使用UpdateWrapper强制更新null值
+        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<UserEntity> updateWrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+        updateWrapper
+            .eq(UserEntity::getId, userId)
+            .set(UserEntity::getOpenId, (String) null)
+            .set(UserEntity::getWxNickname, (String) null)
+            .set(UserEntity::getWxAvatar, (String) null);
 
-        int rows = userMapper.updateById(user);
+        int rows = userMapper.update(null, updateWrapper);
         return rows > 0;
     }
 }

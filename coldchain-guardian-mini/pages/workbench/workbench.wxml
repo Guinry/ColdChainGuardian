@@ -1,100 +1,109 @@
 <view class="page-container">
-  
   <view class="fixed-nav" style="height: {{navHeight}}px;"></view>
 
-  <scroll-view class="scroll-area" 
-               scroll-y="true" 
+  <scroll-view class="scroll-area"
+               scroll-y="true"
                type="list"
                refresher-enabled="true"
                refresher-triggered="{{isRefreshing}}"
                bindrefresherrefresh="onRefresh"
-               refresher-background="#3A7AFE"
+               refresher-background="#1565D8"
                refresher-default-style="white">
-    
+
     <view class="header-bg">
       <view class="header-content">
         <view class="user-profile">
           <view class="text-avatar">{{userInfo.avatarText}}</view>
           <view class="user-info">
-            <text class="greeting">早安，{{userInfo.name}}</text>
-            <text class="shift-tag">当前排班：{{userInfo.shift}}</text>
+            <text class="greeting">{{userInfo.name}}</text>
+            <text class="shift-tag">{{userInfo.roleText}} · {{lastUpdated}} 更新</text>
           </view>
         </view>
-        <view class="weather-box">
-          <text class="weather-icon">⛅</text>
-          <text class="weather-text">{{weather}}</text>
+      </view>
+
+      <view class="summary-strip">
+        <view class="summary-item">
+          <text class="summary-value">{{summary.pendingTasks}}</text>
+          <text class="summary-label">待接收</text>
+        </view>
+        <view class="summary-item">
+          <text class="summary-value">{{summary.urgentAlerts}}</text>
+          <text class="summary-label">紧急告警</text>
+        </view>
+        <view class="summary-item">
+          <text class="summary-value">{{summary.onlineDevices}}/{{summary.totalDevices}}</text>
+          <text class="summary-label">在线设备</text>
         </view>
       </view>
     </view>
 
-    <view class="hero-grid">
-      <view class="hero-btn" bindtap="scanQRCode" hover-class="btn-hover">
-        <view class="icon-circle scan-bg">
-          <text class="emoji">📷</text>
-        </view>
-        <text class="hero-title">设备扫码</text>
-        <text class="hero-desc">现场设备核验</text>
-      </view>
-
-      <view class="hero-btn" bindlongpress="voiceRepair" hover-class="btn-hover">
-        <view class="icon-circle voice-bg">
-          <text class="emoji">🎤</text>
-        </view>
-        <text class="hero-title">语音报修</text>
-        <text class="hero-desc">长按快速上报</text>
-      </view>
-    </view>
-
-    <view class="stats-grid">
-      <view class="stat-card">
-        <text class="stat-title">待我处理</text>
-        <view class="stat-value blue-text">
-          {{pendingTasks}}<text class="stat-unit">单</text>
+    <view class="quick-grid">
+      <view class="quick-action" bindtap="scanQRCode" hover-class="pressing">
+        <view class="quick-icon scan">扫</view>
+        <view class="quick-copy">
+          <text class="quick-title">设备扫码</text>
+          <text class="quick-desc">现场核验设备</text>
         </view>
       </view>
-      <view class="stat-card">
-        <text class="stat-title">今日已办</text>
-        <view class="stat-value green-text">
-          {{completedToday}}<text class="stat-unit">单</text>
+      <view class="quick-action" bindtap="quickReport" hover-class="pressing">
+        <view class="quick-icon report">报</view>
+        <view class="quick-copy">
+          <text class="quick-title">快捷处置</text>
+          <text class="quick-desc">进入告警/工单</text>
         </view>
       </view>
     </view>
 
-    <view class="task-section">
+    <view class="section">
       <view class="section-header">
-        <text class="section-title">紧急任务</text>
-        <text class="more-text">查看全部 ></text>
+        <text class="section-title">紧急告警</text>
+        <text class="section-link" bindtap="goAllAlerts">全部</text>
       </view>
-      
-      <view class="task-list">
-        <view class="task-card {{item.priority}}" wx:for="{{urgentTasks}}" wx:key="id" hover-class="card-hover">
-          <view class="card-main">
-            <view class="card-head">
-              <text class="task-title">{{item.title}}</text>
-              <view class="task-time-box">
-                <text class="time-icon">🕒</text>
-                <text class="task-time">{{item.time}}</text>
-              </view>
+
+      <view class="alert-list" wx:if="{{urgentAlerts.length > 0}}">
+        <view class="alert-row {{item.priority}}" wx:for="{{urgentAlerts}}" wx:key="id" data-id="{{item.id}}" bindtap="goToAlert" hover-class="pressing">
+          <view class="alert-main">
+            <view class="row-head">
+              <text class="row-title">{{item.title}}</text>
+              <text class="priority-badge">{{item.priorityText}}</text>
             </view>
-            <view class="card-body">
-              <view class="info-row">
-                <text class="info-icon">📍</text>
-                <text class="info-text">{{item.location}}</text>
-              </view>
-            </view>
+            <text class="row-meta">{{item.location}}</text>
           </view>
-          <view class="card-action">
-            <button class="go-btn" catchtap="goToTask" data-id="{{item.id}}">处理</button>
-          </view>
+          <text class="row-time">{{item.time}}</text>
         </view>
-        
-        <view wx:if="{{urgentTasks.length === 0}}" class="empty-state">
-          <text class="empty-text">✅ 当前无紧急任务</text>
-        </view>
+      </view>
+
+      <view class="empty-panel" wx:else>
+        <text class="empty-title">暂无紧急告警</text>
+        <text class="empty-desc">当前没有高危或严重告警需要优先处理</text>
       </view>
     </view>
 
-    <view style="height: 60rpx;"></view>
-  </scroll-view>
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">待接收工单</text>
+        <text class="section-link" bindtap="goAllOrders">全部</text>
+      </view>
 
+      <view class="order-list" wx:if="{{pendingOrders.length > 0}}">
+        <view class="order-row {{item.priority}}" wx:for="{{pendingOrders}}" wx:key="id" data-id="{{item.id}}" bindtap="goToWorkOrder" hover-class="pressing">
+          <view class="order-main">
+            <view class="row-head">
+              <text class="row-title">{{item.title}}</text>
+              <text class="type-badge">{{item.type}}</text>
+            </view>
+            <text class="row-meta">{{item.location}}</text>
+            <text class="deadline {{item.isOverdue ? 'overdue' : ''}}">{{item.deadline}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="empty-panel" wx:else>
+        <text class="empty-title">没有待接收工单</text>
+        <text class="empty-desc">新的维修或巡检任务会显示在这里</text>
+      </view>
+    </view>
+
+    <view class="bottom-space"></view>
+  </scroll-view>
 </view>

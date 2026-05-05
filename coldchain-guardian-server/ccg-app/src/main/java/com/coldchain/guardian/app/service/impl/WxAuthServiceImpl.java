@@ -37,6 +37,9 @@ public class WxAuthServiceImpl implements WxAuthService {
     @Value("${wx.miniprogram.secret}")
     private String appSecret;
 
+    @Value("${wx.miniprogram.allow-devtools-login:true}")
+    private boolean allowDevtoolsLogin;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public WxLoginResponseDto wxLogin(WxLoginRequestDto request) {
@@ -58,40 +61,12 @@ public class WxAuthServiceImpl implements WxAuthService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public WxLoginResponseDto wxManualLogin(WxManualLoginRequestDto request) {
-        WxLoginResult wxResult = code2Session(request.getLoginCode());
-        if (wxResult == null || !StringUtils.hasText(wxResult.getOpenid())) {
-            throw new BusinessException(ErrorCode.AUTH_FAILED, "获取微信 openId 失败");
-        }
-
-        String openId = wxResult.getOpenid();
-
-        LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UserEntity::getPhone, request.getPhone());
-        UserEntity user = userMapper.selectOne(wrapper);
-
-        if (user == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "未找到该手机号对应的员工档案，请联系管理员");
-        }
-
-        if (user.getStatus() != null && user.getStatus() == 0) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "该账号已被停用");
-        }
-
-        if (StringUtils.hasText(user.getOpenId()) && !user.getOpenId().equals(openId)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "该手机号已被其他微信绑定，请联系管理员解绑");
-        }
-
-        if (!StringUtils.hasText(user.getOpenId())) {
-            user.setOpenId(openId);
-            if (StringUtils.hasText(wxResult.getUnionid())) {
-                user.setUnionId(wxResult.getUnionid());
-            }
-            userMapper.updateById(user);
-        }
+        WxLoginContext loginContext = resolveLoginContext(request);
+        UserEntity user = findActiveUserByPhone(request.getPhone());
+        bindOpenIdIfNeeded(user, loginContext);
 
         String token = jwtUtil.generateToken(user.getUsername(), user.getId(), user.getRole());
 
-        // 返回WxLoginResponseDto
         WxLoginResponseDto response = new WxLoginResponseDto();
         response.setToken(token);
         response.setUserId(user.getId());
@@ -108,36 +83,9 @@ public class WxAuthServiceImpl implements WxAuthService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public LoginResponseDto loginManual(WxManualLoginRequestDto request) {
-        WxLoginResult wxResult = code2Session(request.getLoginCode());
-        if (wxResult == null || !StringUtils.hasText(wxResult.getOpenid())) {
-            throw new BusinessException(ErrorCode.AUTH_FAILED, "获取微信 openId 失败");
-        }
-
-        String openId = wxResult.getOpenid();
-
-        LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UserEntity::getPhone, request.getPhone());
-        UserEntity user = userMapper.selectOne(wrapper);
-
-        if (user == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "未找到该手机号对应的员工档案，请联系管理员");
-        }
-
-        if (user.getStatus() != null && user.getStatus() == 0) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "该账号已被停用");
-        }
-
-        if (StringUtils.hasText(user.getOpenId()) && !user.getOpenId().equals(openId)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "该手机号已被其他微信绑定，请联系管理员解绑");
-        }
-
-        if (!StringUtils.hasText(user.getOpenId())) {
-            user.setOpenId(openId);
-            if (StringUtils.hasText(wxResult.getUnionid())) {
-                user.setUnionId(wxResult.getUnionid());
-            }
-            userMapper.updateById(user);
-        }
+        WxLoginContext loginContext = resolveLoginContext(request);
+        UserEntity user = findActiveUserByPhone(request.getPhone());
+        bindOpenIdIfNeeded(user, loginContext);
 
         String token = jwtUtil.generateToken(user.getUsername(), user.getId(), user.getRole());
 
@@ -218,12 +166,17 @@ public class WxAuthServiceImpl implements WxAuthService {
             return false;
         }
 
-        user.setOpenId(null);
-        user.setUnionId(null);
-        user.setWxNickname(null);
-        user.setWxAvatar(null);
+        // 使用UpdateWrapper强制更新null值（MyBatis-Plus默认忽略null字段）
+        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<UserEntity> updateWrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+        updateWrapper
+            .eq(UserEntity::getId, userId)
+            .set(UserEntity::getOpenId, (String) null)
+            .set(UserEntity::getUnionId, (String) null)
+            .set(UserEntity::getWxNickname, (String) null)
+            .set(UserEntity::getWxAvatar, (String) null);
 
-        int rows = userMapper.updateById(user);
+        int rows = userMapper.update(null, updateWrapper);
         return rows > 0;
     }
 
@@ -238,6 +191,77 @@ public class WxAuthServiceImpl implements WxAuthService {
     }
 
     // ================== 下面是私有工具方法 ==================
+
+    private UserEntity findActiveUserByPhone(String phone) {
+        if (!StringUtils.hasText(phone)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请输入员工手机号");
+        }
+
+        LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserEntity::getPhone, phone);
+        UserEntity user = userMapper.selectOne(wrapper);
+
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "未找到该手机号对应的员工档案，请联系管理员");
+        }
+
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "该账号已被停用");
+        }
+
+        return user;
+    }
+
+    private void bindOpenIdIfNeeded(UserEntity user, WxLoginContext loginContext) {
+        if (loginContext.devtoolsLogin()) {
+            log.info("小程序 PC 模拟器开发登录: userId={}, phone={}", user.getId(), user.getPhone());
+            return;
+        }
+
+        String openId = loginContext.openId();
+        if (!StringUtils.hasText(openId)) {
+            throw new BusinessException(ErrorCode.AUTH_FAILED, "获取微信 openId 失败，请在真机或配置正确的小程序环境中重试");
+        }
+
+        if (StringUtils.hasText(user.getOpenId()) && !user.getOpenId().equals(openId)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "该手机号已被其他微信绑定，请联系管理员解绑");
+        }
+
+        if (!StringUtils.hasText(user.getOpenId())) {
+            user.setOpenId(openId);
+            if (StringUtils.hasText(loginContext.unionId())) {
+                user.setUnionId(loginContext.unionId());
+            }
+            userMapper.updateById(user);
+        }
+    }
+
+    private WxLoginContext resolveLoginContext(WxManualLoginRequestDto request) {
+        boolean devtoolsRequest = Boolean.TRUE.equals(request.getDevtools())
+                || "devtools".equalsIgnoreCase(request.getPlatform());
+
+        // PC 模拟器的 wx.login code 不稳定，开发调试时按手机号登录且不改动真实微信绑定。
+        if (devtoolsRequest && allowDevtoolsLogin) {
+            return new WxLoginContext(null, null, true);
+        }
+
+        WxLoginResult wxResult = null;
+        if (StringUtils.hasText(request.getLoginCode())) {
+            wxResult = code2Session(request.getLoginCode());
+        }
+
+        if (wxResult != null && StringUtils.hasText(wxResult.getOpenid())) {
+            return new WxLoginContext(wxResult.getOpenid(), wxResult.getUnionid(), false);
+        }
+
+        String reason = wxResult != null && StringUtils.hasText(wxResult.getErrmsg())
+                ? wxResult.getErrmsg()
+                : "微信 code 换取 openId 失败";
+        throw new BusinessException(ErrorCode.AUTH_FAILED, reason);
+    }
+
+    private record WxLoginContext(String openId, String unionId, boolean devtoolsLogin) {
+    }
 
     /**
      * 🌟 修复：补充了确实的方法 findOrCreateUserByOpenId

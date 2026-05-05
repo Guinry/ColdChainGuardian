@@ -1,6 +1,17 @@
 <template>
   <Layout>
     <div class="work-order-center">
+      <header class="page-head">
+        <div>
+          <h1>工单管理</h1>
+          <p>跟踪告警消缺、巡检和维保工单，按优先级推进派工、处理与闭环。</p>
+        </div>
+        <div class="head-actions">
+          <el-button :icon="Refresh" @click="fetchWorkOrders">刷新</el-button>
+          <el-button type="primary" :icon="Plus" @click="showCreateModal = true">新建工单</el-button>
+        </div>
+      </header>
+
       <!-- 顶部状态看板 -->
       <el-row :gutter="20" class="kpi-cards">
         <el-col :span="6">
@@ -85,7 +96,6 @@
           <el-form-item>
             <el-button type="primary" @click="fetchWorkOrders">查询</el-button>
             <el-button @click="resetFilter">重置</el-button>
-            <el-button type="success" @click="showCreateModal = true">新建工单</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -94,11 +104,11 @@
       <el-table
         :data="workOrders"
         v-loading="loading"
+        class="work-order-table"
         stripe
-        height="calc(100vh - 350px)"
         style="width: 100%"
       >
-        <el-table-column prop="title" label="工单信息" width="250">
+        <el-table-column prop="title" label="工单信息" min-width="220" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="work-order-info">
               <div class="title">{{ row.title }}</div>
@@ -107,7 +117,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="workType" label="类型" width="120">
+        <el-table-column prop="workType" label="类型" width="96">
           <template #default="{ row }">
             <el-tag
               :type="getWorkTypeTagType(row.workType)"
@@ -118,7 +128,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="priority" label="优先级" width="100">
+        <el-table-column prop="priority" label="优先级" width="82" align="center">
           <template #default="{ row }">
             <el-tag
               :type="getPriorityTagType(row.priority)"
@@ -129,7 +139,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="locationDetail" label="发生位置" width="200">
+        <el-table-column prop="locationDetail" label="发生位置" min-width="148" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="location-info">
               <el-tag type="info" size="small">{{ row.warehouseName }}</el-tag>
@@ -139,7 +149,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="assigneeName" label="责任人" width="120">
+        <el-table-column prop="assigneeName" label="责任人" width="116">
           <template #default="{ row }">
             <div class="assignee-info">
               <el-avatar size="small" :src="getUserAvatar(row.assigneeId)" />
@@ -148,7 +158,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="createTime" label="时间节点" width="180">
+        <el-table-column prop="createTime" label="时间节点" width="132">
           <template #default="{ row }">
             <div class="timeline-info">
               <div>创建: {{ formatDate(row.createdAt) }}</div>
@@ -157,7 +167,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="status" label="状态" width="92" align="center">
           <template #default="{ row }">
             <el-tag
               :type="getStatusTagType(row.status)"
@@ -168,7 +178,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" fixed="right" width="180">
+        <el-table-column label="操作" width="148" align="center">
           <template #default="{ row }">
             <el-button size="small" @click="viewWorkOrder(row)">查看</el-button>
             <el-dropdown split-button size="small" @click="handleProcess(row)">
@@ -218,12 +228,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { Plus, Refresh } from '@element-plus/icons-vue';
 import CreateWorkOrderModal from '@/views/work-order/components/CreateWorkOrderModal.vue';
 import WorkOrderDrawer from '@/views/work-order/components/WorkOrderDrawer.vue';
 import Layout from '@/components/Layout.vue';
 import { workOrderApi } from '@/api/work-order';
+
+const route = useRoute();
+const router = useRouter();
 
 // KPI 数据
 const kpiData = ref({
@@ -245,6 +260,16 @@ const filterForm = reactive({
   status: '',
   assigneeId: ''
 });
+
+const getQueryValue = (value) => Array.isArray(value) ? value[0] : value;
+
+const applyRouteQuery = () => {
+  filterForm.status = getQueryValue(route.query.status) ? String(getQueryValue(route.query.status)) : '';
+  filterForm.keyword = getQueryValue(route.query.keyword) ? String(getQueryValue(route.query.keyword)) : '';
+  filterForm.workType = getQueryValue(route.query.workType) ? String(getQueryValue(route.query.workType)) : '';
+  filterForm.priority = getQueryValue(route.query.priority) ? String(getQueryValue(route.query.priority)) : '';
+  filterForm.assigneeId = getQueryValue(route.query.assigneeId) ? String(getQueryValue(route.query.assigneeId)) : '';
+};
 
 // 分页
 const pagination = reactive({
@@ -508,25 +533,82 @@ const onWorkOrderCreated = () => {
 };
 
 onMounted(() => {
+  applyRouteQuery();
+  if (route.query.create === '1' || route.query.alertId) {
+    showCreateModal.value = true;
+  }
+  if (route.params.id) {
+    selectedWorkOrderId.value = Number(route.params.id);
+    showWorkOrderDrawer.value = true;
+  }
   fetchWorkOrderStats();
   fetchWorkOrders();
+});
+
+watch(() => route.query, () => {
+  applyRouteQuery();
+  pagination.currentPage = 1;
+  fetchWorkOrderStats();
+  fetchWorkOrders();
+});
+
+watch(() => route.params.id, (id) => {
+  if (id) {
+    selectedWorkOrderId.value = Number(id);
+    showWorkOrderDrawer.value = true;
+  }
+});
+
+watch(showWorkOrderDrawer, (visible) => {
+  if (!visible && route.params.id) {
+    router.replace({ path: '/work-orders', query: route.query });
+  }
 });
 </script>
 
 <style scoped>
 .work-order-center {
-  padding: 20px;
-  background-color: #f5f7fa;
-  min-height: 100vh;
+  padding: 20px 24px 28px;
+  background-color: var(--ccg-bg);
+  min-height: 100%;
+  color: var(--ccg-text);
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 750;
+}
+
+.page-head p {
+  margin: 6px 0 0;
+  color: var(--ccg-muted);
+  font-size: 13px;
+}
+
+.head-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .kpi-cards {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .kpi-card {
   text-align: center;
   position: relative;
+  min-height: 104px;
 }
 
 .kpi-card.overdue {
@@ -571,12 +653,25 @@ onMounted(() => {
 }
 
 .filter-section {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+
+.work-order-table {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+
+.work-order-table :deep(.el-table__cell) {
+  padding: 9px 0;
 }
 
 .work-order-info .title {
   font-weight: bold;
   color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .work-order-info .id {
@@ -586,12 +681,21 @@ onMounted(() => {
 
 .location-info {
   color: #606266;
+  line-height: 1.6;
+}
+
+.location-info span,
+.assignee-info span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .assignee-info {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .timeline-info {
@@ -600,7 +704,22 @@ onMounted(() => {
 }
 
 .pagination {
-  margin-top: 20px;
-  text-align: right;
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  border: 1px solid var(--ccg-border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+@media (max-width: 1080px) {
+  .page-head {
+    flex-direction: column;
+  }
+
+  .kpi-cards :deep(.el-col) {
+    margin-bottom: 12px;
+  }
 }
 </style>

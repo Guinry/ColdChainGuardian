@@ -4,6 +4,8 @@
     "pages/workbench/workbench",
     "pages/alert/alert",
     "pages/workorder/workorder",
+    "pages/workorder/create/create",
+    "pages/workorder/detail/detail",
     "pages/profile/profile"
   ],
   "window": {

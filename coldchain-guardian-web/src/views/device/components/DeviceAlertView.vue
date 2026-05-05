@@ -126,53 +126,56 @@
             style="width: 100%"
             height="calc(100vh - 400px)"
           >
-            <el-table-column type="selection" width="55" />
-            <el-table-column prop="alertType" label="告警类型" width="120">
+            <el-table-column type="selection" width="48" />
+            <el-table-column prop="alertType" label="告警类型" width="104">
               <template #default="{ row }">
                 <el-tag :type="getAlertTypeTag(row.alertType)">
                   {{ getAlertTypeLabel(row.alertType) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="alertLevel" label="告警级别" width="100">
+            <el-table-column prop="alertLevel" label="级别" width="76" align="center">
               <template #default="{ row }">
                 <el-tag :type="getAlertLevelTag(row.alertLevel)">
                   {{ getAlertLevelLabel(row.alertLevel) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="message" label="告警信息" min-width="200" />
-            <el-table-column prop="temperature" label="温度(℃)" width="120" />
-            <el-table-column prop="humidity" label="湿度(%)" width="120" />
-            <el-table-column prop="thresholdValue" label="阈值" width="120" />
-            <el-table-column prop="status" label="处理状态" width="120">
+            <el-table-column prop="description" label="告警信息" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="temperature" label="温度" width="72" />
+            <el-table-column prop="humidity" label="湿度" width="72" />
+            <el-table-column prop="thresholdValue" label="阈值" width="82" show-overflow-tooltip />
+            <el-table-column prop="status" label="状态" width="88" align="center">
               <template #default="{ row }">
                 <el-tag :type="getAlertStatusTag(row.status)">
                   {{ getAlertStatusLabel(row.status) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="createdTime" label="发生时间" width="180">
+            <el-table-column prop="createdTime" label="发生时间" min-width="132">
               <template #default="{ row }">
                 {{ formatDate(row.createdTime) }}
               </template>
             </el-table-column>
-            <el-table-column prop="handleTime" label="处理时间" width="180">
+            <el-table-column prop="handleTime" label="处理时间" min-width="132">
               <template #default="{ row }">
                 {{ formatDate(row.handleTime) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="200">
+            <el-table-column label="操作" width="132" align="center">
               <template #default="{ row }">
-                <el-button-group>
-                  <el-button size="small" @click="viewAlertDetail(row)">详情</el-button>
-                  <el-button size="small" type="primary" @click="handleAlert(row)" :disabled="row.status !== 'UNHANDLED'">
-                    {{ row.status === 'UNHANDLED' ? '处理' : '已处理' }}
-                  </el-button>
-                  <el-button size="small" @click="ignoreAlert(row)" :disabled="row.status !== 'UNHANDLED'">
-                    忽略
-                  </el-button>
-                </el-button-group>
+                <div class="alert-row-actions">
+                  <el-button size="small" type="primary" link @click="viewAlertDetail(row)">详情</el-button>
+                  <el-dropdown trigger="click" @command="(command) => handleAlertCommand(command, row)">
+                    <el-button size="small" link :icon="MoreFilled" />
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="handle" :disabled="row.status !== 'UNHANDLED'">处理</el-dropdown-item>
+                        <el-dropdown-item command="ignore" :disabled="row.status !== 'UNHANDLED'">忽略</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -210,7 +213,7 @@
               </el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="告警信息">
-              {{ currentAlert.message }}
+              {{ currentAlert.description }}
             </el-descriptions-item>
             <el-descriptions-item label="温度">
               {{ currentAlert.temperature || '-' }}℃
@@ -279,7 +282,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
+import { Refresh, MoreFilled } from '@element-plus/icons-vue'
 import Layout from '@/components/Layout.vue'
 import { deviceApi } from '@/api/device.js'
 import { alertApi } from '@/api/alert.js'
@@ -347,7 +350,13 @@ onMounted(() => {
 const loadDeviceInfo = async (deviceId) => {
   try {
     const response = await deviceApi.getDetail(deviceId)
-    const device = response.data?.data?.data
+    const device = response.data?.data
+
+    if (!device) {
+      ElMessage.error(response.data?.message || '设备不存在')
+      router.push('/devices')
+      return
+    }
 
     deviceName.value = device.deviceName
     deviceCode.value = device.deviceCode
@@ -366,10 +375,11 @@ const loadAlertsList = async (deviceId) => {
   loading.value = true
   try {
     const params = {
-      deviceId,
       page: pagination.currentPage,
       size: pagination.pageSize,
-      ...filterForm
+      alertType: filterForm.alertType || undefined,
+      alertLevel: filterForm.alertLevel || undefined,
+      status: filterForm.status || undefined
     }
 
     // 转换时间范围
@@ -379,8 +389,8 @@ const loadAlertsList = async (deviceId) => {
     }
 
     const response = await alertApi.getByDeviceId(deviceId, params)
-    alertsList.value = response.data?.data?.data?.list || []
-    pagination.total = response.data?.data?.data?.total || 0
+    alertsList.value = response.data?.data?.data || []
+    pagination.total = response.data?.data?.total || 0
   } catch (error) {
     ElMessage.error('获取告警列表失败')
     console.error(error)
@@ -512,6 +522,14 @@ const ignoreAlert = async (alert) => {
   }
 }
 
+const handleAlertCommand = (command, row) => {
+  if (command === 'handle') {
+    handleAlert(row)
+  } else if (command === 'ignore') {
+    ignoreAlert(row)
+  }
+}
+
 // 批量处理告警
 const batchHandleAlerts = async () => {
   if (!selectedAlerts.value.length) {
@@ -548,9 +566,56 @@ const batchHandleAlerts = async () => {
   }
 }
 
+const downloadCsv = (filename, headers, rows) => {
+  const escapeCell = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`
+  const csv = [
+    headers.map(([, label]) => escapeCell(label)).join(','),
+    ...rows.map(row => headers.map(([key]) => escapeCell(row[key])).join(','))
+  ].join('\n')
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 // 导出告警
 const exportAlerts = () => {
-  ElMessage.info('导出功能正在开发中...')
+  if (!alertsList.value.length) {
+    ElMessage.info('暂无可导出的告警数据')
+    return
+  }
+
+  const headers = [
+    ['alertTypeText', '告警类型'],
+    ['alertLevelText', '告警级别'],
+    ['description', '告警信息'],
+    ['temperature', '温度(℃)'],
+    ['humidity', '湿度(%)'],
+    ['thresholdValue', '阈值'],
+    ['statusText', '处理状态'],
+    ['createdTimeText', '发生时间'],
+    ['handleTimeText', '处理时间'],
+    ['handleRemark', '处理备注']
+  ]
+  const rows = alertsList.value.map(row => ({
+    ...row,
+    alertTypeText: getAlertTypeLabel(row.alertType),
+    alertLevelText: getAlertLevelLabel(row.alertLevel),
+    statusText: getAlertStatusLabel(row.status),
+    createdTimeText: formatDate(row.createdTime),
+    handleTimeText: formatDate(row.handleTime)
+  }))
+
+  downloadCsv(
+    `${deviceCode.value || route.params.deviceId}_告警记录_${new Date().toISOString().slice(0, 10)}.csv`,
+    headers,
+    rows
+  )
+  ElMessage.success('告警数据已导出')
 }
 
 // 返回上一页
@@ -582,7 +647,7 @@ const getDeviceTypeTag = (type) => {
     'VEHICLE': 'warning',
     'DOOR': 'info'
   }
-  return types[type] || 'default'
+  return types[type] || 'info'
 }
 
 const getAlertTypeLabel = (type) => {
@@ -604,7 +669,7 @@ const getAlertTypeTag = (type) => {
     'HUMI_LOW': 'warning',
     'DEVICE_OFFLINE': 'info'
   }
-  return types[type] || 'default'
+  return types[type] || 'info'
 }
 
 const getAlertLevelLabel = (level) => {
@@ -624,7 +689,7 @@ const getAlertLevelTag = (level) => {
     'HIGH': 'danger',
     'CRITICAL': 'danger'
   }
-  return types[level] || 'default'
+  return types[level] || 'info'
 }
 
 const getAlertStatusLabel = (status) => {
@@ -644,7 +709,7 @@ const getAlertStatusTag = (status) => {
     'RESOLVED': 'success',
     'IGNORED': 'info'
   }
-  return types[status] || 'default'
+  return types[status] || 'info'
 }
 </script>
 
@@ -723,6 +788,10 @@ const getAlertStatusTag = (status) => {
   flex-direction: column;
 }
 
+.alerts-list-card :deep(.el-table__cell) {
+  padding: 9px 0;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -732,6 +801,14 @@ const getAlertStatusTag = (status) => {
 .list-controls {
   display: flex;
   gap: 10px;
+}
+
+.alert-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .pagination {

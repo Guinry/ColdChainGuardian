@@ -37,3 +37,10 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Local runtime/test artifacts ###
+logs/
+output/
+test-results/
+.playwright-cli/
+coldchain-guardian-web/test-results/

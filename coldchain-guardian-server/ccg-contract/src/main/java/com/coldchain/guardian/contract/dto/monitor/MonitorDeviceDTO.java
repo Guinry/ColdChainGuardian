@@ -13,6 +13,7 @@ public class MonitorDeviceDTO {
     private String deviceType;
     private Long areaId;
     private String areaName;
+    private String areaPath;
     private Boolean online;
     private LocalDateTime lastSeenTime;
     private BigDecimal latestTemp;
@@ -20,4 +21,9 @@ public class MonitorDeviceDTO {
     private LocalDateTime latestDataTime;
     private Boolean hasUnresolvedAlert;
     private String highestAlertLevel;
+    private String thresholdMode;
+    private BigDecimal temperatureThresholdMin;
+    private BigDecimal temperatureThresholdMax;
+    private BigDecimal humidityThresholdMin;
+    private BigDecimal humidityThresholdMax;
 }

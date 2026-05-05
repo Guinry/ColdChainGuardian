@@ -1,9 +1,9 @@
 <template>
-  <div class="chart-container" ref="chartContainerRef" :style="{ height: height, width: width }"></div>
+  <div class="chart-container" ref="chartContainerRef" :style="{ height: normalizedHeight, width: normalizedWidth }"></div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import * as echarts from 'echarts'
 import { debounce } from 'lodash-es'
 
@@ -31,6 +31,19 @@ const props = defineProps({
 let chartInstance = null
 const chartContainerRef = ref(null)
 
+const normalizeSize = (value) => {
+  if (typeof value === 'number') return `${value}px`
+  if (/^\d+$/.test(String(value))) return `${value}px`
+  return value
+}
+
+const normalizedHeight = computed(() => normalizeSize(props.height))
+const normalizedWidth = computed(() => normalizeSize(props.width))
+
+const resizeChart = debounce(() => {
+  chartInstance?.resize()
+}, 200)
+
 // Initialize chart
 const initChart = () => {
   if (!chartContainerRef.value) return
@@ -45,11 +58,7 @@ const initChart = () => {
   chartInstance.setOption(props.option)
 
   // Add resize listener
-  window.addEventListener('resize', debounce(() => {
-    if (chartInstance) {
-      chartInstance.resize()
-    }
-  }, 200))
+  window.addEventListener('resize', resizeChart)
 }
 
 // Watch for option changes
@@ -69,6 +78,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', resizeChart)
   if (chartInstance) {
     chartInstance.dispose()
     chartInstance = null

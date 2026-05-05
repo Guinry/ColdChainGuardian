@@ -13,7 +13,7 @@ export function useAiAssistant() {
   const api = aiAssistantApi()
 
   // 发送消息
-  const sendMessage = async (message, attachmentType = null, attachmentId = null, sessionId = null) => {
+  const sendMessage = async (message, attachmentType = null, attachmentId = null, sessionId = null, contextTypes = []) => {
     try {
       loading.value = true
 
@@ -21,7 +21,8 @@ export function useAiAssistant() {
         message,
         attachmentType,
         attachmentId,
-        sessionId
+        sessionId,
+        contextTypes
       })
 
       return response.data
@@ -35,12 +36,13 @@ export function useAiAssistant() {
   }
 
   // 流式发送消息（用于SSE）
-  const streamMessage = (message, attachmentType = null, attachmentId = null, sessionId = null, onTokenReceived, onError, onDone) => {
+  const streamMessage = (message, attachmentType = null, attachmentId = null, sessionId = null, contextTypes = [], onTokenReceived, onError, onDone) => {
     const data = {
       message,
       attachmentType,
       attachmentId,
-      sessionId
+      sessionId,
+      contextTypes
     }
 
     // Create SSE client

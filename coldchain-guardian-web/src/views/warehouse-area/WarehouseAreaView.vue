@@ -2,7 +2,7 @@
   <Layout>
     <div class="warehouse-area-content">
       <div class="page-header">
-        <h2>库区管理</h2>
+        <h1>库区管理</h1>
         <div class="header-actions">
           <el-button type="primary" @click="openCreateDialog(null)">
             <el-icon><Plus /></el-icon>
@@ -12,6 +12,13 @@
             <el-icon><Upload /></el-icon>
             批量导入
           </el-button>
+          <input
+            ref="importInputRef"
+            type="file"
+            accept=".csv"
+            class="hidden-file-input"
+            @change="handleImportFile"
+          />
           <el-button @click="handleExport">
             <el-icon><Download /></el-icon>
             导出
@@ -47,45 +54,49 @@
           >
             <template #default="{ node, data }">
               <div class="tree-node-content">
-                <span class="node-label">{{ data.areaName }}</span>
-                <span class="node-code">[{{ data.areaCode }}]</span>
-                <el-tag
-                  size="small"
-                  :type="getLevelTagType(data.areaLevel)"
-                  class="level-tag"
-                >
-                  {{ getLevelLabel(data.areaLevel) }}
-                </el-tag>
-                <div class="node-status-icons">
-                  <template v-if="data.status === 0">
-                    <el-tooltip content="已禁用" placement="top">
-                      <el-icon class="status-icon disabled"><CircleCloseFilled /></el-icon>
-                    </el-tooltip>
-                  </template>
-                  <template v-if="data.alarmEnabled === 0">
-                    <el-tooltip content="告警已关闭" placement="top">
-                      <el-icon class="status-icon alarm-disabled"><Mute /></el-icon>
-                    </el-tooltip>
-                  </template>
+                <div class="node-main">
+                  <span class="node-label">{{ data.areaName }}</span>
+                  <div class="node-meta">
+                    <span class="node-code">[{{ data.areaCode }}]</span>
+                    <el-tag
+                      size="small"
+                      :type="getLevelTagType(data.areaLevel)"
+                      class="level-tag"
+                    >
+                      {{ getLevelLabel(data.areaLevel) }}
+                    </el-tag>
+                    <div class="node-status-icons">
+                      <template v-if="data.status === 0">
+                        <el-tooltip content="已禁用" placement="top">
+                          <el-icon class="status-icon disabled"><CircleCloseFilled /></el-icon>
+                        </el-tooltip>
+                      </template>
+                      <template v-if="data.alarmEnabled === 0">
+                        <el-tooltip content="告警已关闭" placement="top">
+                          <el-icon class="status-icon alarm-disabled"><Mute /></el-icon>
+                        </el-tooltip>
+                      </template>
+                    </div>
+                  </div>
                 </div>
                 <div class="node-actions" @click.stop>
                   <el-button
                     size="small"
-                    text
+                    link
                     @click="openCreateDialog(data)"
                     :icon="FolderAdd"
                     class="action-btn"
                   />
                   <el-button
                     size="small"
-                    text
+                    link
                     @click="openEditDialog(data)"
                     :icon="Edit"
                     class="action-btn"
                   />
                   <el-button
                     size="small"
-                    text
+                    link
                     @click="handleDelete(data)"
                     :icon="Delete"
                     class="action-btn"
@@ -198,7 +209,7 @@
               >
                 <el-table-column prop="areaName" label="库区名称" width="200">
                   <template #default="{ row }">
-                    <el-button type="text" @click="selectNodeInTree(row)">{{ row.areaName }}</el-button>
+                    <el-button link @click="selectNodeInTree(row)">{{ row.areaName }}</el-button>
                   </template>
                 </el-table-column>
                 <el-table-column prop="areaCode" label="编码" width="150" />
@@ -222,7 +233,7 @@
                   </template>
                 </el-table-column>
                 <el-table-column prop="sortNo" label="排序" width="80" />
-                <el-table-column label="操作" width="200">
+                <el-table-column label="操作" width="240">
                   <template #default="{ row }">
                     <el-button-group>
                       <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
@@ -232,6 +243,7 @@
                         @click="toggleStatus(row)">
                         {{ row.status === 1 ? '禁用' : '启用' }}
                       </el-button>
+                      <el-button size="small" type="primary" @click="handleMove(row)">移动</el-button>
                       <el-popconfirm
                         title="确定要删除这个库区吗？"
                         @confirm="handleDelete(row)"
@@ -247,7 +259,18 @@
             </div>
           </div>
           <div v-else class="empty-state">
-            <el-empty description="请选择左侧库区查看详细信息" />
+            <el-empty description="请选择左侧库区查看详细信息">
+              <template #default>
+                <div class="empty-actions">
+                  <el-button type="primary" :icon="Plus" @click="openCreateDialog(null)">
+                    新增顶级节点
+                  </el-button>
+                  <el-button :icon="Upload" @click="handleImport">
+                    批量导入
+                  </el-button>
+                </div>
+              </template>
+            </el-empty>
           </div>
         </div>
       </div>
@@ -278,11 +301,11 @@
           </el-form-item>
           <el-form-item label="库区层级" prop="areaLevel">
             <el-radio-group v-model="formData.areaLevel" @change="onLevelChange">
-              <el-radio label="SITE">站点</el-radio>
-              <el-radio label="WAREHOUSE">仓库</el-radio>
-              <el-radio label="FLOOR">楼层</el-radio>
-              <el-radio label="AREA">库区</el-radio>
-              <el-radio label="BIN">库位</el-radio>
+              <el-radio value="SITE">站点</el-radio>
+              <el-radio value="WAREHOUSE">仓库</el-radio>
+              <el-radio value="FLOOR">楼层</el-radio>
+              <el-radio value="AREA">库区</el-radio>
+              <el-radio value="BIN">库位</el-radio>
             </el-radio-group>
           </el-form-item>
           <el-form-item label="库区编码" prop="areaCode">
@@ -396,40 +419,40 @@
       </el-dialog>
 
       <!-- 右键菜单 -->
-      <el-popover
+      <div
+        v-show="contextMenuVisible"
         ref="contextMenuRef"
-        placement="bottom-start"
-        trigger="manual"
-        :visible="contextMenuVisible"
-        width="200"
+        class="context-menu-popover"
+        :style="{ left: `${contextMenuPosition.x}px`, top: `${contextMenuPosition.y}px` }"
+        @click.stop
       >
         <div class="context-menu">
-          <el-button size="small" text @click="openCreateDialog(contextNodeData)">
+          <el-button size="small" link @click="openCreateDialog(contextNodeData)">
             <el-icon><FolderAdd /></el-icon>
             <span>新增子节点</span>
           </el-button>
-          <el-button size="small" text @click="openEditDialog(contextNodeData)">
+          <el-button size="small" link @click="openEditDialog(contextNodeData)">
             <el-icon><Edit /></el-icon>
             <span>编辑节点</span>
           </el-button>
-          <el-button size="small" text @click="toggleStatus(contextNodeData)">
+          <el-button size="small" link @click="toggleStatus(contextNodeData)">
             <el-icon><SwitchButton /></el-icon>
             <span>{{ contextNodeData?.status === 1 ? '禁用' : '启用' }}</span>
           </el-button>
-          <el-button size="small" text @click="toggleAlarm(contextNodeData)">
+          <el-button size="small" link @click="toggleAlarm(contextNodeData)">
             <el-icon><Bell /></el-icon>
             <span>{{ contextNodeData?.alarmEnabled === 1 ? '关闭告警' : '启用告警' }}</span>
           </el-button>
-          <el-button size="small" text @click="handleMove(contextNodeData)" type="warning">
+          <el-button size="small" link @click="handleMove(contextNodeData)" type="warning">
             <el-icon><Position /></el-icon>
             <span>移动节点</span>
           </el-button>
-          <el-button size="small" text @click="handleDelete(contextNodeData)" type="danger">
+          <el-button size="small" link @click="handleDelete(contextNodeData)" type="danger">
             <el-icon><Delete /></el-icon>
             <span>删除节点</span>
           </el-button>
         </div>
-      </el-popover>
+      </div>
     </div>
   </Layout>
 </template>
@@ -491,9 +514,11 @@ const dialogTitle = ref('')
 const submitLoading = ref(false)
 const contextMenuVisible = ref(false)
 const contextNodeData = ref(null)
+const contextMenuPosition = ref({ x: 0, y: 0 })
 const treeRef = ref()
 const formRef = ref()
 const contextMenuRef = ref()
+const importInputRef = ref()
 
 // 表单数据
 const formData = reactive({
@@ -650,14 +675,8 @@ const selectNodeInTree = (node) => {
 const onRightClick = (event, data, node, component) => {
   event.preventDefault()
   contextNodeData.value = data
+  contextMenuPosition.value = { x: event.clientX, y: event.clientY }
   contextMenuVisible.value = true
-
-  // 定位右键菜单
-  const menu = contextMenuRef.value.$refs.reference
-  if (menu) {
-    menu.style.left = event.clientX + 'px'
-    menu.style.top = event.clientY + 'px'
-  }
 }
 
 // 隐藏右键菜单
@@ -878,14 +897,202 @@ const handleMove = async (node) => {
   }
 }
 
+const findNodeById = (nodes, id) => {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    const found = findNodeById(node.children || [], id)
+    if (found) return found
+  }
+  return null
+}
+
+const exportRows = (nodes, path = []) => {
+  return nodes.flatMap(node => {
+    const currentPath = [...path, node.areaName]
+    const row = {
+      areaCode: node.areaCode,
+      areaName: node.areaName,
+      areaLevel: getLevelLabel(node.areaLevel),
+      parentId: node.parentId || '',
+      path: currentPath.join('/'),
+      status: node.status === 1 ? '启用' : '禁用',
+      alarmEnabled: node.alarmEnabled === 1 ? '启用' : '关闭',
+      temperatureRange: `${node.temperatureThresholdMin ?? ''}~${node.temperatureThresholdMax ?? ''}`,
+      humidityRange: `${node.humidityThresholdMin ?? ''}~${node.humidityThresholdMax ?? ''}`,
+      address: node.address || '',
+      locationDesc: node.locationDesc || '',
+      remark: node.remark || ''
+    }
+
+    return [row, ...exportRows(node.children || [], currentPath)]
+  })
+}
+
 // 处理导入
 const handleImport = () => {
-  ElMessage.info('批量导入功能正在开发中...')
+  importInputRef.value?.click()
+}
+
+const parseCsvLine = (line) => {
+  const cells = []
+  let current = ''
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i]
+    const nextChar = line[i + 1]
+
+    if (char === '"' && inQuotes && nextChar === '"') {
+      current += '"'
+      i += 1
+    } else if (char === '"') {
+      inQuotes = !inQuotes
+    } else if (char === ',' && !inQuotes) {
+      cells.push(current.trim())
+      current = ''
+    } else {
+      current += char
+    }
+  }
+
+  cells.push(current.trim())
+  return cells
+}
+
+const buildImportPayload = (row) => ({
+  parentId: row.parentId ? Number(row.parentId) : null,
+  areaCode: row.areaCode,
+  areaName: row.areaName,
+  areaLevel: normalizeAreaLevel(row.areaLevelCode || row.areaLevel || 'AREA'),
+  address: row.address || '',
+  locationDesc: row.locationDesc || '',
+  temperatureThresholdMin: getRangeValue(row.temperatureThresholdMin, row.temperatureRange, 0, -20),
+  temperatureThresholdMax: getRangeValue(row.temperatureThresholdMax, row.temperatureRange, 1, 8),
+  humidityThresholdMin: getRangeValue(row.humidityThresholdMin, row.humidityRange, 0, 30),
+  humidityThresholdMax: getRangeValue(row.humidityThresholdMax, row.humidityRange, 1, 70),
+  alarmEnabled: row.alarmEnabled === '关闭' || row.alarmEnabled === '0' ? 0 : 1,
+  status: row.status === '禁用' || row.status === '0' ? 0 : 1,
+  sortNo: row.sortNo ? Number(row.sortNo) : 0,
+  remark: row.remark || ''
+})
+
+const importHeaderMap = {
+  库区编码: 'areaCode',
+  库区名称: 'areaName',
+  层级: 'areaLevel',
+  上级ID: 'parentId',
+  状态: 'status',
+  告警: 'alarmEnabled',
+  温度范围: 'temperatureRange',
+  湿度范围: 'humidityRange',
+  地址: 'address',
+  位置描述: 'locationDesc',
+  备注: 'remark'
+}
+
+const normalizeAreaLevel = (level) => {
+  const levelMap = {
+    站点: 'SITE',
+    仓库: 'WAREHOUSE',
+    楼层: 'FLOOR',
+    库区: 'AREA',
+    库位: 'BIN'
+  }
+  return levelMap[level] || level
+}
+
+const getRangeValue = (value, range, index, fallback) => {
+  if (value !== undefined && value !== '') return Number(value)
+  if (!range) return fallback
+  const parts = String(range).split('~').map(item => item.trim())
+  return parts[index] !== undefined && parts[index] !== '' ? Number(parts[index]) : fallback
+}
+
+const handleImportFile = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  try {
+    const text = await file.text()
+    const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(Boolean)
+    if (lines.length < 2) {
+      ElMessage.warning('导入文件为空')
+      return
+    }
+
+    const headers = parseCsvLine(lines[0]).map(header => importHeaderMap[header] || header)
+    const rows = lines.slice(1).map(line => {
+      const values = parseCsvLine(line)
+      return headers.reduce((record, header, index) => {
+        record[header] = values[index] || ''
+        return record
+      }, {})
+    }).filter(row => row.areaCode && row.areaName)
+
+    if (!rows.length) {
+      ElMessage.warning('未识别到有效库区数据')
+      return
+    }
+
+    let successCount = 0
+    const failedRows = []
+    for (const row of rows) {
+      try {
+        await areaApi.createArea(buildImportPayload(row))
+        successCount += 1
+      } catch (error) {
+        failedRows.push(`${row.areaCode}: ${error.response?.data?.message || error.message}`)
+      }
+    }
+
+    await loadTreeData()
+    ElMessage.success(`导入完成，成功 ${successCount} 条，失败 ${failedRows.length} 条`)
+    if (failedRows.length) {
+      console.warn('库区导入失败明细:', failedRows)
+    }
+  } catch (error) {
+    ElMessage.error('导入失败，请检查 CSV 文件格式')
+  } finally {
+    event.target.value = ''
+  }
 }
 
 // 处理导出
 const handleExport = () => {
-  ElMessage.info('导出功能正在开发中...')
+  const rows = exportRows(treeData.value)
+  if (!rows.length) {
+    ElMessage.info('暂无可导出的库区数据')
+    return
+  }
+
+  const headers = [
+    ['areaCode', '库区编码'],
+    ['areaName', '库区名称'],
+    ['areaLevel', '层级'],
+    ['parentId', '上级ID'],
+    ['path', '完整路径'],
+    ['status', '状态'],
+    ['alarmEnabled', '告警'],
+    ['temperatureRange', '温度范围'],
+    ['humidityRange', '湿度范围'],
+    ['address', '地址'],
+    ['locationDesc', '位置描述'],
+    ['remark', '备注']
+  ]
+  const escapeCell = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`
+  const csv = [
+    headers.map(([, label]) => escapeCell(label)).join(','),
+    ...rows.map(row => headers.map(([key]) => escapeCell(row[key])).join(','))
+  ].join('\n')
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `库区数据_${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('库区数据已导出')
 }
 
 // 层级变化事件
@@ -900,52 +1107,70 @@ const onLevelChange = (level) => {
 
 onMounted(async () => {
   await loadTreeData()
+  const areaId = Number(router.currentRoute.value.query.areaId)
+  if (areaId) {
+    await nextTick()
+    const target = findNodeById(treeData.value, areaId)
+    if (target) {
+      treeRef.value?.setCurrentKey(areaId)
+      await onTreeNodeClick(target)
+    }
+  } else if (treeData.value.length) {
+    await nextTick()
+    const firstNode = treeData.value[0]
+    treeRef.value?.setCurrentKey(firstNode.id)
+    await onTreeNodeClick(firstNode)
+  }
 })
 </script>
 
 <style scoped>
 .warehouse-area-content {
-  padding: 20px;
-  height: 100%;
-  min-height: 0;
+  padding: 20px 24px 28px;
+  min-height: 100%;
+  background: var(--ccg-bg);
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #ebeef5;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
-.page-header h2 {
+.page-header h1 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 750;
+  color: var(--ccg-text);
 }
 
 .content-wrapper {
-  display: flex;
-  gap: 20px;
-  overflow: hidden;
-  height: calc(100% - 80px); /* Adjust for header height */
+  display: grid;
+  grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
 }
 
 .tree-panel {
-  width: 350px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
+  border: 1px solid var(--ccg-border);
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   background: #fff;
-  height: 100%;
+  min-height: 520px;
+  max-height: calc(100vh - var(--ccg-header-height) - 96px);
+  position: sticky;
+  top: 16px;
+  overflow: hidden;
+  box-shadow: var(--ccg-shadow-sm);
 }
 
 .panel-header {
   padding: 12px 16px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--ccg-border);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -959,14 +1184,15 @@ onMounted(async () => {
 }
 
 .detail-panel {
-  flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  min-height: 520px;
   background: #fff;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  overflow: auto;
+  border: 1px solid var(--ccg-border);
+  border-radius: 8px;
   padding: 20px;
+  box-shadow: var(--ccg-shadow-sm);
 }
 
 .detail-content {
@@ -976,15 +1202,15 @@ onMounted(async () => {
 }
 
 .basic-info-card {
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
+  border: 1px solid var(--ccg-border);
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .card-header {
   padding: 16px;
-  background: #fafafa;
-  border-bottom: 1px solid #ebeef5;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--ccg-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1080,8 +1306,8 @@ onMounted(async () => {
 }
 
 .child-areas-section {
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
+  border: 1px solid var(--ccg-border);
+  border-radius: 8px;
   padding: 16px;
   margin-top: 20px;
 }
@@ -1103,31 +1329,67 @@ onMounted(async () => {
 .custom-tree {
   flex: 1;
   overflow: auto;
+  padding: 8px 6px 12px;
+}
+
+.custom-tree :deep(.el-tree-node__content) {
+  height: auto;
+  min-height: 52px;
+  align-items: stretch;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.custom-tree :deep(.el-tree-node__expand-icon) {
+  align-self: flex-start;
+  margin-top: 10px;
 }
 
 .tree-node-content {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
   font-size: 14px;
   padding-right: 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+.node-main {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .node-label {
-  margin-right: 8px;
-  font-weight: 500;
-  flex-shrink: 0;
+  display: block;
+  min-width: 0;
+  color: #1f2937;
+  font-weight: 650;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.node-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .node-code {
-  color: #909399;
+  color: var(--ccg-muted);
   font-size: 12px;
-  margin-right: 8px;
-  flex-shrink: 0;
+  line-height: 1.2;
 }
 
 .level-tag {
-  margin-right: 8px;
   font-size: 10px;
   height: 18px;
   padding: 0 6px;
@@ -1137,7 +1399,6 @@ onMounted(async () => {
 .node-status-icons {
   display: flex;
   align-items: center;
-  margin-right: 8px;
   flex-shrink: 0;
 }
 
@@ -1158,6 +1419,9 @@ onMounted(async () => {
   opacity: 0;
   transition: opacity 0.2s;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  margin-top: -2px;
 }
 
 .custom-tree .el-tree-node:hover .node-actions {
@@ -1165,7 +1429,10 @@ onMounted(async () => {
 }
 
 .action-btn {
-  padding: 2px !important;
+  width: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 4px !important;
   margin-left: 4px;
 }
 
@@ -1177,6 +1444,17 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.context-menu-popover {
+  position: fixed;
+  z-index: 2200;
+  width: 200px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
 }
 
 .range-input {
@@ -1193,38 +1471,60 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100%;
+  min-height: 460px;
   color: #909399;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.04), rgba(16, 185, 129, 0.04)),
+    #fff;
+}
+
+.empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
 }
 
 .dialog-footer {
   text-align: right;
 }
 
+.hidden-file-input {
+  display: none;
+}
+
 /* Responsive design */
 @media (max-width: 1200px) {
-  .overview-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  }
-
   .content-wrapper {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .tree-panel {
     width: 100%;
-    height: 400px;
+    min-height: 360px;
+    max-height: none;
+    position: static;
   }
 }
 
 @media (max-width: 768px) {
+  .warehouse-area-content {
+    padding: 16px;
+  }
+
   .content-wrapper {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .tree-panel {
     width: 100%;
-    height: 400px;
+    min-height: 340px;
+  }
+
+  .detail-panel {
+    min-height: 420px;
+    padding: 16px;
   }
 }
 </style>

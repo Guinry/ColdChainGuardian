@@ -69,4 +69,16 @@ public class DeviceEntity extends BaseEntity {
 
     @TableField("extra")
     private String extra;
+
+    @TableField("latest_temp")
+    private BigDecimal latestTemp;
+
+    @TableField("latest_humi")
+    private BigDecimal latestHumi;
+
+    @TableField("latest_data_time")
+    private LocalDateTime latestDataTime;
+
+    @TableField("has_unresolved_alert")
+    private Integer hasUnresolvedAlert;
 }

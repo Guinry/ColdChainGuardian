@@ -1,67 +1,41 @@
 <template>
   <div class="kpi-cards-container">
-    <el-row :gutter="20">
-      <el-col :span="4">
-        <el-card class="kpi-card">
-          <div class="kpi-item" @click="$emit('cardClick', 'enabledDevices')">
-            <div class="kpi-value">
+    <button class="kpi-card neutral" type="button" @click="$emit('cardClick', 'enabledDevices')">
+      <span class="kpi-value">
               {{ summary.enabledDevices || '--' }}
-            </div>
-            <div class="kpi-label">启用设备数</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card class="kpi-card">
-          <div class="kpi-item" @click="$emit('cardClick', 'onlineDevices')">
-            <div class="kpi-value online">
+      </span>
+      <span class="kpi-label">启用设备</span>
+    </button>
+    <button class="kpi-card success" type="button" @click="$emit('cardClick', 'onlineDevices')">
+      <span class="kpi-value online">
               {{ summary.onlineDevices || '--' }}
-            </div>
-            <div class="kpi-label">在线设备数</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card class="kpi-card">
-          <div class="kpi-item" @click="$emit('cardClick', 'offlineDevices')">
-            <div class="kpi-value offline">
+      </span>
+      <span class="kpi-label">在线设备</span>
+    </button>
+    <button class="kpi-card muted" type="button" @click="$emit('cardClick', 'offlineDevices')">
+      <span class="kpi-value offline">
               {{ summary.offlineDevices || '--' }}
-            </div>
-            <div class="kpi-label">离线设备数</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card class="kpi-card">
-          <div class="kpi-item" @click="$emit('cardClick', 'alarmingDevices')">
-            <div class="kpi-value alarming">
+      </span>
+      <span class="kpi-label">离线设备</span>
+    </button>
+    <button class="kpi-card warning" type="button" @click="$emit('cardClick', 'alarmingDevices')">
+      <span class="kpi-value alarming">
               {{ summary.alarmingDevices || '--' }}
-            </div>
-            <div class="kpi-label">告警设备数</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card class="kpi-card">
-          <div class="kpi-item" @click="$emit('cardClick', 'unhandledAlerts')">
-            <div class="kpi-value unhandled">
+      </span>
+      <span class="kpi-label">告警设备</span>
+    </button>
+    <button class="kpi-card danger" type="button" @click="$emit('cardClick', 'unhandledAlerts')">
+      <span class="kpi-value unhandled">
               {{ summary.unhandledAlerts || '--' }}
-            </div>
-            <div class="kpi-label">未处理告警</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card class="kpi-card">
-          <div class="kpi-item" @click="$emit('cardClick', 'todayAlerts')">
-            <div class="kpi-value">
+      </span>
+      <span class="kpi-label">未处理告警</span>
+    </button>
+    <button class="kpi-card neutral" type="button" @click="$emit('cardClick', 'todayAlerts')">
+      <span class="kpi-value">
               {{ summary.todayAlerts || '--' }}
-            </div>
-            <div class="kpi-label">今日告警数</div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+      </span>
+      <span class="kpi-label">今日告警</span>
+    </button>
   </div>
 </template>
 
@@ -80,28 +54,43 @@ defineEmits(['cardClick'])
 
 <style scoped>
 .kpi-cards-container {
-  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
 }
 
 .kpi-card {
+  min-width: 0;
+  min-height: 96px;
+  padding: 16px 14px;
+  border: 1px solid var(--ccg-border);
+  border-left: 4px solid #94a3b8;
+  border-radius: 8px;
+  background: #fff;
+  text-align: center;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--ccg-shadow-sm);
+  transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
 }
 
 .kpi-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+  border-color: #cbd5e1;
+  box-shadow: var(--ccg-shadow-md);
 }
 
-.kpi-item {
-  text-align: center;
-  padding: 10px;
-}
+.kpi-card.success { border-left-color: var(--ccg-success); }
+.kpi-card.warning { border-left-color: var(--ccg-warning); }
+.kpi-card.danger { border-left-color: var(--ccg-danger); }
+.kpi-card.muted { border-left-color: #94a3b8; }
 
 .kpi-value {
+  display: block;
   font-size: 28px;
-  font-weight: bold;
-  color: #303133;
+  line-height: 1;
+  font-weight: 750;
+  color: var(--ccg-text);
   margin-bottom: 8px;
 }
 
@@ -122,7 +111,14 @@ defineEmits(['cardClick'])
 }
 
 .kpi-label {
+  display: block;
   font-size: 14px;
-  color: #909399;
+  color: var(--ccg-muted);
+}
+
+@media (max-width: 1280px) {
+  .kpi-cards-container {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 </style>

@@ -201,9 +201,11 @@ const updateStatsDisplay = () => {
 
 // Apply filters
 const applyFilters = () => {
-  console.log('Applying filters:', filterForm)
-  // 发送过滤事件给父组件
-  emit('filter-applied', filterForm)
+  emit('filter-applied', {
+    region: [...filterForm.region],
+    deviceType: [...filterForm.deviceType],
+    alertLevels: [...filterForm.alertLevels]
+  })
 }
 
 // Reset filters
@@ -216,25 +218,25 @@ const resetFilters = () => {
 
 // Apply comparison
 const applyComparison = () => {
-  console.log('Applying comparison:', comparisonForm)
-  emit('comparison-applied', comparisonForm)
+  emit('comparison-applied', {
+    dimension: comparisonForm.dimension,
+    compareDates: [...comparisonForm.compareDates],
+    regions: [...comparisonForm.regions]
+  })
 }
 
 // Export data
 const exportData = (type) => {
-  console.log(`Exporting ${type} data`)
   emit('export-requested', type)
 }
 
 // Print report
 const printReport = () => {
-  console.log('Printing report')
   emit('print-requested')
 }
 
 // Request AI analysis
 const requestAiAnalysis = () => {
-  console.log('Requesting AI analysis')
   emit('ai-analysis-requested')
 }
 

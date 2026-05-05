@@ -8,12 +8,8 @@ function getToken() {
 
 export class SSEClient {
   constructor(url, options = {}) {
-    let fullUrl = url.startsWith('http') ? url : `http://localhost:8080${url}`;
+    const fullUrl = url.startsWith('http') ? url : `http://localhost:8080${url}`;
     const token = getToken();
-    if (token) {
-      const separator = fullUrl.includes('?') ? '&' : '?';
-      fullUrl += `${separator}token=${encodeURIComponent(token)}`;
-    }
     this.url = fullUrl;
     this.options = {
       method: 'POST',
@@ -29,10 +25,37 @@ export class SSEClient {
     this.onError = null;
     this.onDone = null;
     this.controller = null;
+    this.hasReceivedData = false;
+    this.isFinished = false;
+  }
+
+  finish() {
+    if (this.isFinished) return;
+    this.isFinished = true;
+    if (this.onDone) this.onDone();
+  }
+
+  isAbortLikeError(error) {
+    if (error?.name === 'AbortError') return true;
+    if (this.controller?.signal?.aborted) return true;
+    const message = String(error?.message || '').toLowerCase();
+    return message.includes('aborted') || message.includes('abort');
+  }
+
+  isBenignStreamClose(error) {
+    if (!this.hasReceivedData) return false;
+    if (error instanceof TypeError) {
+      const message = String(error?.message || '').toLowerCase();
+      return message.includes('network') || message.includes('failed to fetch') || message.includes('load failed');
+    }
+    return false;
   }
 
   connect(body = null) {
     this.controller = new AbortController();
+    this.hasReceivedData = false;
+    this.isFinished = false;
+
     const options = {
       ...this.options,
       body: body ? JSON.stringify(body) : undefined,
@@ -86,17 +109,19 @@ export class SSEClient {
                 const dataStr = dataLines.join('\n');
 
                 if (dataStr === '[DONE]') {
-                  if (this.onDone) this.onDone();
+                  this.finish();
                   return; // 结束流
                 }
 
                 try {
                   // 尝试解析 JSON（以防后端未来改成 JSON 格式）
                   const parsed = JSON.parse(dataStr);
+                  this.hasReceivedData = true;
                   if (this.onMessage) this.onMessage(parsed);
                 } catch (e) {
                   // 如果是普通纯文本，直接带上完整的换行符推给前端
                   if (this.onMessage) {
+                    this.hasReceivedData = true;
                     this.onMessage({ content: dataStr, type: 'token' });
                   }
                 }
@@ -105,9 +130,14 @@ export class SSEClient {
           }
         })
         .catch(error => {
-          if (error.name === 'AbortError') {
-            console.log('请求被用户取消');
-          } else if (this.onError) {
+          if (this.isAbortLikeError(error)) {
+            return;
+          }
+          if (this.isBenignStreamClose(error)) {
+            this.finish();
+            return;
+          }
+          if (this.onError) {
             this.onError(error);
           }
         });

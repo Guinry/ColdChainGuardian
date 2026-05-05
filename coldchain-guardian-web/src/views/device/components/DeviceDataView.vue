@@ -122,7 +122,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
@@ -139,6 +139,7 @@ const loading = ref(false)
 const tableLoading = ref(false)
 const chartRef = ref(null)
 let chartInstance = null
+let resizeHandler = null
 
 // 设备信息
 const deviceName = ref('')
@@ -182,7 +183,12 @@ onMounted(() => {
 const loadDeviceInfo = async (deviceId) => {
   try {
     const response = await deviceApi.getDetail(deviceId)
-    const device = response.data?.data?.data
+    const device = response.data?.data
+    if (!device) {
+      ElMessage.error(response.data?.message || '设备不存在')
+      router.push('/devices')
+      return
+    }
 
     deviceName.value = device.deviceName
     deviceCode.value = device.deviceCode
@@ -205,7 +211,11 @@ const loadChartData = async (deviceId) => {
       endTime: timeRange.value[1] ? new Date(timeRange.value[1]).toISOString() : undefined
     }
 
-    const response = await deviceApi.getHistoricalData(deviceId, params)
+    const response = await deviceApi.getHistoricalData(deviceId || route.params.deviceId, {
+      ...params,
+      page: 1,
+      size: 100
+    })
     const data = response.data?.data?.data || []
 
     // 处理图表数据
@@ -236,8 +246,8 @@ const loadDataTable = async (deviceId) => {
     }
 
     const response = await deviceApi.getHistoricalData(deviceId, params)
-    dataTable.value = response.data?.data?.data?.list || []
-    pagination.total = response.data?.data?.data?.total || 0
+    dataTable.value = response.data?.data?.data || []
+    pagination.total = response.data?.data?.total || 0
   } catch (error) {
     ElMessage.error('获取表格数据失败')
     console.error(error)
@@ -322,12 +332,41 @@ const renderChart = () => {
 
   chartInstance.setOption(option)
 
-  // 响应窗口大小变化
-  window.addEventListener('resize', () => {
-    if (chartInstance) {
-      chartInstance.resize()
+  if (!resizeHandler) {
+    resizeHandler = () => {
+      if (chartInstance) {
+        chartInstance.resize()
+      }
     }
-  })
+    window.addEventListener('resize', resizeHandler)
+  }
+}
+
+onBeforeUnmount(() => {
+  if (resizeHandler) {
+    window.removeEventListener('resize', resizeHandler)
+    resizeHandler = null
+  }
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
+})
+
+const downloadCsv = (filename, headers, rows) => {
+  const escapeCell = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`
+  const csv = [
+    headers.map(([, label]) => escapeCell(label)).join(','),
+    ...rows.map(row => headers.map(([key]) => escapeCell(row[key])).join(','))
+  ].join('\n')
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 // 刷新数据
@@ -351,7 +390,30 @@ const handleCurrentChange = (page) => {
 
 // 导出数据
 const exportData = () => {
-  ElMessage.info('导出功能正在开发中...')
+  if (!dataTable.value.length) {
+    ElMessage.info('暂无可导出的历史数据')
+    return
+  }
+
+  const headers = [
+    ['dataTimeText', '时间'],
+    ['temperature', '温度(℃)'],
+    ['humidity', '湿度(%)'],
+    ['batteryLevel', '电量(%)'],
+    ['signalStrength', '信号强度'],
+    ['rawData', '原始数据']
+  ]
+  const rows = dataTable.value.map(row => ({
+    ...row,
+    dataTimeText: formatDate(row.dataTime)
+  }))
+
+  downloadCsv(
+    `${deviceCode.value || route.params.deviceId}_历史数据_${new Date().toISOString().slice(0, 10)}.csv`,
+    headers,
+    rows
+  )
+  ElMessage.success('历史数据已导出')
 }
 
 // 返回上一页
@@ -383,7 +445,7 @@ const getDeviceTypeTag = (type) => {
     'VEHICLE': 'warning',
     'DOOR': 'info'
   }
-  return types[type] || 'default'
+  return types[type] || 'info'
 }
 </script>
 

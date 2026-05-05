@@ -39,7 +39,9 @@ const logout = () => {
 const viewProfile = () => {
   router.push('/profile'); // 🌟 跳向刚写的个人资料页
 };
-const settings = () => console.log('Settings clicked');
+const settings = () => {
+  router.push('/settings/thresholds');
+};
 </script>
 
 <style scoped>
@@ -51,7 +53,7 @@ const settings = () => console.log('Settings clicked');
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f5f7fa;
+  background-color: var(--ccg-bg);
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -67,7 +69,7 @@ const settings = () => console.log('Settings clicked');
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  height: calc(100vh - 60px);
-  background-color: #f5f7fa;
+  height: calc(100vh - var(--ccg-header-height));
+  background-color: var(--ccg-bg);
 }
 </style>

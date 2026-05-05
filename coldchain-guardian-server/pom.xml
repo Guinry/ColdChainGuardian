@@ -26,7 +26,6 @@
         <java.version>17</java.version>
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
         <mysql.version>8.0.33</mysql.version>
-        <spring-ai.version>1.0.0-M1</spring-ai.version>
     </properties>
 
     <dependencyManagement>
@@ -45,14 +44,6 @@
                 <groupId>com.coldchain</groupId>
                 <artifactId>ccg-infrastructure</artifactId>
                 <version>${project.version}</version>
-            </dependency>
-            <!-- Spring AI Bill of Materials -->
-            <dependency>
-                <groupId>org.springframework.ai</groupId>
-                <artifactId>spring-ai-bom</artifactId>
-                <version>${spring-ai.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

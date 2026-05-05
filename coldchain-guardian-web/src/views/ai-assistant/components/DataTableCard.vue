@@ -5,7 +5,7 @@
         <div class="card-header">
           <span class="card-title">{{ data.title || '数据表格' }}</span>
           <div class="card-actions">
-            <el-button size="small" icon="Download">导出</el-button>
+            <el-button size="small" icon="Download" @click="exportTable">导出</el-button>
           </div>
         </div>
       </template>
@@ -54,6 +54,10 @@
 
 <script setup>
 import { defineProps } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+
+const router = useRouter()
 
 const props = defineProps({
   data: {
@@ -64,14 +68,20 @@ const props = defineProps({
 
 // 处理行点击事件
 const handleRowClick = (row) => {
-  console.log('表格行点击', row)
-  // 可以在这里打开详细信息抽屉
+  if (row.orderId) {
+    router.push(`/work-orders/${row.orderId}`)
+  } else if (row.alertId || row.id) {
+    router.push(`/alerts/${row.alertId || row.id}`)
+  } else if (row.deviceId) {
+    router.push(`/devices/${row.deviceId}/data`)
+  }
 }
 
 // 处理分页变化
 const handlePageChange = (page) => {
-  console.log('分页变化', page)
-  // 触发父组件的分页处理
+  if (props.data.pagination) {
+    props.data.pagination.currentPage = page
+  }
 }
 
 // 生成列链接
@@ -82,6 +92,29 @@ const getColumnLink = (row, prop) => {
     return `/work-orders/${row[prop]}`
   }
   return '#'
+}
+
+const exportTable = () => {
+  const rows = props.data.rows || []
+  const columns = props.data.columns || []
+  if (!rows.length || !columns.length) {
+    ElMessage.info('暂无可导出的表格数据')
+    return
+  }
+
+  const escapeCell = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`
+  const csv = [
+    columns.map(column => escapeCell(column.label)).join(','),
+    ...rows.map(row => columns.map(column => escapeCell(row[column.prop])).join(','))
+  ].join('\n')
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${props.data.title || 'ai-table'}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
 }
 </script>
 

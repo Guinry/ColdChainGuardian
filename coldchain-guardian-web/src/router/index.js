@@ -55,8 +55,32 @@ const routes = [
     meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] }
   },
   {
+    path: '/work-orders/:id',
+    name: 'WorkOrderDetail',
+    component: () => import('../views/work-order/WorkOrderCenterView.vue'),
+    meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] }
+  },
+  {
+    path: '/orders',
+    redirect: to => ({ path: '/work-orders', query: to.query })
+  },
+  {
+    path: '/orders/create',
+    redirect: to => ({ path: '/work-orders', query: { ...to.query, create: '1' } })
+  },
+  {
+    path: '/orders/:id',
+    redirect: to => ({ path: `/work-orders/${to.params.id}`, query: to.query })
+  },
+  {
     path: '/alerts',
     name: 'AlertCenter',
+    component: () => import('../views/alert/AlertCenterView.vue'),
+    meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] }
+  },
+  {
+    path: '/alerts/:id',
+    name: 'AlertDetail',
     component: () => import('../views/alert/AlertCenterView.vue'),
     meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] }
   },
@@ -83,6 +107,36 @@ const routes = [
     name: 'ManagerManagement',
     component: () => import('@/views/managers/ManagerManagement.vue'),
     meta: { requiresAuth: true, roles: ['ADMIN'] }
+  },
+  {
+    path: '/permissions',
+    name: 'PermissionManagement',
+    component: () => import('@/views/system/PermissionManagementView.vue'),
+    meta: { requiresAuth: true, roles: ['ADMIN'] }
+  },
+  {
+    path: '/admin/permissions',
+    redirect: '/permissions'
+  },
+  {
+    path: '/admin/users',
+    redirect: '/managers'
+  },
+  {
+    path: '/audit-logs',
+    name: 'AuditLogs',
+    component: () => import('@/views/system/AuditLogView.vue'),
+    meta: { requiresAuth: true, roles: ['ADMIN'] }
+  },
+  {
+    path: '/admin/logs',
+    redirect: '/audit-logs'
+  },
+  {
+    path: '/settings/thresholds',
+    name: 'ThresholdSettings',
+    component: () => import('@/views/system/ThresholdSettingsView.vue'),
+    meta: { requiresAuth: true, roles: ['ADMIN', 'MANAGER'] }
   },
   {
     path: '/profile',

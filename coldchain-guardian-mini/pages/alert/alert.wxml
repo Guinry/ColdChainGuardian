@@ -1,73 +1,87 @@
 <view class="page-container">
-  
   <view class="fixed-header" style="padding-top: {{paddingTop}}px;">
-    <view class="nav-title" style="height: {{capsuleHeight}}px; line-height: {{capsuleHeight}}px;">
-      <text>告警大厅</text>
+    <view class="nav-title" style="height: {{capsuleHeight}}px; line-height: {{capsuleHeight}}px;">告警大厅</view>
+
+    <view class="search-bar">
+      <input class="search-input"
+             value="{{keyword}}"
+             bindinput="onKeywordInput"
+             confirm-type="search"
+             bindconfirm="searchAlerts"
+             placeholder="搜索设备、位置或告警描述" />
+      <text wx:if="{{keyword}}" class="search-clear" bindtap="clearSearch">清除</text>
+      <text class="search-action" bindtap="searchAlerts">搜索</text>
     </view>
+
     <view class="segment-wrap">
       <view class="segment-control">
-        <view class="segment-item {{activeTab === 'unhandled' ? 'active' : ''}}" 
-              data-tab="unhandled" bindtap="switchTab">
-          <text>未处理 ({{unhandledCount}})</text>
-        </view>
-        <view class="segment-item {{activeTab === 'processing' ? 'active' : ''}}" 
-              data-tab="processing" bindtap="switchTab">
-          <text>处理中 ({{processingCount}})</text>
+        <view class="segment-item {{activeTab === item.key ? 'active' : ''}}"
+              wx:for="{{tabs}}"
+              wx:key="key"
+              data-tab="{{item.key}}"
+              bindtap="switchTab">
+          <text>{{item.label}}</text>
+          <text class="segment-count">{{item.count}}</text>
         </view>
       </view>
     </view>
   </view>
 
-  <scroll-view class="scroll-area" 
-               scroll-y="true" 
+  <scroll-view class="scroll-area"
+               scroll-y="true"
                type="list"
                refresher-enabled="true"
                refresher-triggered="{{isRefreshing}}"
                bindrefresherrefresh="onRefresh">
-    
+
     <view class="alert-list" wx:if="{{currentAlerts.length > 0}}">
-      <view class="alert-card {{item.priority}}" wx:for="{{currentAlerts}}" wx:key="id" hover-class="card-hover">
+      <view class="alert-card {{item.priority}} {{focusAlertId == item.id ? 'focused' : ''}}" wx:for="{{currentAlerts}}" wx:key="id" hover-class="card-hover">
         <view class="card-header">
           <view class="title-wrap">
-            <view class="priority-tag">
-              {{item.priority === 'urgent' ? '紧急' : item.priority === 'high' ? '高危' : '提示'}}
-            </view>
+            <view class="priority-tag">{{item.priorityText}}</view>
             <text class="alert-title">{{item.title}}</text>
           </view>
           <text class="alert-time">{{item.time}}</text>
         </view>
 
-        <view class="card-body">
-          <view class="data-panel">
-            <view class="data-box">
-              <text class="data-label">当前数值</text>
-              <text class="data-value current-color">{{item.currentValue}}</text>
-            </view>
-            <view class="data-divider"></view>
-            <view class="data-box">
-              <text class="data-label">预设阈值</text>
-              <text class="data-value limit-color">{{item.thresholdValue}}</text>
-            </view>
+        <view class="data-panel">
+          <view class="data-box">
+            <text class="data-label">当前数值</text>
+            <text class="data-value current-color">{{item.currentValue}}</text>
           </view>
-          <view class="location-row">
-            <text class="loc-icon">📍</text>
-            <text class="loc-text">发生位置：{{item.location}}</text>
+          <view class="data-divider"></view>
+          <view class="data-box">
+            <text class="data-label">预设阈值</text>
+            <text class="data-value limit-color">{{item.thresholdValue}}</text>
           </view>
         </view>
 
-        <view class="card-footer">
-          <button class="btn-ghost" data-id="{{item.id}}" catchtap="dismissAlert">误报消除</button>
-          <button class="btn-primary" data-id="{{item.id}}" catchtap="transferToOrder">转工单</button>
+        <view class="meta-block">
+          <text class="meta-line">位置：{{item.location}}</text>
+          <text class="meta-line">状态：{{item.statusText}} · {{item.fullTime}}</text>
         </view>
+
+        <view class="card-footer">
+          <button wx:if="{{item.status === 'UNHANDLED'}}" class="btn-ghost" data-id="{{item.id}}" catchtap="dismissAlert">误报关闭</button>
+          <button wx:if="{{item.status === 'UNHANDLED'}}" class="btn-primary" data-id="{{item.id}}" catchtap="transferToOrder">转工单</button>
+          <button wx:if="{{item.status === 'HANDLING'}}" class="btn-primary" data-id="{{item.id}}" catchtap="resolveAlert">确认恢复</button>
+          <text wx:if="{{item.status !== 'UNHANDLED' && item.status !== 'HANDLING'}}" class="readonly-tip">无需进一步操作</text>
+        </view>
+      </view>
+
+      <view class="load-more" wx:if="{{hasMore}}" bindtap="loadMore">
+        <text>{{loading ? '加载中...' : '加载更多'}}</text>
+      </view>
+      <view class="load-more done" wx:else>
+        <text>已加载全部 {{total}} 条</text>
       </view>
     </view>
 
     <view wx:else class="empty-state">
-      <text class="empty-emoji">🎉</text>
-      <text class="empty-text">太棒了，当前没有{{activeTab === 'unhandled' ? '未处理' : '处理中'}}的告警</text>
+      <text class="empty-title">{{loading ? '正在加载告警' : '当前分类暂无告警'}}</text>
+      <text class="empty-desc">可切换状态或搜索设备、库区位置</text>
     </view>
 
-    <view style="height: 60rpx;"></view>
+    <view class="bottom-space"></view>
   </scroll-view>
-
 </view>

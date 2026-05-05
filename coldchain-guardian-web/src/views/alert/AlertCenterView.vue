@@ -1,6 +1,19 @@
 <template>
   <Layout>
     <div class="alert-center">
+      <header class="page-head">
+        <div>
+          <h1>告警中心</h1>
+          <p>集中研判未处理、高危和处理中告警，支持快速转工单与闭环。</p>
+        </div>
+        <div class="head-actions">
+          <el-button :icon="Refresh" @click="fetchAlerts">刷新</el-button>
+          <el-button :icon="TrendCharts" @click="showAnalysisPanel = !showAnalysisPanel">
+            {{ showAnalysisPanel ? '隐藏分析' : '显示分析' }}
+          </el-button>
+        </div>
+      </header>
+
       <!-- 顶部告警雷达 -->
       <el-row :gutter="20" class="kpi-cards">
         <el-col :span="6">
@@ -87,9 +100,6 @@
           <el-form-item>
             <el-button type="primary" @click="fetchAlerts">查询</el-button>
             <el-button @click="resetFilter">重置</el-button>
-            <el-button @click="showAnalysisPanel = !showAnalysisPanel">
-              {{ showAnalysisPanel ? '隐藏' : '显示' }}分析面板
-            </el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -165,7 +175,6 @@
         :data="alerts"
         v-loading="loading"
         stripe
-        height="calc(100vh - 550px)"
         style="width: 100%"
         @row-click="showTriageDrawer"
       >
@@ -255,11 +264,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { Refresh, TrendCharts } from '@element-plus/icons-vue';
 import AlertTriageDrawer from '@/views/alert/components/AlertTriageDrawer.vue';
 import Layout from '@/components/Layout.vue';
 import { alertApi } from '@/api/alert';
+
+const route = useRoute();
+const router = useRouter();
 
 // 告警统计数据
 const alertStats = ref({
@@ -287,6 +301,26 @@ const filterForm = reactive({
   level: undefined,
   status: undefined
 });
+
+const getQueryValue = (value) => Array.isArray(value) ? value[0] : value;
+
+const applyRouteQuery = () => {
+  const statusMap = {
+    unhandled: 'UNHANDLED',
+    handling: 'HANDLING',
+    resolved: 'RESOLVED',
+    ignored: 'IGNORED'
+  };
+  const status = getQueryValue(route.query.status);
+  const keyword = getQueryValue(route.query.keyword);
+  const level = getQueryValue(route.query.level);
+  const location = getQueryValue(route.query.location);
+
+  filterForm.status = status ? (statusMap[status] || status) : undefined;
+  filterForm.keyword = keyword ? String(keyword) : '';
+  filterForm.level = level ? String(level) : undefined;
+  filterForm.location = location ? String(location) : undefined;
+};
 
 // 时间范围
 const timeRange = ref([]);
@@ -818,29 +852,85 @@ const ignoreAlert = async (row) => {
 };
 
 onMounted(async () => {
+  applyRouteQuery();
+
   // 并行执行API调用以提高性能
   await Promise.all([
     fetchAlertStats().catch(err => console.error('获取告警统计数据错误:', err)),
     fetchAlerts().catch(err => console.error('获取告警列表错误:', err)),
     fetchAnalysisData().catch(err => console.error('获取分析数据错误:', err))
   ]);
+
+  if (route.params.id) {
+    selectedAlertId.value = Number(route.params.id);
+    showTriageDrawerFlag.value = true;
+  }
+});
+
+watch(() => route.query, () => {
+  applyRouteQuery();
+  pagination.currentPage = 1;
+  fetchAlerts();
+  fetchAlertStats();
+});
+
+watch(() => route.params.id, (id) => {
+  if (id) {
+    selectedAlertId.value = Number(id);
+    showTriageDrawerFlag.value = true;
+  }
+});
+
+watch(showTriageDrawerFlag, (visible) => {
+  if (!visible && route.params.id) {
+    router.replace({ path: '/alerts', query: route.query });
+  }
 });
 </script>
 
 <style scoped>
 .alert-center {
-  padding: 20px;
-  background-color: #f5f7fa;
-  min-height: 100vh;
+  padding: 20px 24px 28px;
+  background-color: var(--ccg-bg);
+  min-height: 100%;
+  color: var(--ccg-text);
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 750;
+}
+
+.page-head p {
+  margin: 6px 0 0;
+  color: var(--ccg-muted);
+  font-size: 13px;
+}
+
+.head-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .kpi-cards {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .kpi-card {
   text-align: center;
   position: relative;
+  min-height: 104px;
 }
 
 .kpi-card.unhandled {
@@ -885,11 +975,12 @@ onMounted(async () => {
 }
 
 .filter-section {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--ccg-shadow-sm) !important;
 }
 
 .analysis-panel {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .chart-container, .recurring-analysis, .health-analysis, .root-cause-analysis {
@@ -938,7 +1029,22 @@ onMounted(async () => {
 }
 
 .pagination {
-  margin-top: 20px;
-  text-align: right;
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  border: 1px solid var(--ccg-border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+@media (max-width: 1080px) {
+  .page-head {
+    flex-direction: column;
+  }
+
+  .kpi-cards :deep(.el-col) {
+    margin-bottom: 12px;
+  }
 }
 </style>

@@ -2,7 +2,7 @@
   <Layout>
     <div class="device-management-content">
       <div class="page-header">
-        <h2>设备管理</h2>
+        <h1>设备管理</h1>
         <div class="header-actions">
           <el-button type="primary" @click="openCreateDialog()">
             <el-icon><Plus /></el-icon>
@@ -12,6 +12,13 @@
             <el-icon><Upload /></el-icon>
             批量导入
           </el-button>
+          <input
+            ref="importInputRef"
+            type="file"
+            accept=".csv"
+            class="hidden-file-input"
+            @change="handleImportFile"
+          />
           <el-button @click="handleExport">
             <el-icon><Download /></el-icon>
             导出
@@ -140,7 +147,6 @@
         v-loading="tableLoading"
         :data="tableData"
         @selection-change="handleSelectionChange"
-        height="calc(100vh - 400px)"
         class="device-table"
       >
         <el-table-column type="selection" width="55" align="center" header-align="center" />
@@ -171,7 +177,7 @@
           <template #default="{ row }">
             <el-switch
               v-model="row.enabled"
-              @change="toggleStatus(row)"
+              @change="toggleStatus(row, $event)"
               :active-value="true"
               :inactive-value="false"
               :disabled="!hasPermission('device:update')"
@@ -182,7 +188,7 @@
           <template #default="{ row }">
             <el-switch
               v-model="row.alarmEnabled"
-              @change="toggleAlarmStatus(row)"
+              @change="toggleAlarmStatus(row, $event)"
               :active-value="true"
               :inactive-value="false"
               :disabled="!hasPermission('device:update')"
@@ -213,7 +219,7 @@
                 <el-button
                   size="small"
                   :type="row.enabled ? 'danger' : 'success'"
-                  @click="toggleStatus(row)"
+                  @click="toggleStatus(row, !row.enabled)"
                 >
                   {{ row.enabled ? '禁用' : '启用' }}
                 </el-button>
@@ -222,7 +228,7 @@
                 <el-button
                   size="small"
                   :type="row.alarmEnabled ? 'warning' : 'info'"
-                  @click="toggleAlarmStatus(row)"
+                  @click="toggleAlarmStatus(row, !row.alarmEnabled)"
                 >
                   {{ row.alarmEnabled ? '关闭告警' : '启用告警' }}
                 </el-button>
@@ -420,8 +426,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 import Layout from '@/components/Layout.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -449,6 +455,7 @@ import { deviceApi } from '@/api/device'
 import { areaApi } from '@/api/area'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 // 权限检查
@@ -464,6 +471,7 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const submitLoading = ref(false)
 const formRef = ref()
+const importInputRef = ref()
 
 // 分页
 const pagination = reactive({
@@ -481,6 +489,30 @@ const searchForm = reactive({
   alarmEnabled: null,
   areaId: null
 })
+
+const getQueryValue = (value) => Array.isArray(value) ? value[0] : value
+
+const parseBooleanQuery = (value) => {
+  const normalized = String(getQueryValue(value) ?? '').toLowerCase()
+  if (['true', '1', 'online', 'enabled'].includes(normalized)) return true
+  if (['false', '0', 'offline', 'disabled'].includes(normalized)) return false
+  return null
+}
+
+const applyRouteQuery = () => {
+  const query = route.query
+  const keyword = getQueryValue(query.keyword)
+  const status = getQueryValue(query.status)
+
+  searchForm.keyword = keyword ? String(keyword) : ''
+  searchForm.deviceType = getQueryValue(query.deviceType) ? String(getQueryValue(query.deviceType)) : ''
+  searchForm.onlineStatus = query.onlineStatus !== undefined
+    ? parseBooleanQuery(query.onlineStatus)
+    : parseBooleanQuery(status)
+  searchForm.enabled = query.enabled !== undefined ? parseBooleanQuery(query.enabled) : null
+  searchForm.alarmEnabled = query.alarmEnabled !== undefined ? parseBooleanQuery(query.alarmEnabled) : null
+  searchForm.areaId = getQueryValue(query.areaId) ? Number(getQueryValue(query.areaId)) : null
+}
 
 // 表单数据
 const formData = reactive({
@@ -679,29 +711,29 @@ const handleDialogClose = (done) => {
 }
 
 // 切换设备状态
-const toggleStatus = async (row) => {
+const toggleStatus = async (row, nextEnabled) => {
+  const previousEnabled = row.enabled === nextEnabled ? !nextEnabled : row.enabled
+  row.enabled = nextEnabled
   try {
-    await deviceApi.updateStatus(row.id, { enabled: !row.enabled })
-    row.enabled = !row.enabled
+    await deviceApi.updateStatus(row.id, { enabled: nextEnabled })
     ElMessage.success(`${row.enabled ? '启用' : '禁用'}设备成功`)
   } catch (error) {
     console.error('Failed to toggle device status:', error)
-    // 恢复状态
-    row.enabled = !row.enabled
+    row.enabled = previousEnabled
     ElMessage.error(error.response?.data?.message || '操作失败')
   }
 }
 
 // 切换告警状态
-const toggleAlarmStatus = async (row) => {
+const toggleAlarmStatus = async (row, nextAlarmEnabled) => {
+  const previousAlarmEnabled = row.alarmEnabled === nextAlarmEnabled ? !nextAlarmEnabled : row.alarmEnabled
+  row.alarmEnabled = nextAlarmEnabled
   try {
-    await deviceApi.updateAlarmStatus(row.id, { alarmEnabled: !row.alarmEnabled })
-    row.alarmEnabled = !row.alarmEnabled
+    await deviceApi.updateAlarmStatus(row.id, { alarmEnabled: nextAlarmEnabled })
     ElMessage.success(`${row.alarmEnabled ? '启用' : '关闭'}告警成功`)
   } catch (error) {
     console.error('Failed to toggle alarm status:', error)
-    // 恢复状态
-    row.alarmEnabled = !row.alarmEnabled
+    row.alarmEnabled = previousAlarmEnabled
     ElMessage.error(error.response?.data?.message || '操作失败')
   }
 }
@@ -723,7 +755,7 @@ const batchUpdateStatus = async (enabled) => {
 const batchUpdateAlarmStatus = async (alarmEnabled) => {
   try {
     const ids = selectedRows.value.map(row => row.id)
-    await deviceApi.batchUpdateAlarmStatus({ ids, alarmEnabled })
+    await Promise.all(ids.map(id => deviceApi.updateAlarmStatus(id, { alarmEnabled })))
     ElMessage.success(`${alarmEnabled ? '启用' : '关闭'}告警成功`)
     loadTableData()
   } catch (error) {
@@ -745,8 +777,7 @@ const batchDelete = async () => {
       }
     )
 
-    const ids = selectedRows.value.map(row => row.id)
-    await deviceApi.batchDelete(ids)
+    await Promise.all(selectedRows.value.map(row => deviceApi.delete(row.id)))
     ElMessage.success('删除设备成功')
     loadTableData()
   } catch (error) {
@@ -775,7 +806,7 @@ const getDeviceTypeTag = (type) => {
     'VEHICLE': 'warning',
     'DOOR': 'info'
   }
-  return tags[type] || 'default'
+  return tags[type] || 'info'
 }
 
 // 获取设备类型标签
@@ -798,63 +829,239 @@ const formatDate = (dateStr) => {
 
 // 处理导入
 const handleImport = () => {
-  ElMessage.info('批量导入功能正在开发中...')
+  importInputRef.value?.click()
+}
+
+const parseCsvLine = (line) => {
+  const cells = []
+  let current = ''
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i]
+    const nextChar = line[i + 1]
+
+    if (char === '"' && inQuotes && nextChar === '"') {
+      current += '"'
+      i += 1
+    } else if (char === '"') {
+      inQuotes = !inQuotes
+    } else if (char === ',' && !inQuotes) {
+      cells.push(current.trim())
+      current = ''
+    } else {
+      current += char
+    }
+  }
+
+  cells.push(current.trim())
+  return cells
+}
+
+const deviceImportHeaderMap = {
+  设备编码: 'deviceCode',
+  设备名称: 'deviceName',
+  设备类型: 'deviceType',
+  所属库区ID: 'areaId',
+  型号: 'model',
+  制造商: 'manufacturer',
+  序列号: 'sn',
+  固件版本: 'firmwareVersion',
+  位置描述: 'locationDesc',
+  阈值模式: 'thresholdMode',
+  温度下限: 'temperatureThresholdMin',
+  温度上限: 'temperatureThresholdMax',
+  湿度下限: 'humidityThresholdMin',
+  湿度上限: 'humidityThresholdMax',
+  启用状态: 'enabled',
+  告警状态: 'alarmEnabled'
+}
+
+const normalizeDeviceType = (type) => {
+  const typeMap = {
+    温湿度传感器: 'TEMP_HUM',
+    冷冻设备: 'FREEZER',
+    冷柜: 'FREEZER',
+    车辆: 'VEHICLE',
+    车载设备: 'VEHICLE',
+    门磁: 'DOOR'
+  }
+  return typeMap[type] || type || 'TEMP_HUM'
+}
+
+const toBoolean = (value, fallback = true) => {
+  if (value === undefined || value === '') return fallback
+  return value === true || value === 'true' || value === '1' || value === '启用' || value === '开启' || value === '启用告警'
+}
+
+const buildDeviceImportPayload = (row) => ({
+  deviceCode: row.deviceCode,
+  deviceName: row.deviceName,
+  deviceType: normalizeDeviceType(row.deviceType),
+  areaId: row.areaId ? Number(row.areaId) : null,
+  model: row.model || '',
+  manufacturer: row.manufacturer || '',
+  sn: row.sn || '',
+  firmwareVersion: row.firmwareVersion || '',
+  locationDesc: row.locationDesc || '',
+  thresholdMode: row.thresholdMode || 'SYSTEM',
+  temperatureThresholdMin: row.temperatureThresholdMin ? Number(row.temperatureThresholdMin) : null,
+  temperatureThresholdMax: row.temperatureThresholdMax ? Number(row.temperatureThresholdMax) : null,
+  humidityThresholdMin: row.humidityThresholdMin ? Number(row.humidityThresholdMin) : null,
+  humidityThresholdMax: row.humidityThresholdMax ? Number(row.humidityThresholdMax) : null,
+  enabled: toBoolean(row.enabled ?? row.enabledLabel, true),
+  alarmEnabled: toBoolean(row.alarmEnabled ?? row.alarmEnabledLabel, true)
+})
+
+const handleImportFile = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  try {
+    const text = await file.text()
+    const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(Boolean)
+    if (lines.length < 2) {
+      ElMessage.warning('导入文件为空')
+      return
+    }
+
+    const headers = parseCsvLine(lines[0]).map(header => deviceImportHeaderMap[header] || header)
+    const rows = lines.slice(1).map(line => {
+      const values = parseCsvLine(line)
+      return headers.reduce((record, header, index) => {
+        record[header] = values[index] || ''
+        return record
+      }, {})
+    }).filter(row => row.deviceCode && row.deviceName)
+
+    let successCount = 0
+    const failedRows = []
+    for (const row of rows) {
+      try {
+        await deviceApi.create(buildDeviceImportPayload(row))
+        successCount += 1
+      } catch (error) {
+        failedRows.push(`${row.deviceCode}: ${error.response?.data?.message || error.message}`)
+      }
+    }
+
+    await loadTableData()
+    ElMessage.success(`导入完成，成功 ${successCount} 条，失败 ${failedRows.length} 条`)
+    if (failedRows.length) {
+      console.warn('设备导入失败明细:', failedRows)
+    }
+  } catch (error) {
+    ElMessage.error('导入失败，请检查 CSV 文件格式')
+  } finally {
+    event.target.value = ''
+  }
 }
 
 // 处理导出
 const handleExport = () => {
-  ElMessage.info('导出功能正在开发中...')
+  const rows = tableData.value
+  if (!rows.length) {
+    ElMessage.info('暂无可导出的设备数据')
+    return
+  }
+
+  const headers = [
+    ['deviceCode', '设备编码'],
+    ['deviceName', '设备名称'],
+    ['deviceTypeLabel', '设备类型'],
+    ['areaId', '所属库区ID'],
+    ['areaName', '所属库区'],
+    ['model', '型号'],
+    ['manufacturer', '制造商'],
+    ['sn', '序列号'],
+    ['firmwareVersion', '固件版本'],
+    ['onlineStatusLabel', '在线状态'],
+    ['enabledLabel', '启用状态'],
+    ['alarmEnabledLabel', '告警状态'],
+    ['lastSeenTimeText', '最后在线'],
+    ['locationDesc', '位置描述']
+  ]
+  const exportRows = rows.map(row => ({
+    ...row,
+    deviceTypeLabel: getDeviceTypeLabel(row.deviceType),
+    onlineStatusLabel: row.onlineStatus ? '在线' : '离线',
+    enabledLabel: row.enabled ? '启用' : '禁用',
+    alarmEnabledLabel: row.alarmEnabled ? '启用告警' : '关闭告警',
+    lastSeenTimeText: row.lastSeenTime ? formatDate(row.lastSeenTime) : ''
+  }))
+  const escapeCell = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`
+  const csv = [
+    headers.map(([, label]) => escapeCell(label)).join(','),
+    ...exportRows.map(row => headers.map(([key]) => escapeCell(row[key])).join(','))
+  ].join('\n')
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `设备数据_${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('设备数据已导出')
 }
 
 onMounted(async () => {
+  applyRouteQuery()
   await loadAreaOptions()
   await loadTableData()
+})
+
+watch(() => route.query, () => {
+  applyRouteQuery()
+  pagination.currentPage = 1
+  loadTableData()
 })
 </script>
 
 <style scoped>
 .device-management-content {
-  padding: 24px;
-  height: 100%;
+  padding: 20px 24px 28px;
+  min-height: 100%;
   box-sizing: border-box;
-  background-color: #f5f7fa; /* 增加浅灰背景，让白色卡片更突出 */
-  display: flex;
-  flex-direction: column;
+  background-color: var(--ccg-bg);
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
-.page-header h2 {
+.page-header h1 {
   margin: 0;
   font-size: 22px;
-  font-weight: 600;
-  color: #1f2f3d;
+  line-height: 1.2;
+  font-weight: 750;
+  color: var(--ccg-text);
 }
 
 .search-filters {
   background: #ffffff;
-  padding: 24px 24px 4px 24px;
+  padding: 16px;
   border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.04);
-  border: 1px solid #ebeef5;
+  margin-bottom: 14px;
+  box-shadow: var(--ccg-shadow-sm);
+  border: 1px solid var(--ccg-border);
 }
 
 .search-form :deep(.el-form-item) {
-  margin-bottom: 20px;
-  margin-right: 24px;
+  margin-bottom: 0;
+  margin-right: 0;
 }
 
 .table-actions {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .selected-count {
@@ -869,9 +1076,9 @@ onMounted(async () => {
 .device-table {
   background: #fff;
   border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.04);
-  border: 1px solid #ebeef5;
-  overflow: hidden; /* 防止表格边角溢出圆角 */
+  box-shadow: var(--ccg-shadow-sm);
+  border: 1px solid var(--ccg-border);
+  overflow: hidden;
 }
 
 .device-link {
@@ -909,13 +1116,14 @@ onMounted(async () => {
 }
 
 .pagination {
-  margin-top: 24px;
+  margin-top: 14px;
   display: flex;
   justify-content: flex-end;
   background: #fff;
-  padding: 16px 24px;
+  padding: 12px 16px;
   border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.04);
+  border: 1px solid var(--ccg-border);
+  box-shadow: var(--ccg-shadow-sm);
 }
 
 :deep(.el-dialog) {
@@ -928,5 +1136,9 @@ onMounted(async () => {
   margin-right: 0;
   padding: 20px 24px;
   border-bottom: 1px solid #ebeef5;
+}
+
+.hidden-file-input {
+  display: none;
 }
 </style>
