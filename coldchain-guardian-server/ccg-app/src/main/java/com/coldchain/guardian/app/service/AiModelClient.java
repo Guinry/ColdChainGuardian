@@ -19,6 +19,12 @@ import java.util.Map;
 @Service
 public class AiModelClient {
 
+    private static final String DEFAULT_BASE_URL = "https://www.micuapi.ai";
+    private static final String DEFAULT_MODEL = "deepseek-v4-pro";
+    private static final String DEFAULT_PROTOCOL = "chat-completions";
+    private static final String DEFAULT_USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0";
+
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
     private final String apiKey;
@@ -31,7 +37,7 @@ public class AiModelClient {
 
     public AiModelClient(ObjectMapper objectMapper,
                          @Value("${ccg.ai.openai.api-key:${SPRING_AI_OPENAI_API_KEY:${OPENAI_API_KEY:not-configured}}}") String apiKey,
-                         @Value("${ccg.ai.openai.base-url:${SPRING_AI_OPENAI_BASE_URL:https://www.openclaudecode.cn}}") String baseUrl,
+                         @Value("${ccg.ai.openai.base-url:${SPRING_AI_OPENAI_BASE_URL:https://www.micuapi.ai}}") String baseUrl,
                          @Value("${ccg.ai.openai.model:${SPRING_AI_OPENAI_CHAT_MODEL:deepseek-v4-pro}}") String model,
                          @Value("${ccg.ai.openai.protocol:${SPRING_AI_OPENAI_PROTOCOL:chat-completions}}") String protocol,
                          @Value("${ccg.ai.openai.user-agent:${SPRING_AI_OPENAI_USER_AGENT:Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0}}") String userAgent,
@@ -39,11 +45,9 @@ public class AiModelClient {
                          @Value("${ccg.ai.openai.max-output-tokens:4096}") int maxOutputTokens) {
         this.objectMapper = objectMapper;
         this.apiKey = apiKey == null ? "" : apiKey.trim();
-        this.model = model == null || model.isBlank() ? "deepseek-v4-pro" : model.trim();
-        this.protocol = protocol == null || protocol.isBlank() ? "chat-completions" : protocol.trim().toLowerCase();
-        this.userAgent = userAgent == null || userAgent.isBlank()
-                ? "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
-                : userAgent.trim();
+        this.model = model == null || model.isBlank() ? DEFAULT_MODEL : model.trim();
+        this.protocol = protocol == null || protocol.isBlank() ? DEFAULT_PROTOCOL : protocol.trim().toLowerCase();
+        this.userAgent = userAgent == null || userAgent.isBlank() ? DEFAULT_USER_AGENT : userAgent.trim();
         this.maxOutputTokens = maxOutputTokens;
         this.requestTimeout = Duration.ofSeconds(Math.max(5, timeoutSeconds));
         this.endpointUri = resolveEndpointUri(baseUrl, this.protocol);
@@ -79,7 +83,7 @@ public class AiModelClient {
             }
             return text;
         } catch (IOException e) {
-            throw new IllegalStateException("模型服务响应解析失败：" + e.getMessage(), e);
+            throw new IllegalStateException("模型服务请求或响应解析失败：" + e.getMessage(), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("模型服务调用被中断", e);
@@ -96,9 +100,7 @@ public class AiModelClient {
             return body;
         }
 
-        body.put("messages", List.of(
-                Map.of("role", "user", "content", prompt)
-        ));
+        body.put("messages", List.of(Map.of("role", "user", "content", prompt)));
         body.put("max_tokens", maxOutputTokens);
         body.put("temperature", 0.2);
         body.put("stream", false);
@@ -106,9 +108,7 @@ public class AiModelClient {
     }
 
     private URI resolveEndpointUri(String baseUrl, String protocol) {
-        String normalized = baseUrl == null || baseUrl.isBlank()
-                ? "https://www.openclaudecode.cn"
-                : baseUrl.trim();
+        String normalized = baseUrl == null || baseUrl.isBlank() ? DEFAULT_BASE_URL : baseUrl.trim();
         normalized = normalized.replaceAll("/+$", "");
 
         if (isResponsesProtocol(protocol)) {
@@ -155,9 +155,14 @@ public class AiModelClient {
 
         JsonNode choices = root.get("choices");
         if (choices != null && choices.isArray() && !choices.isEmpty()) {
-            String chatText = extractChatMessageContent(choices.get(0).path("message").get("content"));
+            JsonNode message = choices.get(0).path("message");
+            String chatText = extractChatMessageContent(message.get("content"));
             if (!chatText.isBlank()) {
                 return chatText;
+            }
+            String reasoningText = textValue(message.get("reasoning_content"));
+            if (!reasoningText.isBlank()) {
+                return reasoningText;
             }
         }
 

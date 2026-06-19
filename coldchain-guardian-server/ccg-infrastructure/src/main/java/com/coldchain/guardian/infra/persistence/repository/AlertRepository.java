@@ -1,6 +1,7 @@
 package com.coldchain.guardian.infra.persistence.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.coldchain.guardian.infra.persistence.entity.AlertEntity;
 import com.coldchain.guardian.infra.persistence.mapper.AlertMapper;
@@ -25,6 +26,16 @@ public class AlertRepository {
         } else {
             alertMapper.updateById(alert);
         }
+    }
+
+    public void updateStatus(Long id, String status, LocalDateTime handleTime, String handleRemark) {
+        LambdaUpdateWrapper<AlertEntity> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(AlertEntity::getId, id)
+                .set(AlertEntity::getStatus, status)
+                .set(AlertEntity::getHandleTime, handleTime)
+                .set(AlertEntity::getHandleRemark, handleRemark)
+                .set(AlertEntity::getUpdateTime, LocalDateTime.now());
+        alertMapper.update(null, updateWrapper);
     }
 
     /**

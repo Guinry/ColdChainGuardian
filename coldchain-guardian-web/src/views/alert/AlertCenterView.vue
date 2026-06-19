@@ -55,8 +55,8 @@
       </el-row>
 
       <!-- 筛选栏 -->
-      <el-card class="filter-section">
-        <el-form :model="filterForm" inline>
+      <div class="filter-section ccg-filter-panel">
+        <el-form :model="filterForm" label-position="top" class="ccg-filter-grid">
           <el-form-item label="全局检索">
             <el-input v-model="filterForm.keyword" placeholder="告警内容/设备名称" />
           </el-form-item>
@@ -97,12 +97,12 @@
               value-format="YYYY-MM-DDTHH:mm:ss"
             />
           </el-form-item>
-          <el-form-item>
+          <el-form-item class="filter-actions">
             <el-button type="primary" @click="fetchAlerts">查询</el-button>
             <el-button @click="resetFilter">重置</el-button>
           </el-form-item>
         </el-form>
-      </el-card>
+      </div>
 
       <!-- 分析面板 -->
       <el-collapse-transition>
@@ -171,13 +171,14 @@
       </el-collapse-transition>
 
       <!-- 告警列表 -->
-      <el-table
-        :data="alerts"
-        v-loading="loading"
-        stripe
-        style="width: 100%"
-        @row-click="showTriageDrawer"
-      >
+      <div class="ccg-table-panel">
+        <el-table
+          :data="alerts"
+          v-loading="loading"
+          stripe
+          style="width: 100%"
+          @row-click="showTriageDrawer"
+        >
         <el-table-column prop="severityLevel" label="级别" width="80">
           <template #default="{ row }">
             <el-tag
@@ -189,16 +190,16 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="description" label="告警内容" min-width="250">
+        <el-table-column prop="description" label="告警内容" min-width="300" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="alert-content">
-              <div class="alert-type">{{ row.alertType }}</div>
+              <div class="alert-type">{{ getAlertTypeName(row.alertType) }}</div>
               <div class="alert-message">{{ row.description }}</div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column prop="deviceName" label="发生位置" width="200">
+        <el-table-column prop="deviceName" label="发生位置" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="location-info">
               <span>{{ row.deviceName || '未知设备' }}</span>
@@ -206,7 +207,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="createdAt" label="发生时间" width="150">
+        <el-table-column prop="createdAt" label="发生时间" width="168">
           <template #default="{ row }">
             {{ formatDate(row.createdAt) }}
           </template>
@@ -223,11 +224,13 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" fixed="right" width="150">
+        <el-table-column label="操作" fixed="right" width="168" align="center">
           <template #default="{ row }">
-            <el-button size="small" @click.stop="showTriageDrawer(row)">研判</el-button>
-            <el-dropdown split-button size="small" @click.stop="handleQuickResolve(row)">
-              快速处理
+            <div class="alert-row-actions">
+              <el-button size="small" type="primary" link @click.stop="showTriageDrawer(row)">研判</el-button>
+              <el-button size="small" type="success" link @click.stop="handleQuickResolve(row)">处理</el-button>
+              <el-dropdown trigger="click">
+                <el-button size="small" link :icon="MoreFilled" @click.stop />
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item @click.stop="convertToWorkOrder(row)">转工单</el-dropdown-item>
@@ -235,9 +238,11 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
+            </div>
           </template>
         </el-table-column>
-      </el-table>
+        </el-table>
+      </div>
 
       <!-- 分页 -->
       <div class="pagination">
@@ -267,7 +272,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Refresh, TrendCharts } from '@element-plus/icons-vue';
+import { MoreFilled, Refresh, TrendCharts } from '@element-plus/icons-vue';
 import AlertTriageDrawer from '@/views/alert/components/AlertTriageDrawer.vue';
 import Layout from '@/components/Layout.vue';
 import { alertApi } from '@/api/alert';
@@ -673,6 +678,17 @@ const getStatusName = (status) => {
   }
 };
 
+const getAlertTypeName = (type) => {
+  const typeMap = {
+    TEMP_HIGH: '温度过高',
+    TEMP_LOW: '温度过低',
+    HUMI_HIGH: '湿度过高',
+    HUMI_LOW: '湿度过低',
+    DEVICE_OFFLINE: '设备离线'
+  };
+  return typeMap[type] || type || '告警';
+};
+
 // 状态标签类型（根据isResolved字段）
 const getStatusTagTypeFromResolved = (isResolved, severityLevel) => {
   if (isResolved) {
@@ -974,11 +990,6 @@ watch(showTriageDrawerFlag, (visible) => {
   opacity: 0.3;
 }
 
-.filter-section {
-  margin-bottom: 16px;
-  box-shadow: var(--ccg-shadow-sm) !important;
-}
-
 .analysis-panel {
   margin-bottom: 16px;
 }
@@ -1014,18 +1025,33 @@ watch(showTriageDrawerFlag, (visible) => {
 }
 
 .alert-content .alert-type {
-  font-weight: bold;
-  color: #303133;
+  font-weight: 720;
+  color: var(--ccg-text);
 }
 
 .alert-content .alert-message {
-  color: #909399;
+  color: var(--ccg-muted);
   font-size: 13px;
   margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .location-info {
   color: #606266;
+}
+
+.alert-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.alert-row-actions :deep(.el-button) {
+  margin-left: 0;
 }
 
 .pagination {

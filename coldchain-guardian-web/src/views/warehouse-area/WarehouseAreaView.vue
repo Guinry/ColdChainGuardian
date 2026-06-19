@@ -30,7 +30,13 @@
         <!-- 左侧树形结构 -->
         <div class="tree-panel">
           <div class="panel-header">
-            <h3>库区结构</h3>
+            <div class="panel-title-row">
+              <div>
+                <h3>库区结构</h3>
+                <p>{{ areaStats.total }} 个节点 · {{ areaStats.enabled }} 个启用</p>
+              </div>
+              <el-button link type="primary" :icon="Refresh" @click="loadTreeData" />
+            </div>
             <el-input
               v-model="searchText"
               placeholder="搜索库区..."
@@ -110,149 +116,203 @@
         <!-- 右侧详情面板 -->
         <div class="detail-panel">
           <div v-if="selectedNode" class="detail-content">
-            <div class="basic-info-card">
-              <div class="card-header">
-                <div class="header-left">
-                  <h3>{{ selectedNode.areaName }}</h3>
+            <div class="area-overview">
+              <div class="overview-main">
+                <div class="breadcrumb-line">{{ selectedAreaPath }}</div>
+                <div class="area-title-row">
+                  <h2>{{ selectedNode.areaName }}</h2>
                   <el-tag :type="getLevelTagType(selectedNode.areaLevel)">
                     {{ getLevelLabel(selectedNode.areaLevel) }}
                   </el-tag>
+                  <el-tag :type="selectedNode.status === 1 ? 'success' : 'danger'">
+                    {{ selectedNode.status === 1 ? '启用' : '禁用' }}
+                  </el-tag>
                 </div>
-                <div class="header-actions">
-                  <el-button @click="openEditDialog(selectedNode)">编辑</el-button>
-                  <el-button
-                    :type="selectedNode.status === 1 ? 'danger' : 'success'"
-                    @click="toggleStatus(selectedNode)">
-                    {{ selectedNode.status === 1 ? '禁用' : '启用' }}
-                  </el-button>
-                  <el-button
-                    :type="selectedNode.alarmEnabled === 1 ? 'warning' : 'info'"
-                    @click="toggleAlarm(selectedNode)">
-                    {{ selectedNode.alarmEnabled === 1 ? '关闭告警' : '启用告警' }}
-                  </el-button>
-                  <el-button type="danger" @click="handleDelete(selectedNode)">删除</el-button>
+                <div class="area-subtitle">
+                  {{ selectedNode.areaCode }} · {{ selectedNode.address || selectedNode.locationDesc || '暂无位置描述' }}
                 </div>
               </div>
-              <div class="card-body">
-                <div class="info-grid">
-                  <div class="info-row">
-                    <div class="info-item">
-                      <label>库区编码:</label>
-                      <span>{{ selectedNode.areaCode }}</span>
-                    </div>
-                    <div class="info-item">
-                      <label>状态:</label>
-                      <el-tag :type="selectedNode.status === 1 ? 'success' : 'danger'">
-                        {{ selectedNode.status === 1 ? '启用' : '禁用' }}
-                      </el-tag>
-                    </div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-item">
-                      <label>告警:</label>
-                      <el-tag :type="selectedNode.alarmEnabled === 1 ? 'success' : 'info'">
-                        {{ selectedNode.alarmEnabled === 1 ? '启用' : '关闭' }}
-                      </el-tag>
-                    </div>
-                    <div class="info-item">
-                      <label>排序号:</label>
-                      <span>{{ selectedNode.sortNo }}</span>
-                    </div>
-                  </div>
-                  <div class="info-row full-width">
-                    <div class="info-item">
-                      <label>地址:</label>
-                      <span>{{ selectedNode.address || '-' }}</span>
-                    </div>
-                  </div>
-                  <div class="info-row full-width">
-                    <div class="info-item">
-                      <label>位置描述:</label>
-                      <span>{{ selectedNode.locationDesc || '-' }}</span>
-                    </div>
-                  </div>
-                  <div class="threshold-section">
-                    <h4>阈值设置</h4>
-                    <div class="threshold-grid">
-                      <div class="threshold-item">
-                        <label>温度范围:</label>
-                        <span>{{ selectedNode.temperatureThresholdMin }}°C ~ {{ selectedNode.temperatureThresholdMax }}°C</span>
-                      </div>
-                      <div class="threshold-item">
-                        <label>湿度范围:</label>
-                        <span>{{ selectedNode.humidityThresholdMin }}% ~ {{ selectedNode.humidityThresholdMax }}%</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="info-row full-width">
-                    <div class="info-item">
-                      <label>备注:</label>
-                      <span>{{ selectedNode.remark || '-' }}</span>
-                    </div>
-                  </div>
-                </div>
+              <div class="overview-actions">
+                <el-button :icon="Edit" @click="openEditDialog(selectedNode)">编辑</el-button>
+                <el-dropdown trigger="click" @command="command => handleSelectedCommand(command, selectedNode)">
+                  <el-button type="primary">
+                    管理操作
+                    <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="create">新增子库区</el-dropdown-item>
+                      <el-dropdown-item command="move">移动库区</el-dropdown-item>
+                      <el-dropdown-item command="toggle-status">
+                        {{ selectedNode.status === 1 ? '禁用库区' : '启用库区' }}
+                      </el-dropdown-item>
+                      <el-dropdown-item command="toggle-alarm">
+                        {{ selectedNode.alarmEnabled === 1 ? '关闭告警' : '启用告警' }}
+                      </el-dropdown-item>
+                      <el-dropdown-item command="delete" divided>删除库区</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </div>
             </div>
 
+            <div class="area-metric-grid">
+              <div class="area-metric">
+                <span>直属子库区</span>
+                <strong>{{ childAreas.length }}</strong>
+              </div>
+              <div class="area-metric">
+                <span>告警开关</span>
+                <strong :class="{ muted: selectedNode.alarmEnabled !== 1 }">
+                  {{ selectedNode.alarmEnabled === 1 ? '启用' : '关闭' }}
+                </strong>
+              </div>
+              <div class="area-metric">
+                <span>温度阈值</span>
+                <strong>{{ thresholdText(selectedNode.temperatureThresholdMin, selectedNode.temperatureThresholdMax, '℃') }}</strong>
+              </div>
+              <div class="area-metric">
+                <span>湿度阈值</span>
+                <strong>{{ thresholdText(selectedNode.humidityThresholdMin, selectedNode.humidityThresholdMax, '%') }}</strong>
+              </div>
+            </div>
+
+            <div class="info-and-threshold">
+              <section class="detail-section">
+                <div class="section-header compact">
+                  <h3>基础信息</h3>
+                </div>
+                <div class="description-grid">
+                  <div>
+                    <label>库区编码</label>
+                    <span>{{ selectedNode.areaCode || '-' }}</span>
+                  </div>
+                  <div>
+                    <label>层级类型</label>
+                    <span>{{ getLevelLabel(selectedNode.areaLevel) }}</span>
+                  </div>
+                  <div>
+                    <label>排序号</label>
+                    <span>{{ selectedNode.sortNo ?? '-' }}</span>
+                  </div>
+                  <div>
+                    <label>状态</label>
+                    <span>{{ selectedNode.status === 1 ? '启用' : '禁用' }}</span>
+                  </div>
+                  <div class="span-2">
+                    <label>地址</label>
+                    <span>{{ selectedNode.address || '-' }}</span>
+                  </div>
+                  <div class="span-2">
+                    <label>位置描述</label>
+                    <span>{{ selectedNode.locationDesc || '-' }}</span>
+                  </div>
+                  <div class="span-2">
+                    <label>备注</label>
+                    <span>{{ selectedNode.remark || '-' }}</span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="detail-section">
+                <div class="section-header compact">
+                  <h3>运行边界</h3>
+                </div>
+                <div class="threshold-cards">
+                  <div class="threshold-card">
+                    <span>温度下限</span>
+                    <strong>{{ formatThreshold(selectedNode.temperatureThresholdMin, '℃') }}</strong>
+                  </div>
+                  <div class="threshold-card">
+                    <span>温度上限</span>
+                    <strong>{{ formatThreshold(selectedNode.temperatureThresholdMax, '℃') }}</strong>
+                  </div>
+                  <div class="threshold-card">
+                    <span>湿度下限</span>
+                    <strong>{{ formatThreshold(selectedNode.humidityThresholdMin, '%') }}</strong>
+                  </div>
+                  <div class="threshold-card">
+                    <span>湿度上限</span>
+                    <strong>{{ formatThreshold(selectedNode.humidityThresholdMax, '%') }}</strong>
+                  </div>
+                </div>
+              </section>
+            </div>
+
             <!-- 子库区列表 -->
-            <div class="child-areas-section">
+            <div class="child-areas-section ccg-table-panel">
               <div class="section-header">
-                <h3>子库区列表</h3>
-                <el-button @click="openCreateDialog(selectedNode)">新增子库区</el-button>
+                <div>
+                  <h3>直属子库区</h3>
+                  <p>{{ childAreas.length ? '点击名称可切换查看对应库区' : '当前库区暂无下级节点' }}</p>
+                </div>
+                <el-button type="primary" plain :icon="Plus" @click="openCreateDialog(selectedNode)">新增子库区</el-button>
               </div>
 
               <el-table
                 :data="childAreas"
                 style="width: 100%"
                 row-key="id"
-                border
+                stripe
               >
-                <el-table-column prop="areaName" label="库区名称" width="200">
+                <el-table-column prop="areaName" label="库区名称" min-width="210" show-overflow-tooltip>
                   <template #default="{ row }">
-                    <el-button link @click="selectNodeInTree(row)">{{ row.areaName }}</el-button>
+                    <div class="child-area-main">
+                      <el-button link type="primary" @click="selectNodeInTree(row)">{{ row.areaName }}</el-button>
+                      <span>{{ row.areaCode }}</span>
+                    </div>
                   </template>
                 </el-table-column>
-                <el-table-column prop="areaCode" label="编码" width="150" />
-                <el-table-column prop="areaLevel" label="层级" width="100">
+                <el-table-column prop="areaLevel" label="层级" width="96" align="center">
                   <template #default="{ row }">
-                    <el-tag size="small">{{ getLevelLabel(row.areaLevel) }}</el-tag>
+                    <el-tag size="small" :type="getLevelTagType(row.areaLevel)">{{ getLevelLabel(row.areaLevel) }}</el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column prop="status" label="状态" width="100">
+                <el-table-column prop="status" label="状态" width="88" align="center">
                   <template #default="{ row }">
                     <el-tag :type="row.status === 1 ? 'success' : 'danger'">
                       {{ row.status === 1 ? '启用' : '禁用' }}
                     </el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column prop="alarmEnabled" label="告警" width="100">
+                <el-table-column prop="alarmEnabled" label="告警" width="88" align="center">
                   <template #default="{ row }">
                     <el-tag :type="row.alarmEnabled === 1 ? 'success' : 'warning'">
                       {{ row.alarmEnabled === 1 ? '开启' : '关闭' }}
                     </el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column prop="sortNo" label="排序" width="80" />
-                <el-table-column label="操作" width="240">
+                <el-table-column prop="locationDesc" label="位置描述" min-width="180" show-overflow-tooltip>
+                  <template #default="{ row }">{{ row.locationDesc || row.address || '-' }}</template>
+                </el-table-column>
+                <el-table-column label="阈值" min-width="180" show-overflow-tooltip>
                   <template #default="{ row }">
-                    <el-button-group>
-                      <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
-                      <el-button
-                        size="small"
-                        :type="row.status === 1 ? 'danger' : 'success'"
-                        @click="toggleStatus(row)">
-                        {{ row.status === 1 ? '禁用' : '启用' }}
-                      </el-button>
-                      <el-button size="small" type="primary" @click="handleMove(row)">移动</el-button>
-                      <el-popconfirm
-                        title="确定要删除这个库区吗？"
-                        @confirm="handleDelete(row)"
-                      >
-                        <template #reference>
-                          <el-button size="small" type="danger">删除</el-button>
+                    <span>{{ thresholdText(row.temperatureThresholdMin, row.temperatureThresholdMax, '℃') }}</span>
+                    <span class="muted-text"> / {{ thresholdText(row.humidityThresholdMin, row.humidityThresholdMax, '%') }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="sortNo" label="排序" width="76" align="center" />
+                <el-table-column label="操作" width="162" fixed="right" align="center">
+                  <template #default="{ row }">
+                    <div class="row-actions">
+                      <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
+                      <el-dropdown trigger="click" @command="command => handleSelectedCommand(command, row)">
+                        <el-button link :icon="MoreFilled" />
+                        <template #dropdown>
+                          <el-dropdown-menu>
+                            <el-dropdown-item command="create">新增子库区</el-dropdown-item>
+                            <el-dropdown-item command="move">移动</el-dropdown-item>
+                            <el-dropdown-item command="toggle-status">
+                              {{ row.status === 1 ? '禁用' : '启用' }}
+                            </el-dropdown-item>
+                            <el-dropdown-item command="toggle-alarm">
+                              {{ row.alarmEnabled === 1 ? '关闭告警' : '启用告警' }}
+                            </el-dropdown-item>
+                            <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+                          </el-dropdown-menu>
                         </template>
-                      </el-popconfirm>
-                    </el-button-group>
+                      </el-dropdown>
+                    </div>
                   </template>
                 </el-table-column>
               </el-table>
@@ -460,7 +520,6 @@
 <script setup>
 import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/store/auth'
 import Layout from '@/components/Layout.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -476,33 +535,13 @@ import {
   Plus,
   Upload,
   Download,
-  House,
-  Monitor,
-  Warning,
-  DataAnalysis,
-  Setting,
-  Link,
-  WarningFilled,
-  CircleCloseFilled as CircleCloseFilledIcon,
-  Finished,
+  Refresh,
   ArrowDown,
-  User,
-  Document,
-  Grid,
-  Operation,
-  Tickets,
-  Memo,
-  House as HouseIcon,
-  User as UserIcon
+  MoreFilled
 } from '@element-plus/icons-vue'
 import { areaApi } from '@/api/area'
 
 const router = useRouter()
-const authStore = useAuthStore()
-
-// User info from auth store
-const userInfo = computed(() => authStore.user || {})
-const isSuperAdmin = computed(() => authStore.getUserRole === 'SUPER_ADMIN')
 
 // 响应式数据
 const treeData = ref([])
@@ -596,6 +635,60 @@ const getLevelTagType = (level) => {
     BIN: 'danger'
   }
   return types[level] || 'info'
+}
+
+const flattenAreas = (nodes = []) => nodes.flatMap(node => [
+  node,
+  ...flattenAreas(node.children || [])
+])
+
+const areaStats = computed(() => {
+  const nodes = flattenAreas(treeData.value)
+  return {
+    total: nodes.length,
+    enabled: nodes.filter(node => node.status === 1).length,
+    disabled: nodes.filter(node => node.status === 0).length,
+    alarmOff: nodes.filter(node => node.alarmEnabled === 0).length
+  }
+})
+
+const findPathById = (nodes, id, path = []) => {
+  for (const node of nodes) {
+    const nextPath = [...path, node]
+    if (node.id === id) return nextPath
+    const childPath = findPathById(node.children || [], id, nextPath)
+    if (childPath.length) return childPath
+  }
+  return []
+}
+
+const selectedAreaPath = computed(() => {
+  if (!selectedNode.value) return ''
+  const path = findPathById(treeData.value, selectedNode.value.id)
+  return path.length ? path.map(node => node.areaName).join(' / ') : selectedNode.value.areaName
+})
+
+const formatThreshold = (value, unit) => {
+  const numberValue = Number(value)
+  if (!Number.isFinite(numberValue)) return '-'
+  return `${numberValue.toFixed(1)}${unit}`
+}
+
+const thresholdText = (min, max, unit) => `${formatThreshold(min, unit)} ~ ${formatThreshold(max, unit)}`
+
+const handleSelectedCommand = (command, node) => {
+  if (!node) return
+  if (command === 'create') {
+    openCreateDialog(node)
+  } else if (command === 'move') {
+    handleMove(node)
+  } else if (command === 'toggle-status') {
+    toggleStatus(node)
+  } else if (command === 'toggle-alarm') {
+    toggleAlarm(node)
+  } else if (command === 'delete') {
+    handleDelete(node)
+  }
 }
 
 // 树形数据过滤
@@ -1129,6 +1222,7 @@ onMounted(async () => {
   padding: 20px 24px 28px;
   min-height: 100%;
   background: var(--ccg-bg);
+  color: var(--ccg-text);
 }
 
 .page-header {
@@ -1147,9 +1241,16 @@ onMounted(async () => {
   color: var(--ccg-text);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .content-wrapper {
   display: grid;
-  grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(340px, 380px) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -1169,18 +1270,31 @@ onMounted(async () => {
 }
 
 .panel-header {
-  padding: 12px 16px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--ccg-border);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+}
+
+.panel-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .panel-header h3 {
   margin: 0;
   font-size: 16px;
-  font-weight: 600;
-  color: #303133;
+  font-weight: 700;
+  color: var(--ccg-text);
+}
+
+.panel-header p {
+  margin: 4px 0 0;
+  color: var(--ccg-muted);
+  font-size: 12px;
 }
 
 .detail-panel {
@@ -1188,142 +1302,225 @@ onMounted(async () => {
   flex-direction: column;
   min-width: 0;
   min-height: 520px;
-  background: #fff;
-  border: 1px solid var(--ccg-border);
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: var(--ccg-shadow-sm);
 }
 
 .detail-content {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
-.basic-info-card {
+.area-overview,
+.detail-section {
+  background: #fff;
   border: 1px solid var(--ccg-border);
   border-radius: 8px;
-  overflow: hidden;
+  box-shadow: var(--ccg-shadow-sm);
 }
 
-.card-header {
-  padding: 16px;
-  background: #f8fafc;
-  border-bottom: 1px solid var(--ccg-border);
+.area-overview {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  gap: 18px;
+  padding: 18px;
 }
 
-.header-left {
+.overview-main {
+  min-width: 0;
+}
+
+.breadcrumb-line {
+  color: var(--ccg-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.area-title-row {
   display: flex;
   align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.area-title-row h2 {
+  margin: 0;
+  color: var(--ccg-text);
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 760;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.area-subtitle {
+  margin-top: 6px;
+  color: var(--ccg-muted);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overview-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.area-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
-.header-left h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
+.area-metric {
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--ccg-border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--ccg-shadow-sm);
 }
 
-.card-body {
+.area-metric span,
+.threshold-card span,
+.description-grid label {
+  display: block;
+  color: var(--ccg-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.area-metric strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--ccg-text);
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.area-metric strong.muted {
+  color: var(--ccg-muted);
+}
+
+.info-and-threshold {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+  gap: 16px;
+}
+
+.detail-section {
   padding: 16px;
 }
 
-.info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.info-row {
-  display: flex;
+.section-header.compact {
   margin-bottom: 12px;
-  min-width: 0; /* 允许flex item收缩 */
 }
 
-.info-row.full-width {
-  grid-column: 1 / -1; /* 跨越所有列 */
-  flex: 100%;
-}
-
-.info-item {
-  flex: 1;
-  min-width: 0; /* 允许收缩 */
-  margin-bottom: 8px;
-}
-
-.info-item label {
-  font-weight: 600;
-  color: #606266;
-  margin-right: 8px;
-  min-width: 80px;
-  display: inline-block;
-}
-
-.info-item span {
-  color: #303133;
-  word-break: break-word;
-}
-
-.threshold-section {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #ebeef5;
-  grid-column: 1 / -1; /* 跨越所有列 */
-}
-
-.threshold-section h4 {
-  margin: 0 0 12px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.threshold-grid {
+.description-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 14px 18px;
 }
 
-.threshold-item {
-  display: flex;
-  flex-direction: column;
+.description-grid > div {
+  min-width: 0;
 }
 
-.threshold-item label {
-  font-weight: 600;
-  color: #606266;
-  margin-bottom: 4px;
-  font-size: 12px;
+.description-grid .span-2 {
+  grid-column: 1 / -1;
 }
 
-.threshold-item span {
-  color: #303133;
+.description-grid span {
+  display: block;
+  margin-top: 5px;
+  color: var(--ccg-text);
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.threshold-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.threshold-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--ccg-border);
+  border-radius: 8px;
+  background: var(--ccg-surface-soft);
+}
+
+.threshold-card strong {
+  display: block;
+  margin-top: 7px;
+  color: var(--ccg-text);
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 760;
 }
 
 .child-areas-section {
-  border: 1px solid var(--ccg-border);
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 20px;
+  padding: 0;
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--ccg-border);
 }
 
 .section-header h3 {
   margin: 0;
   font-size: 16px;
-  font-weight: 600;
-  color: #303133;
+  font-weight: 700;
+  color: var(--ccg-text);
+}
+
+.section-header p {
+  margin: 4px 0 0;
+  color: var(--ccg-muted);
+  font-size: 12px;
+}
+
+.child-area-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.child-area-main :deep(.el-button) {
+  padding-left: 0;
+  font-weight: 700;
+}
+
+.child-area-main span,
+.muted-text {
+  color: var(--ccg-muted);
+  font-size: 12px;
+}
+
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .custom-tree {
@@ -1500,6 +1697,11 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 
+  .info-and-threshold,
+  .area-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .tree-panel {
     width: 100%;
     min-height: 360px;
@@ -1513,7 +1715,20 @@ onMounted(async () => {
     padding: 16px;
   }
 
+  .page-header,
+  .area-overview,
+  .section-header {
+    flex-direction: column;
+  }
+
   .content-wrapper {
+    grid-template-columns: 1fr;
+  }
+
+  .area-metric-grid,
+  .info-and-threshold,
+  .description-grid,
+  .threshold-cards {
     grid-template-columns: 1fr;
   }
 
@@ -1524,7 +1739,6 @@ onMounted(async () => {
 
   .detail-panel {
     min-height: 420px;
-    padding: 16px;
   }
 }
 </style>

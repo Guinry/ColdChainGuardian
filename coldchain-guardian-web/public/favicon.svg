@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ColdChain Guardian">
+  <defs>
+    <linearGradient id="bg" x1="10" y1="6" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0ea5e9"/>
+      <stop offset="0.52" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#134e4a"/>
+    </linearGradient>
+    <linearGradient id="ice" x1="19" y1="14" x2="46" y2="51" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#cffafe"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <path d="M32 10 48 16v13c0 11.7-6.5 19.7-16 25-9.5-5.3-16-13.3-16-25V16l16-6Z" fill="url(#ice)" opacity=".97"/>
+  <path d="M32 16v31M21.8 23l20.4 17M42.2 23 21.8 40" stroke="#0f766e" stroke-width="3.2" stroke-linecap="round"/>
+  <circle cx="32" cy="31.5" r="5.4" fill="#0ea5e9"/>
+  <path d="M40.5 47.5c3.5-2.7 5.6-6.4 6.3-11.1" stroke="#042f2e" stroke-width="3" stroke-linecap="round" opacity=".85"/>
+  <path d="M18.5 17.7 32 12.8l13.5 4.9" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity=".55"/>
+</svg>

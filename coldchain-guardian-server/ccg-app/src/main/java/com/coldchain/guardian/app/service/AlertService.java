@@ -130,7 +130,7 @@ public class AlertService {
             entity.setUpdateTime(LocalDateTime.now());
         }
 
-        alertRepository.save(entity);
+        alertRepository.updateStatus(entity.getId(), entity.getStatus(), entity.getHandleTime(), entity.getHandleRemark());
 
         return convertToAlertDto(entity);
     }
@@ -306,11 +306,6 @@ public class AlertService {
         workOrderRequest.setAssigneeId(assigneeId);
         workOrderRequest.setReporterId(1L); // System or admin user
         workOrderRequest.setAlertId(alertId);
-
-        // Update alert status to HANDLING
-        alert.setStatus("HANDLING");
-        alert.setHandleTime(LocalDateTime.now());
-        alertRepository.save(alert);
 
         return workOrderService.createWorkOrder(workOrderRequest);
     }

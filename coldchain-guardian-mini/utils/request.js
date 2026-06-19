@@ -1,7 +1,14 @@
 // utils/request.js
-const DEFAULT_BASE_URL = 'http://127.0.0.1:8080';
+const DEFAULT_BASE_URL = 'https://coldchain.guinry.cn';
+const LEGACY_LOCAL_BASE_URL_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/;
 
-const getBaseUrl = () => wx.getStorageSync('apiBaseUrl') || DEFAULT_BASE_URL;
+export const getBaseUrl = () => {
+  const savedBaseUrl = wx.getStorageSync('apiBaseUrl');
+  if (!savedBaseUrl || LEGACY_LOCAL_BASE_URL_PATTERN.test(savedBaseUrl)) {
+    return DEFAULT_BASE_URL;
+  }
+  return savedBaseUrl;
+};
 
 export const unwrapPageData = (payload) => {
   const data = payload && payload.data;

@@ -1,4 +1,4 @@
-import request from '../../utils/request';
+import request, { getBaseUrl } from '../../utils/request';
 import { getNavMetrics } from '../../utils/domain';
 
 const DEFAULT_SETTINGS = [
@@ -45,7 +45,7 @@ Page({
     const saved = wx.getStorageSync('notificationSettings');
     this.setData({
       notificationSettings: Array.isArray(saved) && saved.length ? saved : DEFAULT_SETTINGS,
-      'connection.apiBaseUrl': wx.getStorageSync('apiBaseUrl') || 'http://127.0.0.1:8080'
+      'connection.apiBaseUrl': getBaseUrl()
     });
   },
 

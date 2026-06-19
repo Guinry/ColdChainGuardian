@@ -33,9 +33,6 @@ public class TelemetryEntity extends BaseEntity {
     @TableField("data_time")
     private LocalDateTime dataTime;
 
-    @TableField("created_time")
-    private LocalDateTime createdTime;
-
     @TableField("update_time")
     private LocalDateTime updateTime;
 }

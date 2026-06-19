@@ -3,7 +3,7 @@ import { recordAuditEvent } from '@/utils/audit'
 
 // Create an Axios instance
 export const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api', // Backend API base URL
+  baseURL: '/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'

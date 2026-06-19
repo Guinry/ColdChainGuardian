@@ -67,22 +67,26 @@
     <el-table
       :data="data"
       :loading="loading"
+      class="realtime-table"
       style="width: 100%"
       row-key="id"
-      border
       stripe
-      :header-cell-style="{ background: '#f8f9ff', color: '#606266' }"
     >
-      <el-table-column prop="deviceName" label="设备信息" min-width="140">
+      <el-table-column prop="deviceName" label="设备信息" min-width="190" fixed="left">
         <template #default="{ row }">
           <div class="device-info">
-            <div class="device-name">{{ row.deviceName }}</div>
-            <div class="device-code">{{ row.deviceCode }}</div>
+            <div class="device-name-line">
+              <span class="device-name">{{ row.deviceName }}</span>
+              <el-tag :type="row.online ? 'success' : 'info'" size="small">
+                {{ row.online ? '在线' : '离线' }}
+              </el-tag>
+            </div>
+            <div class="device-code">{{ row.deviceCode }} · {{ getDeviceTypeName(row.deviceType) }}</div>
           </div>
         </template>
       </el-table-column>
 
-      <el-table-column prop="areaPath" label="所属库区" min-width="132" show-overflow-tooltip>
+      <el-table-column prop="areaPath" label="所属库区" min-width="150" show-overflow-tooltip>
         <template #default="{ row }">
           <el-link class="area-link" type="primary" @click="goToArea(row.areaId)" :underline="'never'">
             <el-icon><Location /></el-icon>
@@ -91,7 +95,7 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="latestTemp" label="温度(℃)" min-width="98" sortable>
+      <el-table-column prop="latestTemp" label="温度(℃)" min-width="108" sortable align="right">
         <template #default="{ row }">
           <div :class="['temp-value', getTempClass(row.latestTemp, row.temperatureThresholdMin, row.temperatureThresholdMax)]">
             <span v-if="row.latestTemp !== null">{{ row.latestTemp }}℃</span>
@@ -102,7 +106,7 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="latestHumi" label="湿度(%)" min-width="98" sortable>
+      <el-table-column prop="latestHumi" label="湿度(%)" min-width="108" sortable align="right">
         <template #default="{ row }">
           <div :class="['humi-value', getHumiClass(row.latestHumi, row.humidityThresholdMin, row.humidityThresholdMax)]">
             <span v-if="row.latestHumi !== null">{{ row.latestHumi }}%</span>
@@ -113,20 +117,12 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="latestDataTime" label="数据时间" min-width="112" sortable>
+      <el-table-column prop="latestDataTime" label="数据时间" min-width="126" sortable>
         <template #default="{ row }">
           <div class="time-cell">
             <span v-if="row.latestDataTime">{{ formatDate(row.latestDataTime) }}</span>
             <span v-else class="no-data">未上报</span>
           </div>
-        </template>
-      </el-table-column>
-
-      <el-table-column prop="online" label="在线" min-width="78" align="center">
-        <template #default="{ row }">
-          <el-tag :type="row.online ? 'success' : 'danger'" size="small">
-            {{ row.online ? '在线' : '离线' }}
-          </el-tag>
         </template>
       </el-table-column>
 
@@ -145,15 +141,15 @@
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="108" align="center">
+      <el-table-column label="操作" width="138" align="center" fixed="right">
         <template #default="{ row }">
           <div class="table-actions">
             <el-button size="small" type="primary" link @click="$emit('viewDetail', row)">详情</el-button>
+            <el-button size="small" type="primary" link @click="$emit('viewTrend', row)">曲线</el-button>
             <el-dropdown trigger="click" @command="(command) => handleRowAction(command, row)">
               <el-button size="small" link :icon="MoreFilled" />
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="trend">查看曲线</el-dropdown-item>
                   <el-dropdown-item command="alert">查看告警</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -330,6 +326,16 @@ const getAlertLevelText = (level) => {
   return textMap[level] || '告警'
 }
 
+const getDeviceTypeName = (type) => {
+  const textMap = {
+    TEMP_HUM: '温湿度',
+    FREEZER: '冷柜',
+    VEHICLE: '车载',
+    DOOR: '门磁'
+  }
+  return textMap[type] || type || '设备'
+}
+
 // 跳转到库区
 const goToArea = (areaId) => {
   if (!areaId) return
@@ -350,14 +356,15 @@ const openAlertDrawer = (device) => {
 .filter-form {
   margin-bottom: 14px;
   padding: 16px;
-  background: #f8fafc;
+  background: #fff;
   border: 1px solid var(--ccg-border);
   border-radius: 8px;
+  box-shadow: var(--ccg-shadow-sm);
 }
 
 .filter-grid {
   display: grid;
-  grid-template-columns: minmax(220px, 1.35fr) repeat(3, minmax(150px, 0.9fr)) auto;
+  grid-template-columns: minmax(260px, 1.25fr) repeat(3, minmax(170px, 0.8fr)) auto;
   gap: 12px;
   align-items: end;
 }
@@ -382,6 +389,11 @@ const openAlertDrawer = (device) => {
   width: 100%;
 }
 
+.realtime-table {
+  border: 1px solid var(--ccg-border);
+  border-radius: 8px;
+}
+
 .device-table-container :deep(.el-table__cell) {
   padding: 9px 0;
 }
@@ -395,16 +407,29 @@ const openAlertDrawer = (device) => {
 .device-info {
   display: flex;
   flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.device-name-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .device-name {
-  font-weight: 500;
-  color: #303133;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ccg-text);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .device-code {
   font-size: 12px;
-  color: #909399;
+  color: var(--ccg-muted);
 }
 
 .area-link {
@@ -421,7 +446,9 @@ const openAlertDrawer = (device) => {
 .temp-value, .humi-value {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
+  font-weight: 720;
 }
 
 .no-data {
@@ -466,8 +493,12 @@ const openAlertDrawer = (device) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   white-space: nowrap;
+}
+
+.table-actions :deep(.el-button) {
+  margin-left: 0;
 }
 
 .pagination-container {

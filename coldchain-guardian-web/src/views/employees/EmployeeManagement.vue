@@ -9,21 +9,20 @@
         <el-button type="primary" :icon="Plus" @click="handleAdd">新增员工</el-button>
       </header>
 
-      <el-card class="search-card">
+      <div class="search-card ccg-filter-panel">
         <div class="search-and-action-wrapper">
-          <el-form :model="queryParams" inline class="search-form">
+          <el-form :model="queryParams" label-position="top" class="search-form ccg-filter-grid">
             <el-form-item label="关键词">
               <el-input
                   v-model="queryParams.keyword"
                   placeholder="姓名或手机号"
                   clearable
                   @keyup.enter="handleSearch"
-                  style="width: 200px"
               />
             </el-form-item>
 
             <el-form-item label="角色">
-              <el-select v-model="queryParams.role" placeholder="请选择角色" clearable style="width: 160px">
+              <el-select v-model="queryParams.role" placeholder="请选择角色" clearable>
                 <el-option label="库管员" value="STOCK_MANAGER" />
                 <el-option label="机修工" value="TECHNICIAN" />
                 <el-option label="普通员工" value="EMPLOYEE" />
@@ -31,28 +30,28 @@
             </el-form-item>
 
             <el-form-item label="微信绑定状态">
-              <el-select v-model="queryParams.isWechatBound" placeholder="全部状态" clearable style="width: 160px">
+              <el-select v-model="queryParams.isWechatBound" placeholder="全部状态" clearable>
                 <el-option label="已绑定" :value="true" />
                 <el-option label="未绑定" :value="false" />
               </el-select>
             </el-form-item>
 
             <el-form-item label="账号状态">
-              <el-select v-model="queryParams.status" placeholder="全部状态" clearable style="width: 160px">
+              <el-select v-model="queryParams.status" placeholder="全部状态" clearable>
                 <el-option label="正常" :value="1" />
                 <el-option label="停用" :value="0" />
               </el-select>
             </el-form-item>
 
-            <el-form-item>
+            <el-form-item class="filter-actions">
               <el-button type="primary" @click="handleSearch">查询</el-button>
               <el-button @click="resetQuery">重置</el-button>
             </el-form-item>
           </el-form>
         </div>
-      </el-card>
+      </div>
 
-      <el-card class="table-card">
+      <div class="table-card ccg-table-panel">
         <el-table
             :data="employeeList"
             v-loading="loading"
@@ -136,7 +135,7 @@
             @current-change="handleCurrentChange"
             class="mt-4 flex justify-center"
         />
-      </el-card>
+      </div>
 
       <el-drawer
           v-model="drawerVisible"
@@ -470,11 +469,9 @@ onMounted(() => {
   font-size: 13px;
 }
 
-.search-card, .table-card {
+.search-card,
+.table-card {
   margin-bottom: 16px;
-  border: 1px solid var(--ccg-border);
-  border-radius: 8px;
-  box-shadow: var(--ccg-shadow-sm);
 }
 
 .search-form {

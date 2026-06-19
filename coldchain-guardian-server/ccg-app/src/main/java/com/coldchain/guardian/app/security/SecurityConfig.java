@@ -53,19 +53,19 @@ public class SecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll() // 🌟 放行 Error 调度
 
-                        .requestMatchers("/api/auth/**", "/api/wx/auth/login", "/api/wx/auth/login-manual", "/api/wx/auth/login-manual-standard", "/error").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/wx/auth/login", "/api/wx/auth/login-manual", "/api/wx/auth/login-manual-standard", "/api/iot/**", "/error").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/ws/**").permitAll()
 
-                        .requestMatchers("/api/ai-assistant/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STOCK_MANAGER", "TECHNICIAN")
-                        .requestMatchers("/api/monitor/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STOCK_MANAGER", "TECHNICIAN")
-                        .requestMatchers("/api/areas/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STOCK_MANAGER", "TECHNICIAN")
-                        .requestMatchers("/api/devices/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STOCK_MANAGER", "TECHNICIAN")
-                        .requestMatchers("/api/work-orders/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STOCK_MANAGER", "TECHNICIAN")
-                        .requestMatchers("/api/alerts/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STOCK_MANAGER", "TECHNICIAN")
-                        .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STOCK_MANAGER", "TECHNICIAN")
-                        .requestMatchers("/api/user/me").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STOCK_MANAGER", "TECHNICIAN")
+                        .requestMatchers("/api/ai-assistant/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STAFF", "STOCK_MANAGER", "TECHNICIAN")
+                        .requestMatchers("/api/monitor/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STAFF", "STOCK_MANAGER", "TECHNICIAN")
+                        .requestMatchers("/api/areas/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STAFF", "STOCK_MANAGER", "TECHNICIAN")
+                        .requestMatchers("/api/devices/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STAFF", "STOCK_MANAGER", "TECHNICIAN")
+                        .requestMatchers("/api/work-orders/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STAFF", "STOCK_MANAGER", "TECHNICIAN")
+                        .requestMatchers("/api/alerts/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STAFF", "STOCK_MANAGER", "TECHNICIAN")
+                        .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STAFF", "STOCK_MANAGER", "TECHNICIAN")
+                        .requestMatchers("/api/user/me").hasAnyRole("ADMIN", "MANAGER", "USER", "EMPLOYEE", "STAFF", "STOCK_MANAGER", "TECHNICIAN")
 
                         .anyRequest().authenticated()
                 )

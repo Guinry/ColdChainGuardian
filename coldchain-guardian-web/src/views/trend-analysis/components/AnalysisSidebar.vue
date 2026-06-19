@@ -288,6 +288,29 @@ onUnmounted(() => {
   overflow-y: auto;
 }
 
+.analysis-sidebar :deep(.el-select),
+.analysis-sidebar :deep(.el-date-editor) {
+  width: 100%;
+}
+
+.analysis-sidebar :deep(.el-select__selected-item),
+.analysis-sidebar :deep(.el-select__selected-item span) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-sidebar :deep(.el-checkbox-group) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.analysis-sidebar :deep(.el-checkbox) {
+  margin-right: 0;
+}
+
 .export-section {
   display: flex;
   flex-direction: column;

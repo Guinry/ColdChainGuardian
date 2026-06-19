@@ -208,24 +208,19 @@ public class AreaService {
         // 构建树结构
         for (AreaTreeNodeDto node : nodeMap.values()) {
             Long parentId = node.getParentId();
-            if (parentId == null) {
+            if (parentId == null || parentId <= 0 || !nodeMap.containsKey(parentId)) {
                 // 根节点
                 rootNodes.add(node);
             } else {
                 // 查找父节点并添加到其子节点列表
                 AreaTreeNodeDto parentNode = nodeMap.get(parentId);
-                if (parentNode != null) {
-                    if (parentNode.getChildren() == null) {
-                        parentNode.setChildren(new ArrayList<>());
-                    }
-                    parentNode.getChildren().add(node);
-                }
+                parentNode.getChildren().add(node);
             }
         }
 
         // 对根节点进行排序
         rootNodes.sort((a, b) -> {
-            int sortCompare = Integer.compare(a.getSortNo(), b.getSortNo());
+            int sortCompare = Integer.compare(normalizeSortNo(a.getSortNo()), normalizeSortNo(b.getSortNo()));
             if (sortCompare != 0) {
                 return sortCompare;
             }
@@ -246,7 +241,7 @@ public class AreaService {
     private void sortTreeChildrenRecursively(AreaTreeNodeDto node) {
         if (node.getChildren() != null) {
             node.getChildren().sort((a, b) -> {
-                int sortCompare = Integer.compare(a.getSortNo(), b.getSortNo());
+                int sortCompare = Integer.compare(normalizeSortNo(a.getSortNo()), normalizeSortNo(b.getSortNo()));
                 if (sortCompare != 0) {
                     return sortCompare;
                 }
@@ -283,7 +278,12 @@ public class AreaService {
         treeNode.setUpdaterId(areaDto.getUpdaterId());
         treeNode.setCreateTime(areaDto.getCreateTime());
         treeNode.setUpdateTime(areaDto.getUpdateTime());
+        treeNode.setChildren(new ArrayList<>());
         return treeNode;
+    }
+
+    private int normalizeSortNo(Integer sortNo) {
+        return sortNo == null ? Integer.MAX_VALUE : sortNo;
     }
 
     /**

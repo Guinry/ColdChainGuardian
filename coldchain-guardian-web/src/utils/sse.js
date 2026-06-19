@@ -8,7 +8,7 @@ function getToken() {
 
 export class SSEClient {
   constructor(url, options = {}) {
-    const fullUrl = url.startsWith('http') ? url : `http://localhost:8080${url}`;
+    const fullUrl = url.startsWith('http') ? url : url;
     const token = getToken();
     this.url = fullUrl;
     this.options = {

@@ -66,10 +66,10 @@ public class WorkOrderService {
                 entity.setDeviceId(alert.getDeviceId());
                 entity.setLocationDetail(defaultIfBlank(requestDto.getLocationDetail(), buildAlertLocation(alert)));
 
-                // Update alert status to HANDLING
+                // Update only status fields so legacy imported alert rows never rewrite stale FK values.
                 alert.setStatus("HANDLING");
                 alert.setHandleTime(LocalDateTime.now());
-                alertRepository.save(alert);
+                alertRepository.updateStatus(alert.getId(), alert.getStatus(), alert.getHandleTime(), alert.getHandleRemark());
             }
         }
 

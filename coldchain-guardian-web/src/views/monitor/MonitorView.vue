@@ -60,12 +60,11 @@
         </div>
       </div>
 
-      <!-- 设备详情抽屉 -->
-      <DeviceRealtimeDrawer
-        :visible="drawerVisible"
+      <DeviceInsightDialog
+        v-model="insightVisible"
         :device="currentDevice"
-        :type="drawerType"
-        @close="handleCloseDrawer"
+        :initial-tab="insightTab"
+        @alert-updated="refreshAllData"
       />
     </div>
   </Layout>
@@ -83,7 +82,7 @@ import Layout from '@/components/Layout.vue'
 import MonitorKpiCards from './components/MonitorKpiCards.vue'
 import AreaTreePanel from './components/AreaTreePanel.vue'
 import RealtimeDeviceTable from './components/RealtimeDeviceTable.vue'
-import DeviceRealtimeDrawer from './components/DeviceRealtimeDrawer.vue'
+import DeviceInsightDialog from '@/views/device/components/DeviceInsightDialog.vue'
 
 const route = useRoute()
 
@@ -143,10 +142,10 @@ const applyRouteQuery = () => {
   filters.deviceType = getQueryValue(query.deviceType) ? String(getQueryValue(query.deviceType)) : ''
 }
 
-// 抽屉状态
-const drawerVisible = ref(false)
+// 设备数据弹窗
+const insightVisible = ref(false)
 const currentDevice = ref(null)
-const drawerType = ref('detail') // 'detail', 'trend', 'alert'
+const insightTab = ref('detail')
 
 // 刷新所有数据
 const refreshAllData = async () => {
@@ -302,26 +301,20 @@ const handleFilterChange = (nextFilters = {}) => {
 // 设备操作事件
 const handleViewDetail = (device) => {
   currentDevice.value = device
-  drawerType.value = 'detail'
-  drawerVisible.value = true
+  insightTab.value = 'detail'
+  insightVisible.value = true
 }
 
 const handleViewTrend = (device) => {
   currentDevice.value = device
-  drawerType.value = 'trend'
-  drawerVisible.value = true
+  insightTab.value = 'data'
+  insightVisible.value = true
 }
 
 const handleViewAlert = (device) => {
   currentDevice.value = device
-  drawerType.value = 'alert'
-  drawerVisible.value = true
-}
-
-// 关闭抽屉
-const handleCloseDrawer = () => {
-  drawerVisible.value = false
-  currentDevice.value = null
+  insightTab.value = 'alerts'
+  insightVisible.value = true
 }
 
 // 组件挂载

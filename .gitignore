@@ -41,6 +41,12 @@ build/
 ### Local runtime/test artifacts ###
 logs/
 output/
+outputs/
 test-results/
 .playwright-cli/
 coldchain-guardian-web/test-results/
+tmp_*.py
+node_modules/
+__pycache__/
+*.pyc
+*.tar.gz

@@ -8,6 +8,17 @@ Page({
     isDevtools: false
   },
 
+  getRuntimeInfo() {
+    if (wx.getDeviceInfo && wx.getWindowInfo) {
+      const deviceInfo = wx.getDeviceInfo();
+      return {
+        platform: deviceInfo.platform || '',
+        model: deviceInfo.model || ''
+      };
+    }
+    return wx.getSystemInfoSync ? wx.getSystemInfoSync() : {};
+  },
+
   onLoad() {
     this.detectRuntime();
     this.checkAccountStatus();
@@ -15,7 +26,7 @@ Page({
 
   detectRuntime() {
     try {
-      const systemInfo = wx.getSystemInfoSync();
+      const systemInfo = this.getRuntimeInfo();
       const isDevtools = systemInfo.platform === 'devtools';
       this.setData({
         isDevtools,
@@ -119,7 +130,7 @@ Page({
 
   // 向后端发起绑定与登录请求
   sendAuthRequest(loginCode, phone) {
-    const systemInfo = wx.getSystemInfoSync ? wx.getSystemInfoSync() : {};
+    const systemInfo = this.getRuntimeInfo();
     const isDevtools = systemInfo.platform === 'devtools' || this.data.isDevtools;
 
     request({

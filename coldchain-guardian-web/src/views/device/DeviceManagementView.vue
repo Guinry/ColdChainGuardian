@@ -26,8 +26,8 @@
         </div>
       </div>
 
-      <div class="search-filters">
-        <el-form :model="searchForm" inline class="search-form">
+      <div class="search-filters ccg-filter-panel">
+        <el-form :model="searchForm" label-position="top" class="search-form ccg-filter-grid">
           <el-form-item label="设备编码">
             <el-input
               v-model="searchForm.keyword"
@@ -93,7 +93,7 @@
               @change="handleSearch"
             />
           </el-form-item>
-          <el-form-item>
+          <el-form-item class="filter-actions">
             <el-button type="primary" @click="handleSearch">
               <el-icon><Search /></el-icon>
               搜索
@@ -150,22 +150,22 @@
         class="device-table"
       >
         <el-table-column type="selection" width="55" align="center" header-align="center" />
-        <el-table-column prop="deviceCode" label="设备编码" width="120" align="center" header-align="center">
+        <el-table-column prop="deviceCode" label="设备编码" min-width="146" align="center" header-align="center">
           <template #default="{ row }">
-            <router-link :to="`/devices/${row.id}/data`" class="device-link">
+            <el-button link type="primary" class="device-link" @click="openInsight(row, 'data')">
               {{ row.deviceCode }}
-            </router-link>
+            </el-button>
           </template>
         </el-table-column>
-        <el-table-column prop="deviceName" label="设备名称" width="120" align="center" header-align="center" />
-        <el-table-column prop="deviceType" label="设备类型" width="100" align="center" header-align="center">
+        <el-table-column prop="deviceName" label="设备名称" min-width="150" align="center" header-align="center" show-overflow-tooltip />
+        <el-table-column prop="deviceType" label="设备类型" min-width="126" align="center" header-align="center">
           <template #default="{ row }">
             <el-tag :type="getDeviceTypeTag(row.deviceType)">
               {{ getDeviceTypeLabel(row.deviceType) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="areaName" label="所属库区" width="120" align="center" header-align="center" />
+        <el-table-column prop="areaName" label="所属库区" min-width="138" align="center" header-align="center" show-overflow-tooltip />
         <el-table-column prop="onlineStatus" label="在线状态" width="90" align="center" header-align="center">
           <template #default="{ row }">
             <el-tag :type="row.onlineStatus ? 'success' : 'info'">
@@ -200,39 +200,34 @@
             {{ row.lastSeenTime ? formatDate(row.lastSeenTime) : '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220" align="center">
+        <el-table-column label="操作" width="206" align="center" fixed="right">
           <template #default="{ row }">
-            <div class="operation-flex">
-              <div class="button-cell">
-                <el-button size="small" @click="viewData(row)">查看数据</el-button>
-              </div>
-              <div class="button-cell">
-                <el-button size="small" @click="viewAlerts(row)">查看告警</el-button>
-              </div>
-              <div class="button-cell empty"></div>
-            </div>
-            <div class="operation-flex">
-              <div class="button-cell">
-                <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
-              </div>
-              <div class="button-cell">
-                <el-button
-                  size="small"
-                  :type="row.enabled ? 'danger' : 'success'"
-                  @click="toggleStatus(row, !row.enabled)"
-                >
-                  {{ row.enabled ? '禁用' : '启用' }}
+            <div class="row-actions">
+              <el-tooltip content="查看温湿度趋势" placement="top">
+                <el-button link type="primary" :icon="TrendCharts" @click="openInsight(row, 'data')">
+                  数据
                 </el-button>
-              </div>
-              <div class="button-cell">
-                <el-button
-                  size="small"
-                  :type="row.alarmEnabled ? 'warning' : 'info'"
-                  @click="toggleAlarmStatus(row, !row.alarmEnabled)"
-                >
-                  {{ row.alarmEnabled ? '关闭告警' : '启用告警' }}
+              </el-tooltip>
+              <el-tooltip content="查看设备告警" placement="top">
+                <el-button link type="warning" :icon="Warning" @click="openInsight(row, 'alerts')">
+                  告警
                 </el-button>
-              </div>
+              </el-tooltip>
+              <el-button link :icon="EditPen" @click="openEditDialog(row)">编辑</el-button>
+              <el-dropdown trigger="click" @command="command => handleDeviceCommand(command, row)">
+                <el-button link :icon="MoreFilled" class="more-action" />
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="detail">设备信息</el-dropdown-item>
+                    <el-dropdown-item command="toggle-enabled">
+                      {{ row.enabled ? '禁用设备' : '启用设备' }}
+                    </el-dropdown-item>
+                    <el-dropdown-item command="toggle-alarm">
+                      {{ row.alarmEnabled ? '关闭告警' : '启用告警' }}
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
           </template>
         </el-table-column>
@@ -249,6 +244,13 @@
           @current-change="handleCurrentChange"
         />
       </div>
+
+      <DeviceInsightDialog
+        v-model="insightVisible"
+        :device="insightDevice"
+        :initial-tab="insightTab"
+        @alert-updated="loadTableData"
+      />
     </div>
 
     <!-- 新增/编辑对话框 -->
@@ -427,9 +429,10 @@
 
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 import Layout from '@/components/Layout.vue'
+import DeviceInsightDialog from './components/DeviceInsightDialog.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
@@ -437,24 +440,14 @@ import {
   Upload,
   Download,
   Refresh,
-  House,
-  Monitor,
   Warning,
-  DataAnalysis,
-  Setting,
-  Bell,
-  ArrowDown,
-  User,
-  Document,
-  Grid,
-  Operation,
-  Tickets,
-  Memo
+  TrendCharts,
+  EditPen,
+  MoreFilled
 } from '@element-plus/icons-vue'
 import { deviceApi } from '@/api/device'
 import { areaApi } from '@/api/area'
 
-const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
@@ -472,6 +465,9 @@ const dialogTitle = ref('')
 const submitLoading = ref(false)
 const formRef = ref()
 const importInputRef = ref()
+const insightVisible = ref(false)
+const insightDevice = ref(null)
+const insightTab = ref('data')
 
 // 分页
 const pagination = reactive({
@@ -788,14 +784,20 @@ const batchDelete = async () => {
   }
 }
 
-// 查看数据
-const viewData = (row) => {
-  router.push(`/devices/${row.id}/data`)
+const openInsight = (row, tab = 'data') => {
+  insightDevice.value = row
+  insightTab.value = tab
+  insightVisible.value = true
 }
 
-// 查看告警
-const viewAlerts = (row) => {
-  router.push(`/devices/${row.id}/alerts`)
+const handleDeviceCommand = (command, row) => {
+  if (command === 'detail') {
+    openInsight(row, 'detail')
+  } else if (command === 'toggle-enabled') {
+    toggleStatus(row, !row.enabled)
+  } else if (command === 'toggle-alarm') {
+    toggleAlarmStatus(row, !row.alarmEnabled)
+  }
 }
 
 // 获取设备类型标签
@@ -1042,20 +1044,6 @@ watch(() => route.query, () => {
   color: var(--ccg-text);
 }
 
-.search-filters {
-  background: #ffffff;
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 14px;
-  box-shadow: var(--ccg-shadow-sm);
-  border: 1px solid var(--ccg-border);
-}
-
-.search-form :deep(.el-form-item) {
-  margin-bottom: 0;
-  margin-right: 0;
-}
-
 .table-actions {
   margin-bottom: 12px;
   display: flex;
@@ -1082,37 +1070,26 @@ watch(() => route.query, () => {
 }
 
 .device-link {
-  color: #409eff;
-  text-decoration: none;
+  padding: 0;
   font-weight: 600;
-  transition: color 0.2s;
 }
 
-.device-link:hover {
-  color: #66b1ff;
-  text-decoration: underline;
-}
-
-.operation-flex {
-  display: flex;
-  width: 100%;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-
-.operation-flex:last-child {
-  margin-bottom: 0;
-}
-
-.button-cell {
-  flex: 1;
-  display: flex;
+.row-actions {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  gap: 6px;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.row-actions :deep(.el-button) {
+  margin-left: 0;
   padding: 0 2px;
 }
 
-.button-cell.empty {
-  visibility: hidden;
+.more-action {
+  min-width: 24px;
 }
 
 .pagination {

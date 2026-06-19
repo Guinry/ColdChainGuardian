@@ -53,8 +53,8 @@
       </el-row>
 
       <!-- 筛选栏 -->
-      <el-card class="filter-section">
-        <el-form :model="filterForm" inline>
+      <div class="filter-section ccg-filter-panel">
+        <el-form :model="filterForm" label-position="top" class="ccg-filter-grid">
           <el-form-item label="关键字">
             <el-input v-model="filterForm.keyword" placeholder="工单编号/标题" />
           </el-form-item>
@@ -93,22 +93,23 @@
               <el-option label="王五" value="3"></el-option>
             </el-select>
           </el-form-item>
-          <el-form-item>
+          <el-form-item class="filter-actions">
             <el-button type="primary" @click="fetchWorkOrders">查询</el-button>
             <el-button @click="resetFilter">重置</el-button>
           </el-form-item>
         </el-form>
-      </el-card>
+      </div>
 
       <!-- 工单表格 -->
-      <el-table
-        :data="workOrders"
-        v-loading="loading"
-        class="work-order-table"
-        stripe
-        style="width: 100%"
-      >
-        <el-table-column prop="title" label="工单信息" min-width="220" show-overflow-tooltip>
+      <div class="ccg-table-panel">
+        <el-table
+          :data="workOrders"
+          v-loading="loading"
+          class="work-order-table"
+          stripe
+          style="width: 100%"
+        >
+        <el-table-column prop="title" label="工单信息" min-width="280" show-overflow-tooltip fixed="left">
           <template #default="{ row }">
             <div class="work-order-info">
               <div class="title">{{ row.title }}</div>
@@ -117,7 +118,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="workType" label="类型" width="96">
+        <el-table-column prop="workType" label="类型" width="116">
           <template #default="{ row }">
             <el-tag
               :type="getWorkTypeTagType(row.workType)"
@@ -139,7 +140,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="locationDetail" label="发生位置" min-width="148" show-overflow-tooltip>
+        <el-table-column prop="locationDetail" label="发生位置" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="location-info">
               <el-tag type="info" size="small">{{ row.warehouseName }}</el-tag>
@@ -158,7 +159,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="createTime" label="时间节点" width="132">
+        <el-table-column prop="createTime" label="时间节点" width="158">
           <template #default="{ row }">
             <div class="timeline-info">
               <div>创建: {{ formatDate(row.createdAt) }}</div>
@@ -178,23 +179,27 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="148" align="center">
+        <el-table-column label="操作" width="158" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="viewWorkOrder(row)">查看</el-button>
-            <el-dropdown split-button size="small" @click="handleProcess(row)">
-              处理
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="handleAccept(row)" v-if="row.status === 'PENDING'">接受工单</el-dropdown-item>
-                  <el-dropdown-item @click="handleComplete(row)" v-if="row.status === 'PROCESSING'">完成工单</el-dropdown-item>
-                  <el-dropdown-item @click="handleVerify(row)" v-if="row.status === 'VERIFYING'">验收通过</el-dropdown-item>
-                  <el-dropdown-item @click="handleClose(row)" v-if="row.status === 'COMPLETED'">关闭工单</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+            <div class="work-order-actions">
+              <el-button size="small" type="primary" link @click="viewWorkOrder(row)">查看</el-button>
+              <el-button size="small" type="success" link @click="handleProcess(row)">处理</el-button>
+              <el-dropdown trigger="click">
+                <el-button size="small" link :icon="MoreFilled" />
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item @click="handleAccept(row)" v-if="row.status === 'PENDING'">接受工单</el-dropdown-item>
+                    <el-dropdown-item @click="handleComplete(row)" v-if="row.status === 'PROCESSING'">完成工单</el-dropdown-item>
+                    <el-dropdown-item @click="handleVerify(row)" v-if="row.status === 'VERIFYING'">验收通过</el-dropdown-item>
+                    <el-dropdown-item @click="handleClose(row)" v-if="row.status === 'COMPLETED'">关闭工单</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
-      </el-table>
+        </el-table>
+      </div>
 
       <!-- 分页 -->
       <div class="pagination">
@@ -231,7 +236,7 @@
 import { ref, reactive, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, Refresh } from '@element-plus/icons-vue';
+import { MoreFilled, Plus, Refresh } from '@element-plus/icons-vue';
 import CreateWorkOrderModal from '@/views/work-order/components/CreateWorkOrderModal.vue';
 import WorkOrderDrawer from '@/views/work-order/components/WorkOrderDrawer.vue';
 import Layout from '@/components/Layout.vue';
@@ -652,14 +657,8 @@ watch(showWorkOrderDrawer, (visible) => {
   opacity: 0.3;
 }
 
-.filter-section {
-  margin-bottom: 16px;
-}
-
 .work-order-table {
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
 }
 
 .work-order-table :deep(.el-table__cell) {
@@ -667,8 +666,8 @@ watch(showWorkOrderDrawer, (visible) => {
 }
 
 .work-order-info .title {
-  font-weight: bold;
-  color: #303133;
+  font-weight: 720;
+  color: var(--ccg-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -701,6 +700,18 @@ watch(showWorkOrderDrawer, (visible) => {
 .timeline-info {
   font-size: 12px;
   color: #909399;
+}
+
+.work-order-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.work-order-actions :deep(.el-button) {
+  margin-left: 0;
 }
 
 .pagination {
